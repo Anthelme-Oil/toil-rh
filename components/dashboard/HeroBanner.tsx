@@ -35,7 +35,7 @@ export default function HeroBanner() {
     >
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-2">
         <div
-          className="relative w-full h-48 sm:h-64 md:h-72 overflow-hidden rounded-2xl shadow-md transition-transform duration-75 ease-out"
+          className="relative w-full aspect-[3/1] sm:aspect-[3.5/1] md:aspect-[4/1] max-h-72 overflow-hidden rounded-2xl shadow-md transition-transform duration-75 ease-out bg-surface-alt"
           style={{
             opacity: opacity,
             filter: `blur(${blurValue}px)`,
@@ -47,7 +47,7 @@ export default function HeroBanner() {
             src="/images/Banner2.png"
             alt="Bannière d'accueil T-OIL"
             fill
-            className="object-contain object-center"
+            className="object-cover object-center"
             priority
           />
         </div>
