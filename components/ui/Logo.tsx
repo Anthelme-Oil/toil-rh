@@ -20,6 +20,7 @@ export default function Logo({ className = '', size = 40, showText = true }: Log
         alt="Logo T-OIL"
         width={size}
         height={size}
+        style={{ width: 'auto', height: 'auto' }}
         className="object-contain flex-shrink-0"
         priority
       />

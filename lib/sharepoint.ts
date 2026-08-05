@@ -18,34 +18,68 @@ import {
 } from './graph';
 import type { Actualite, DocumentSP, Evenement, Annonce } from '@/types';
 
-const graphClient = getGraphClient();
-const siteBase = getSiteApiBase();
+const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoint.com';
 
 // ═══════════════════════════════════════════════════════════════
 // ACTUALITÉS
 // ═══════════════════════════════════════════════════════════════
+
+function formatSharePointUrl(rawUrl: string): string {
+  let url = rawUrl.trim();
+  if (url.includes('sharepoint.com') && !url.includes('download=1')) {
+    url += url.includes('?') ? '&download=1' : '?download=1';
+  }
+  return url;
+}
+
+function extractImageUrl(fields: Record<string, string>, itemId: string): string | undefined {
+  if (fields.ImageUrl) {
+    return formatSharePointUrl(fields.ImageUrl);
+  }
+  if (fields.Image) {
+    try {
+      const imgObj = typeof fields.Image === 'string' ? JSON.parse(fields.Image) : fields.Image;
+      if (imgObj.serverRelativeUrl) {
+        return `https://${SHAREPOINT_HOSTNAME}${imgObj.serverRelativeUrl}`;
+      }
+      if (imgObj.fileName) {
+        return `https://${SHAREPOINT_HOSTNAME}/sites/NotrePortail/Lists/Actualites/Attachments/${itemId}/${encodeURIComponent(imgObj.fileName)}`;
+      }
+    } catch {
+      // Ignorer l'erreur de parsing JSON
+    }
+  }
+  return undefined;
+}
 
 /**
  * Récupère les dernières actualités depuis la liste SharePoint.
  * @param top - Nombre maximum d'éléments à retourner (défaut: 5)
  */
 export async function getActualites(top: number = 5): Promise<Actualite[]> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    console.warn('[SharePoint] Graph non configuré. Utilisation des données par défaut.');
+    return [];
+  }
+  const siteBase = getSiteApiBase();
+
   try {
     const response = await graphClient
       .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items`)
-      .expand('fields($select=Title,Description,DatePublication,ImageUrl,Categorie,LienVersPage)')
+      .expand('fields')
       .top(top)
-      .orderby('fields/DatePublication desc')
       .get();
 
     return (response.value || []).map((item: Record<string, unknown>) => {
       const fields = item.fields as Record<string, string>;
+      const id = item.id as string;
       return {
-        id: item.id as string,
+        id,
         titre: fields.Title || '',
         description: fields.Description || '',
         datePublication: fields.DatePublication || '',
-        imageUrl: fields.ImageUrl || undefined,
+        imageUrl: extractImageUrl(fields, id),
         categorie: fields.Categorie || undefined,
         lienVersPage: fields.LienVersPage || undefined,
       };
@@ -55,6 +89,112 @@ export async function getActualites(top: number = 5): Promise<Actualite[]> {
     return [];
   }
 }
+
+/**
+ * Récupère le détail d'une actualité par son ID depuis SharePoint.
+ * @param id - L'ID de l'élément SharePoint
+ */
+export async function getActualiteById(id: string): Promise<Actualite | null> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    console.warn('[SharePoint] Graph non configuré.');
+    return null;
+  }
+  const siteBase = getSiteApiBase();
+
+  try {
+    const response = await graphClient
+      .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items/${id}`)
+      .expand('fields')
+      .get();
+
+    const fields = response.fields as Record<string, string>;
+    if (!fields) return null;
+
+    return {
+      id: response.id as string,
+      titre: fields.Title || '',
+      description: fields.Description || '',
+      contenu: fields.Contenu || '',
+      datePublication: fields.DatePublication || '',
+      imageUrl: extractImageUrl(fields, response.id as string),
+      categorie: fields.Categorie || undefined,
+      auteur: fields.Auteur || undefined,
+      lienVersPage: fields.LienVersPage || undefined,
+    };
+  } catch (error) {
+    console.error(`[SharePoint] Erreur récupération actualité ${id}:`, error);
+    return null;
+  }
+}
+
+
+/**
+ * Uploade une image de couverture pour un blog dans la bibliothèque SharePoint.
+ * @param buffer - Le contenu binaire du fichier
+ * @param fileName - Le nom du fichier avec extension
+ */
+export async function uploadBlogImage(buffer: Buffer, fileName: string): Promise<string> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    throw new Error('SharePoint n\'est pas encore configuré. Renseignez les identifiants Azure AD dans .env.local');
+  }
+  const siteBase = getSiteApiBase();
+
+  try {
+    const timestamp = Date.now();
+    const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `Blogs/${timestamp}_${cleanFileName}`;
+
+    const response = await graphClient
+      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/root:/${path}:/content`)
+      .put(buffer);
+
+    return response.webUrl as string;
+  } catch (error) {
+    console.error('[SharePoint] Erreur upload image blog:', error);
+    throw new Error('Échec de l\'upload de l\'image de couverture.');
+  }
+}
+
+/**
+ * Crée un nouvel article d'actualité/blog dans la Liste SharePoint.
+ * @param blog - Les données de l'article à créer
+ */
+export async function creerActualite(blog: {
+  titre: string;
+  description: string;
+  contenu?: string;
+  categorie?: string;
+  imageUrl?: string;
+}): Promise<string> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    throw new Error('SharePoint n\'est pas encore configuré dans .env.local (AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, etc.).');
+  }
+  const siteBase = getSiteApiBase();
+
+  try {
+    const response = await graphClient
+      .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items`)
+      .post({
+        fields: {
+          Title: blog.titre,
+          Description: blog.description,
+          Contenu: blog.contenu || '',
+          Categorie: blog.categorie || 'Général',
+          DatePublication: new Date().toISOString(),
+          ImageUrl: blog.imageUrl || '',
+        },
+      });
+
+    return response.id as string;
+  } catch (error) {
+    console.error('[SharePoint] Erreur création actualité:', error);
+    throw new Error('Impossible de publier l\'article dans SharePoint.');
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════
 // DOCUMENTS / PROCÉDURES
@@ -69,6 +209,10 @@ export async function getDocuments(
   bibliotheque: 'IT' | 'RH' = 'IT',
   top: number = 20
 ): Promise<DocumentSP[]> {
+  const graphClient = getGraphClient();
+  if (!graphClient) return [];
+  const siteBase = getSiteApiBase();
+
   const driveId = bibliotheque === 'IT' ? DRIVE_PROCEDURES_IT : DRIVE_PROCEDURES_RH;
 
   try {
@@ -103,14 +247,14 @@ export async function getDocuments(
  * Récupère les événements du jour depuis la liste SharePoint.
  */
 export async function getEvenementsDuJour(): Promise<Evenement[]> {
-  const today = new Date().toISOString().split('T')[0];
+  const graphClient = getGraphClient();
+  if (!graphClient) return [];
+  const siteBase = getSiteApiBase();
 
   try {
     const response = await graphClient
       .api(`${siteBase}/lists/${LIST_EVENEMENTS_ID}/items`)
-      .expand('fields($select=Title,DateDebut,DateFin,Lieu,Description)')
-      .filter(`fields/DateDebut ge '${today}T00:00:00Z' and fields/DateDebut le '${today}T23:59:59Z'`)
-      .orderby('fields/DateDebut asc')
+      .expand('fields')
       .get();
 
     return (response.value || []).map((item: Record<string, unknown>) => {
@@ -118,9 +262,9 @@ export async function getEvenementsDuJour(): Promise<Evenement[]> {
       return {
         id: item.id as string,
         titre: fields.Title || '',
-        dateDebut: fields.DateDebut || '',
-        dateFin: fields.DateFin || undefined,
-        lieu: fields.Lieu || undefined,
+        dateDebut: fields.DateDebut || fields.EventDate || fields.StartDate || new Date().toISOString(),
+        dateFin: fields.DateFin || fields.EndDate || undefined,
+        lieu: fields.Lieu || fields.Location || undefined,
         description: fields.Description || undefined,
       };
     });
@@ -138,12 +282,14 @@ export async function getEvenementsDuJour(): Promise<Evenement[]> {
  * Récupère les annonces actives depuis la liste SharePoint.
  */
 export async function getAnnonces(): Promise<Annonce[]> {
+  const graphClient = getGraphClient();
+  if (!graphClient) return [];
+  const siteBase = getSiteApiBase();
+
   try {
     const response = await graphClient
       .api(`${siteBase}/lists/${LIST_ANNONCES_ID}/items`)
-      .expand('fields($select=Title,Contenu,Type,DatePublication,Lien)')
-      .filter("fields/Actif eq 1")
-      .orderby('fields/DatePublication desc')
+      .expand('fields')
       .top(5)
       .get();
 
@@ -154,7 +300,7 @@ export async function getAnnonces(): Promise<Annonce[]> {
         titre: fields.Title || '',
         contenu: fields.Contenu || '',
         type: (fields.Type as Annonce['type']) || 'info',
-        datePublication: fields.DatePublication || '',
+        datePublication: fields.DatePublication || fields.Created || '',
         lien: fields.Lien || undefined,
       };
     });

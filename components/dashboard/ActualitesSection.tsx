@@ -83,7 +83,15 @@ export default function ActualitesSection({ actualites }: ActualitesSectionProps
             className={`flex items-start gap-4 p-3 -mx-1 rounded-xl hover:bg-surface-alt transition-colors duration-200 group delay-${index + 1}`}
             id={`actualite-${actu.id}`}
           >
-            <NewsPlaceholder categorie={actu.categorie} />
+            {actu.imageUrl ? (
+              <img
+                src={actu.imageUrl}
+                alt={actu.titre}
+                className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+              />
+            ) : (
+              <NewsPlaceholder categorie={actu.categorie} />
+            )}
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

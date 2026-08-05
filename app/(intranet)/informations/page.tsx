@@ -4,8 +4,9 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Newspaper, ArrowLeft, Calendar, Tag } from 'lucide-react';
+import { Newspaper, ArrowLeft, Calendar, Tag, Plus } from 'lucide-react';
 import { mockActualites } from '@/lib/mock-data';
+import { getActualites } from '@/lib/sharepoint';
 
 export const metadata: Metadata = {
   title: 'Actualités & Informations',
@@ -29,8 +30,9 @@ function getCatStyle(cat?: string) {
   }
 }
 
-export default function InformationsPage() {
-  const actualites = mockActualites;
+export default async function InformationsPage() {
+  const spActualites = await getActualites(20);
+  const actualites = spActualites.length > 0 ? spActualites : mockActualites;
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
@@ -44,17 +46,28 @@ export default function InformationsPage() {
       </div>
 
       {/* ── En-tête ── */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-          <Newspaper className="w-6 h-6 text-white" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-md">
+            <Newspaper className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">Actualités & Informations</h1>
+            <p className="text-sm text-text-secondary">
+              Retrouvez les dernières nouvelles de l&apos;entreprise
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Actualités & Informations</h1>
-          <p className="text-sm text-text-secondary">
-            Retrouvez les dernières nouvelles de l&apos;entreprise
-          </p>
-        </div>
+
+        <Link
+          href="/informations/creer"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-medium shadow-sm transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          Publier un blog / actualité
+        </Link>
       </div>
+
 
       {/* ── Liste des actualités ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -67,9 +80,17 @@ export default function InformationsPage() {
             id={`article-${actu.id}`}
           >
             <div>
-              {/* Image placeholder */}
-              <div className="h-44 bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center relative">
-                <Newspaper className="w-12 h-12 text-primary/30 group-hover:scale-110 transition-transform duration-300" />
+              {/* Image ou Placeholder */}
+              <div className="h-44 bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center relative overflow-hidden">
+                {actu.imageUrl ? (
+                  <img
+                    src={actu.imageUrl}
+                    alt={actu.titre}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <Newspaper className="w-12 h-12 text-primary/30 group-hover:scale-110 transition-transform duration-300" />
+                )}
                 {actu.categorie && (
                   <span className={`absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${getCatStyle(actu.categorie)}`}>
                     {actu.categorie}

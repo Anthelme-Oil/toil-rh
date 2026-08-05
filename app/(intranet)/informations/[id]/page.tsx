@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ArticleActions from '@/components/articles/ArticleActions';
 import { mockActualites } from '@/lib/mock-data';
+import { getActualiteById, getActualites } from '@/lib/sharepoint';
 
 interface ArticlePageProps {
   params: Promise<{ id: string }>;
@@ -23,7 +24,8 @@ interface ArticlePageProps {
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { id } = await params;
-  const article = mockActualites.find((item) => item.id === id);
+  const spArticle = await getActualiteById(id);
+  const article = spArticle || mockActualites.find((item) => item.id === id);
 
   if (!article) {
     return {
@@ -36,6 +38,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     description: article.description,
   };
 }
+
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', {
@@ -60,13 +63,16 @@ function getCatStyle(cat?: string) {
 
 export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const { id } = await params;
-  const article = mockActualites.find((item) => item.id === id);
+  const spArticle = await getActualiteById(id);
+  const article = spArticle || mockActualites.find((item) => item.id === id);
 
   if (!article) {
     notFound();
   }
 
-  const autresArticles = mockActualites.filter((item) => item.id !== id);
+  const allArticles = (await getActualites(10)) || mockActualites;
+  const autresArticles = allArticles.filter((item) => item.id !== id);
+
 
   return (
     <article className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 animate-fade-in">
@@ -103,8 +109,21 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       >
         {/* En-tête / Couverture visuelle */}
         <div className="relative w-full h-56 sm:h-72 bg-gradient-to-br from-primary-700 via-primary to-primary-dark flex items-center justify-center p-6 text-white overflow-hidden">
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-          <Newspaper className="w-32 h-32 opacity-15 absolute right-4 bottom-4" />
+          {article.imageUrl ? (
+            <>
+              <img
+                src={article.imageUrl}
+                alt={article.titre}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+              <Newspaper className="w-32 h-32 opacity-15 absolute right-4 bottom-4" />
+            </>
+          )}
 
           <div className="relative z-10 max-w-2xl text-center">
             {article.categorie && (

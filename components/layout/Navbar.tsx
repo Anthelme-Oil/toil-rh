@@ -8,7 +8,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
-import { Search, Bell, Settings, HelpCircle, Menu, X } from 'lucide-react';
+import { Search, Bell, Settings, HelpCircle, Menu, X, UserCheck } from 'lucide-react';
+import { signIn } from 'next-auth/react';
+import { useUser } from '@/context/UserContext';
 
 const navLinks = [
   { label: 'Accueil', href: '/' },
@@ -23,7 +25,9 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const { userEmail, userName, userRole, setUserEmail } = useUser();
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -103,22 +107,76 @@ export default function Navbar() {
               >
                 <Settings className="w-5 h-5" />
               </button>
-              <button
+              {/* <button
                 className="p-2 text-text-secondary hover:text-primary hover:bg-primary-50 rounded-xl transition-colors focus-ring hidden sm:block"
                 title="Aide"
                 id="nav-help"
               >
                 <HelpCircle className="w-5 h-5" />
-              </button>
+              </button> */}
 
-              {/* Avatar utilisateur */}
-              <button
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white text-sm font-bold ml-1 focus-ring"
-                title="Mon profil"
-                id="nav-avatar"
-              >
-                U
-              </button>
+              {/* Avatar & Profil utilisateur avec menu déroulant */}
+              <div className="relative">
+                <button
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center gap-2 p-1 rounded-xl hover:bg-surface-alt transition-colors focus-ring"
+                  title="Mon Profil & Rôle"
+                  id="nav-avatar"
+                >
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white text-xs font-extrabold shadow-sm">
+                    {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div className="hidden xl:flex flex-col text-left">
+                    <span className="text-xs font-bold text-text-primary truncate max-w-[120px]">
+                      {userName}
+                    </span>
+                    <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider">
+                      {userRole}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Menu déroulant Profil / Connexion */}
+                {profileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-border shadow-xl p-4 z-50 animate-fade-in space-y-4">
+                    <div className="flex items-center gap-3 pb-3 border-b border-border">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-sm">
+                        {userEmail.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-text-primary truncate">{userName}</p>
+                        <p className="text-[11px] text-text-muted truncate">{userEmail}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-primary-50 text-primary text-[10px] font-extrabold uppercase">
+                          Rôle : {userRole}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Simulation / Test de compte */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-text-secondary">
+                        Changer de compte (Mode test/démo) :
+                      </label>
+                      <input
+                        type="email"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        placeholder="ex: lino@gmail.com"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface-alt text-text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                      />
+                    </div>
+
+                    {/* Bouton Connexion SSO Microsoft 365 */}
+                    <button
+                      onClick={() => signIn('microsoft-entra-id')}
+                      className="w-full py-2.5 px-3 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors shadow-sm"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      Connexion Microsoft 365 (Entra ID)
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Menu mobile toggle */}
               <button

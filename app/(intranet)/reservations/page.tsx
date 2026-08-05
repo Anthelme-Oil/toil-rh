@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Page Réservations
+// Page Réservations — Salles de réunion & espaces
 // ═══════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';

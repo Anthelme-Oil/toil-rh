@@ -101,60 +101,123 @@ export const mockCompteurs: CompteursDemandesParType = {
   rh: 1,
 };
 
-// ── Outils M365 ──
+// ── Outils M365 & Applications métiers ──
 export const outilsM365: OutilM365[] = [
+  // ── Microsoft 365 ──
+  {
+    nom: 'Powerpoint',
+    icone: '/icons/powerpoint.svg',
+    url: 'https://powerpoint.office.com',
+    couleur: '#D84315',
+    categorie: 'Microsoft 365',
+  },
+  {
+    nom: 'OneDrive',
+    icone: '/icons/onedrive.svg',
+    url: 'https://onedrive.live.com',
+    couleur: '#0078D4',
+    categorie: 'Microsoft 365',
+  },
   {
     nom: 'Outlook',
     icone: '/icons/outlook.svg',
     url: 'https://outlook.office365.com',
     couleur: '#0078D4',
+    categorie: 'Microsoft 365',
   },
   {
     nom: 'Teams',
     icone: '/icons/teams.svg',
     url: 'https://teams.microsoft.com',
     couleur: '#6264A7',
+    categorie: 'Microsoft 365',
   },
+
+  // ── Applications métiers ──
+  {
+    nom: 'Procédures QSE',
+    icone: '/icons/qse.svg',
+    url: '#',
+    couleur: '#16A34A',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'Gmao',
+    icone: '/icons/gmao.svg',
+    url: '#',
+    couleur: '#0284C7',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'stsl-stock',
+    icone: '/icons/stsl-stock.svg',
+    url: '#',
+    couleur: '#0284C7',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'Gest-oil',
+    icone: '/icons/gest-oil.svg',
+    url: '#',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'JDE E1 - 10007',
+    icone: '/icons/jde-10007.svg',
+    url: '#',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'JDE E1-10006',
+    icone: '/icons/jde-10006.svg',
+    url: '#',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+
+  // ── Autres outils & services M365 ──
   {
     nom: 'SharePoint',
     icone: '/icons/sharepoint.svg',
     url: 'https://votre-domaine.sharepoint.com',
     couleur: '#038387',
-  },
-  {
-    nom: 'OneDrive',
-    icone: '/icons/onedrive.svg',
-    url: 'https://votre-domaine-my.sharepoint.com',
-    couleur: '#0078D4',
+    categorie: 'Autres outils M365',
   },
   {
     nom: 'Planner',
     icone: '/icons/planner.svg',
     url: 'https://tasks.office.com',
     couleur: '#31752F',
+    categorie: 'Autres outils M365',
   },
   {
     nom: 'Forms',
     icone: '/icons/forms.svg',
     url: 'https://forms.office.com',
     couleur: '#008272',
+    categorie: 'Autres outils M365',
   },
   {
     nom: 'Power BI',
     icone: '/icons/powerbi.svg',
     url: 'https://app.powerbi.com',
     couleur: '#F2C811',
+    categorie: 'Autres outils M365',
   },
   {
     nom: 'Bookings',
     icone: '/icons/bookings.svg',
     url: 'https://outlook.office365.com/owa/?path=/bookings',
     couleur: '#0078D4',
+    categorie: 'Autres outils M365',
   },
   {
     nom: 'Support IT',
     icone: '/icons/support.svg',
     url: '/demandes?type=it',
     couleur: '#107C10',
+    categorie: 'Autres outils M365',
   },
 ];

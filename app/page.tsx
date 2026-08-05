@@ -24,25 +24,31 @@ import {
   outilsM365,
 } from '@/lib/mock-data';
 
-// ── En production, importer les services SharePoint ──
-// import { getActualites } from '@/lib/sharepoint';
-// import { getCompteursDemandesParType } from '@/lib/demandes';
-// import { auth } from '@/lib/auth';
+// ── Services SharePoint réels ──
+import { getActualites, getAnnonces, getEvenementsDuJour } from '@/lib/sharepoint';
+import { getCompteursDemandesParType } from '@/lib/demandes';
+import { auth } from '@/lib/auth';
 
 export default async function DashboardPage() {
-  // ── Récupération des données ──
-  // En production, décommenter les lignes ci-dessous :
-  // const session = await auth();
-  // const actualites = await getActualites(3);
-  // const annonces = await getAnnonces();
-  // const evenements = await getEvenementsDuJour();
-  // const compteurs = await getCompteursDemandesParType(session?.user?.email || '');
+  // ── Récupération des données réelles depuis SharePoint ──
+  const session = await auth();
+  
+  // Récupération en parallèle
+  const [spActualites, spAnnonces, spEvenements, spCompteurs] = await Promise.all([
+    getActualites(3),
+    getAnnonces(),
+    getEvenementsDuJour(),
+    getCompteursDemandesParType(session?.user?.email || 'employe@compel-toil.com')
+  ]);
 
-  // Pour le développement local, on utilise les données mock :
-  const actualites = mockActualites;
-  const annonces = mockAnnonces;
-  const evenements = mockEvenements;
-  const compteurs = mockCompteurs;
+  // Si SharePoint est vide ou pas encore configuré, on bascule sur les mocks pour garder le design propre
+  const actualites = spActualites.length > 0 ? spActualites : mockActualites;
+  const annonces = spAnnonces.length > 0 ? spAnnonces : mockAnnonces;
+  const evenements = spEvenements.length > 0 ? spEvenements : mockEvenements;
+  
+  // Si tous les compteurs sont à 0, on montre les compteurs mock pour la démo
+  const aDesDemandes = Object.values(spCompteurs).some(val => val > 0);
+  const compteurs = aDesDemandes ? spCompteurs : mockCompteurs;
 
   return (
     <div className="flex flex-col min-h-screen">

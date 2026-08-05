@@ -29,13 +29,61 @@ export interface DocumentSP {
 }
 
 /** Types de demande interne */
-export type TypeDemande = 'materiel' | 'acces' | 'it' | 'rh';
+export type TypeDemande =
+  | 'materiel'
+  | 'acces'
+  | 'it'
+  | 'rh'
+  | 'administrative'
+  | 'autre'
+  // Specific demand keys
+  | 'renouvellement_compte'
+  | 'creation_suppression_compte'
+  | 'demande_conges'
+  | 'domiciliation_bancaire'
+  | 'attestation_travail'
+  | 'consommables'
+  | 'materiel_informatique'
+  | 'intervention'
+  | 'fiche_achat'
+  | 'ordre_mission'
+  | 'autorisation_acces';
 
-/** Priorité d'une demande */
 export type PrioriteDemande = 'basse' | 'normale' | 'haute' | 'urgente';
 
-/** Statut d'une demande */
-export type StatutDemande = 'en_attente' | 'en_cours' | 'resolu' | 'rejete';
+/** Statut d'une demande générale */
+export type StatutDemande = 'soumis' | 'en_cours' | 'resolu' | 'refuse';
+
+/** Types de congés */
+export type TypeConge = 'conge_paye' | 'rtt' | 'maladie' | 'maternite_paternite' | 'sans_solde' | 'evenement_familial';
+
+/** Statuts du workflow de validation des congés */
+export type StatutConge = 
+  | 'EN_ATTENTE_N1'
+  | 'EN_ATTENTE_RH'
+  | 'APPROUVEE'
+  | 'REFUSEE_N1'
+  | 'REFUSEE_RH';
+
+/** Interface spécifique pour une Demande de Congés */
+export interface DemandeConge {
+  id?: string;
+  titre: string;
+  typeConge: TypeConge;
+  dateDebut: string;
+  dateFin: string;
+  nombreJours: number;
+  motif?: string;
+  statut: StatutConge;
+  demandeurNom: string;
+  demandeurEmail: string;
+  managerEmail?: string;
+  motifRefus?: string;
+  dateCreation?: string;
+  dateValidationN1?: string;
+  dateValidationRH?: string;
+  pieceJointeUrl?: string;
+}
 
 /** Demande interne (Microsoft List) */
 export interface DemandeInterne {
@@ -78,6 +126,7 @@ export interface OutilM365 {
   icone: string;
   url: string;
   couleur?: string;
+  categorie?: string;
 }
 
 /** Utilisateur connecté (session) */

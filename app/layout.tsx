@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+import { AuthProvider } from '@/components/providers/AuthProvider';
+import { UserProvider } from '@/context/UserContext';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-surface-alt">{children}</body>
+      <body className="min-h-full flex flex-col bg-surface-alt">
+        <AuthProvider>
+          <UserProvider>
+            {children}
+          </UserProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

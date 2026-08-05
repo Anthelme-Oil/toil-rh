@@ -21,6 +21,7 @@ export default function SignInPage() {
             alt="Logo T-OIL"
             width={100}
             height={100}
+            style={{ width: 'auto', height: 'auto' }}
             className="object-contain"
             priority
           />

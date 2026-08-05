@@ -15,12 +15,12 @@ import { Client } from '@microsoft/microsoft-graph-client';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials';
 
 // ── Variables d'environnement Azure AD ──
-const TENANT_ID = process.env.AZURE_AD_TENANT_ID!;
-const CLIENT_ID = process.env.AZURE_AD_CLIENT_ID!;
-const CLIENT_SECRET = process.env.AZURE_AD_CLIENT_SECRET!;
+const TENANT_ID = process.env.AZURE_AD_TENANT_ID;
+const CLIENT_ID = process.env.AZURE_AD_CLIENT_ID;
+const CLIENT_SECRET = process.env.AZURE_AD_CLIENT_SECRET;
 
 // ── SharePoint site identifiers ──
-export const SHAREPOINT_SITE_ID = process.env.SHAREPOINT_SITE_ID!;
+export const SHAREPOINT_SITE_ID = process.env.SHAREPOINT_SITE_ID;
 export const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'votre-domaine.sharepoint.com';
 
 // ── Microsoft Lists IDs ──
@@ -34,25 +34,41 @@ export const DRIVE_PROCEDURES_IT = process.env.DRIVE_PROCEDURES_IT || 'Procedure
 export const DRIVE_PROCEDURES_RH = process.env.DRIVE_PROCEDURES_RH || 'Procedures_RH';
 
 /**
+ * Vérifie si les identifiants Azure AD et SharePoint sont configurés.
+ */
+export function isGraphConfigured(): boolean {
+  return Boolean(TENANT_ID && CLIENT_ID && CLIENT_SECRET && SHAREPOINT_SITE_ID);
+}
+
+/**
  * Crée un client Graph avec le flux Client Credentials (app-only).
  * Utilisé pour les opérations serveur qui ne nécessitent pas
  * le contexte d'un utilisateur spécifique.
  */
-export function getGraphClient(): Client {
-  const credential = new ClientSecretCredential(
-    TENANT_ID,
-    CLIENT_ID,
-    CLIENT_SECRET
-  );
+export function getGraphClient(): Client | null {
+  if (!isGraphConfigured()) {
+    return null;
+  }
 
-  const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-    scopes: ['https://graph.microsoft.com/.default'],
-  });
+  try {
+    const credential = new ClientSecretCredential(
+      TENANT_ID!,
+      CLIENT_ID!,
+      CLIENT_SECRET!
+    );
 
-  return Client.initWithMiddleware({
-    authProvider,
-    debugLogging: process.env.NODE_ENV === 'development',
-  });
+    const authProvider = new TokenCredentialAuthenticationProvider(credential, {
+      scopes: ['https://graph.microsoft.com/.default'],
+    });
+
+    return Client.initWithMiddleware({
+      authProvider,
+      debugLogging: process.env.NODE_ENV === 'development',
+    });
+  } catch (err) {
+    console.error('[Microsoft Graph] Échec d\'initialisation du client:', err);
+    return null;
+  }
 }
 
 /**
@@ -74,5 +90,6 @@ export function getGraphClientOnBehalfOf(accessToken: string): Client {
  * Helper pour construire l'URL de base du site SharePoint.
  */
 export function getSiteApiBase(): string {
+  if (!SHAREPOINT_SITE_ID) return '/sites/unconfigured';
   return `/sites/${SHAREPOINT_SITE_ID}`;
 }
