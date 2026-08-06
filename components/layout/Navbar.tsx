@@ -100,13 +100,13 @@ export default function Navbar() {
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
               </button>
-              <button
+              {/* <button
                 className="p-2 text-text-secondary hover:text-primary hover:bg-primary-50 rounded-xl transition-colors focus-ring hidden sm:block"
                 title="Paramètres"
                 id="nav-settings"
               >
                 <Settings className="w-5 h-5" />
-              </button>
+              </button> */}
               {/* <button
                 className="p-2 text-text-secondary hover:text-primary hover:bg-primary-50 rounded-xl transition-colors focus-ring hidden sm:block"
                 title="Aide"

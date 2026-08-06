@@ -14,6 +14,7 @@ import {
   getGraphClient,
   getSiteApiBase,
   LIST_DEMANDES_ID,
+  LIST_CONGES_ID,
 } from './graph';
 import type { DemandeInterne, CompteursDemandesParType } from '@/types';
 
@@ -146,29 +147,99 @@ export async function creerDemandeConge(
   const siteBase = getSiteApiBase();
 
   try {
+    // Helper de normalisation stricte (supprime accents, espaces et caractères spéciaux)
+    const normalizeStr = (str: string) =>
+      str
+        ? str
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/g, '')
+        : '';
+
+    let columnsMap: Record<string, string> = {};
+    let availableColsList: string[] = [];
+
+    try {
+      // Interroge à la fois /columns et l'expand de la liste pour garantir la récupération
+      const colsRes = await graphClient
+        .api(`${siteBase}/lists/${LIST_CONGES_ID}/columns`)
+        .get();
+      
+      const cols = colsRes?.value || [];
+      availableColsList = cols.map((c: { name: string; displayName: string }) => `${c.displayName} (${c.name})`);
+
+      cols.forEach((col: { name: string; displayName: string }) => {
+        if (col.name) {
+          columnsMap[normalizeStr(col.name)] = col.name;
+        }
+        if (col.displayName) {
+          columnsMap[normalizeStr(col.displayName)] = col.name;
+        }
+      });
+      console.log('[Demandes] Colonnes SharePoint chargées:', availableColsList);
+    } catch (colErr) {
+      console.warn('[Demandes] Impossible de lister les colonnes SharePoint:', colErr);
+    }
+
+    const getColName = (possibleNames: string[], fallback: string): string => {
+      for (const name of possibleNames) {
+        const clean = normalizeStr(name);
+        if (columnsMap[clean]) {
+          return columnsMap[clean];
+        }
+      }
+      // Cherche une clé contenue partiellement si pas de match exact
+      for (const name of possibleNames) {
+        const clean = normalizeStr(name);
+        for (const [key, realName] of Object.entries(columnsMap)) {
+          if (key.includes(clean) || clean.includes(key)) {
+            return realName;
+          }
+        }
+      }
+      return fallback;
+    };
+
+    const titleCol = getColName(['title', 'titre'], 'Title');
+    const dateDebutCol = getColName(['datedebutconge', 'datedebut', 'debut'], 'Dated_x00e9_butcong_x00e9_');
+    const dateFinCol = getColName(['datefinconge', 'datefin', 'fin'], 'Datefincong_x00e9_');
+    const typeCol = getColName(['typedeconge', 'typeconge', 'type'], 'Typedecong_x00e9_');
+    const statutCol = getColName(['statutdelademande', 'statut'], 'Statutdelademande');
+
+    const fieldsPayload: Record<string, string> = {
+      [titleCol]: demande.titre,
+      [dateDebutCol]: demande.dateDebut,
+      [dateFinCol]: demande.dateFin,
+      [typeCol]: demande.typeConge === 'conge_paye' ? 'Congé Payé' : demande.typeConge.toUpperCase(),
+      [statutCol]: 'Soumise',
+    };
+
+    // Si la colonne Motif existe bien dans le schéma SharePoint, on l'ajoute
+    if (demande.motif && columnsMap['motif']) {
+      fieldsPayload[columnsMap['motif']] = demande.motif;
+    }
+
     const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_DEMANDES_ID}/items`)
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items`)
       .post({
-        fields: {
-          Title: demande.titre,
-          TypeDemande: 'demande_conges',
-          SousType: demande.typeConge,
-          DateDebut: demande.dateDebut,
-          DateFin: demande.dateFin,
-          NombreJours: demande.nombreJours.toString(),
-          Description: demande.motif || '',
-          Statut: 'EN_ATTENTE_N1',
-          DemandeurEmail: demande.demandeurEmail,
-          DemandeurNom: demande.demandeurNom,
-          ManagerEmail: demande.managerEmail || '',
-          DateCreation: new Date().toISOString(),
-        },
+        fields: fieldsPayload,
       });
 
     return response.id;
-  } catch (error) {
-    console.error('[Demandes] Erreur création demande de congé:', error);
-    throw new Error('Impossible d\'enregistrer la demande de congé.');
+  } catch (error: unknown) {
+    console.error('[Demandes] Erreur création demande de congé (Détails):', error);
+    
+    let detailMsg = 'Impossible d\'enregistrer la demande de congé.';
+    if (error && typeof error === 'object') {
+      const errObj = error as { body?: unknown; message?: string; code?: string };
+      if (errObj.body) {
+        detailMsg = typeof errObj.body === 'string' ? errObj.body : JSON.stringify(errObj.body);
+      } else if (errObj.message) {
+        detailMsg = errObj.message;
+      }
+    }
+    throw new Error(detailMsg);
   }
 }
 
@@ -182,10 +253,8 @@ export async function getDemandesCongesUtilisateur(email: string): Promise<Deman
 
   try {
     const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_DEMANDES_ID}/items`)
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items`)
       .expand('fields')
-      .filter(`fields/DemandeurEmail eq '${email}' and fields/TypeDemande eq 'demande_conges'`)
-      .orderby('fields/DateCreation desc')
       .get();
 
     return (response.value || []).map((item: Record<string, unknown>) => {
@@ -228,10 +297,8 @@ export async function getDemandesCongesAValider(
 
   try {
     const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_DEMANDES_ID}/items`)
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items`)
       .expand('fields')
-      .filter(`fields/TypeDemande eq 'demande_conges' and ${filterStatut}${filterEmail}`)
-      .orderby('fields/DateCreation desc')
       .get();
 
     return (response.value || []).map((item: Record<string, unknown>) => {
@@ -293,7 +360,7 @@ export async function traiterDemandeConge(
 
   try {
     await graphClient
-      .api(`${siteBase}/lists/${LIST_DEMANDES_ID}/items/${id}`)
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items/${id}`)
       .patch({ fields: patchFields });
 
     return true;

@@ -59,6 +59,10 @@ export type TypeConge = 'conge_paye' | 'rtt' | 'maladie' | 'maternite_paternite'
 
 /** Statuts du workflow de validation des congés */
 export type StatutConge = 
+  | 'Soumise'
+  | 'En attente de validation'
+  | 'Accordée'
+  | 'Refusée'
   | 'EN_ATTENTE_N1'
   | 'EN_ATTENTE_RH'
   | 'APPROUVEE'

@@ -18,10 +18,18 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
   const [dateFin, setDateFin] = useState('');
   const [nombreJours, setNombreJours] = useState(1);
   const [motif, setMotif] = useState('');
+  const [demandeurInput, setDemandeurInput] = useState(userEmail || userNom || '');
   const [managerEmail, setManagerEmail] = useState('');
+  const [statutDemande, setStatutDemande] = useState('Soumise');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
+
+  useEffect(() => {
+    if (userEmail || userNom) {
+      setDemandeurInput(userEmail || userNom);
+    }
+  }, [userEmail, userNom]);
 
   // Calcul automatique du nombre de jours (hors week-ends)
   useEffect(() => {
@@ -60,14 +68,14 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titre: `Demande de Congé (${typeConge.replace('_', ' ').toUpperCase()})`,
+          titre: motif || `Demande de Congé (${typeConge.replace('_', ' ').toUpperCase()})`,
           typeConge,
           dateDebut,
           dateFin,
           nombreJours,
           motif,
-          demandeurEmail: userEmail || 'user@togooil.com',
-          demandeurNom: userNom || 'Employé T-OIL',
+          demandeurEmail: demandeurInput || userEmail || 'user@togooil.com',
+          demandeurNom: userNom || demandeurInput || 'Employé T-OIL',
           managerEmail,
         }),
       });
@@ -127,6 +135,83 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               </div>
             )}
 
+            {/* Titre */}
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Titre</label>
+              <input
+                type="text"
+                placeholder="ex: Demande de Congé Payé"
+                value={motif}
+                onChange={(e) => setMotif(e.target.value)}
+                required
+                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+              />
+            </div>
+
+            {/* Demandeur */}
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Demandeur</label>
+              <input
+                type="text"
+                placeholder="Enter a name or email address"
+                value={demandeurInput}
+                onChange={(e) => setDemandeurInput(e.target.value)}
+                required
+                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+              />
+            </div>
+
+            {/* Période (Date début congé & Date fin congé) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Date début congé</label>
+                <input
+                  type="date"
+                  value={dateDebut}
+                  onChange={(e) => setDateDebut(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Date fin congé</label>
+                <input
+                  type="date"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                />
+              </div>
+            </div>
+
+            {/* Nombre de jours calculé */}
+            <div className="p-2.5 bg-surface-alt/60 rounded-xl flex items-center justify-between border border-border/50">
+              <div className="flex items-center gap-2 text-xs text-text-secondary">
+                <Clock className="w-4 h-4 text-primary" />
+                <span>Nombre de jours ouvrés calculés :</span>
+              </div>
+              <span className="text-sm font-bold text-primary">{nombreJours} jour(s)</span>
+            </div>
+
+            {/* Supérieur hiérarchique */}
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1">
+                Supérieur hiérarchique
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="nom.prenom@togooil.com"
+                  value={managerEmail}
+                  onChange={(e) => setManagerEmail(e.target.value)}
+                  required
+                  className="w-full pl-9 pr-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                />
+                <UserCheck className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
+              </div>
+            </div>
+
             {/* Type de congé */}
             <div>
               <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
@@ -144,66 +229,19 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               </select>
             </div>
 
-            {/* Période (Début & Fin) */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1">Date de début</label>
-                <input
-                  type="date"
-                  value={dateDebut}
-                  onChange={(e) => setDateDebut(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1">Date de fin</label>
-                <input
-                  type="date"
-                  value={dateFin}
-                  onChange={(e) => setDateFin(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-                />
-              </div>
-            </div>
-
-            {/* Nombre de jours calculé */}
-            <div className="p-3 bg-surface-alt/60 rounded-xl flex items-center justify-between border border-border/50">
-              <div className="flex items-center gap-2 text-xs text-text-secondary">
-                <Clock className="w-4 h-4 text-primary" />
-                <span>Nombre de jours ouvrés calculés :</span>
-              </div>
-              <span className="text-sm font-bold text-primary">{nombreJours} jour(s)</span>
-            </div>
-
-            {/* Email Manager N+1 */}
+            {/* Statut de la demande */}
             <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">
-                Email du supérieur hiérarchique (N+1)
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  placeholder="manager@togooil.com"
-                  value={managerEmail}
-                  onChange={(e) => setManagerEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-                />
-                <UserCheck className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
-              </div>
-            </div>
-
-            {/* Motif / Commentaire */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Motif / Commentaire (optionnel)</label>
-              <textarea
-                rows={3}
-                placeholder="Raison de la demande ou observations..."
-                value={motif}
-                onChange={(e) => setMotif(e.target.value)}
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Statut de la demande</label>
+              <select
+                value={statutDemande}
+                onChange={(e) => setStatutDemande(e.target.value)}
                 className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-              />
+              >
+                <option value="Soumise">Soumise</option>
+                <option value="En attente de validation">En attente de validation</option>
+                <option value="Accordée">Accordée</option>
+                <option value="Refusée">Refusée</option>
+              </select>
             </div>
 
             {/* Footer Buttons */}

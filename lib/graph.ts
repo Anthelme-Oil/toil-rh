@@ -26,6 +26,7 @@ export const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'votre-dom
 // ── Microsoft Lists IDs ──
 export const LIST_ACTUALITES_ID = process.env.LIST_ACTUALITES_ID || 'Actualites';
 export const LIST_DEMANDES_ID = process.env.LIST_DEMANDES_ID || 'DemandesInternes';
+export const LIST_CONGES_ID = process.env.LIST_CONGES_ID || 'e8b6d5aa-a928-46eb-b70f-7ed51cc64efd';
 export const LIST_EVENEMENTS_ID = process.env.LIST_EVENEMENTS_ID || 'Evenements';
 export const LIST_ANNONCES_ID = process.env.LIST_ANNONCES_ID || 'Annonces';
 
