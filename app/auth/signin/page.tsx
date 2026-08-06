@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import Image from 'next/image';
+import { signIn } from 'next-auth/react';
 
 export default function SignInPage() {
   return (
@@ -37,10 +38,7 @@ export default function SignInPage() {
 
         {/* Bouton SSO Microsoft */}
         <button
-          onClick={() => {
-            // En production : signIn('microsoft-entra-id')
-            window.location.href = '/';
-          }}
+          onClick={() => signIn('microsoft-entra-id', { callbackUrl: '/' })}
           className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-[#2F2F2F] hover:bg-[#404040] text-white rounded-xl font-semibold text-sm transition-colors duration-200 focus-ring"
           id="btn-signin-microsoft"
         >
