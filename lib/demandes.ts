@@ -207,13 +207,21 @@ export async function creerDemandeConge(
     const typeCol = getColName(['typedeconge', 'typeconge', 'type'], 'Typedecong_x00e9_');
     const statutCol = getColName(['statutdelademande', 'statut'], 'Statutdelademande');
 
-    const fieldsPayload: Record<string, string> = {
+    const fieldsPayload: Record<string, unknown> = {
       [titleCol]: demande.titre,
       [dateDebutCol]: demande.dateDebut,
       [dateFinCol]: demande.dateFin,
       [typeCol]: demande.typeConge === 'conge_paye' ? 'Congé Payé' : demande.typeConge.toUpperCase(),
       [statutCol]: 'Soumise',
     };
+
+    if (demande.demandeurLookupId) {
+      fieldsPayload['DemandeurLookupId'] = Number(demande.demandeurLookupId);
+    }
+
+    if (demande.supHierarchiqueLookupId) {
+      fieldsPayload['Sup_x00e9_rieurhi_x00e9_rarchiquLookupId'] = Number(demande.supHierarchiqueLookupId);
+    }
 
     // Si la colonne Motif existe bien dans le schéma SharePoint, on l'ajoute
     if (demande.motif && columnsMap['motif']) {

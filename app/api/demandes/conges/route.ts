@@ -4,7 +4,19 @@ import { creerDemandeConge, getDemandesCongesUtilisateur } from '@/lib/demandes'
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { titre, typeConge, dateDebut, dateFin, nombreJours, motif, demandeurNom, demandeurEmail, managerEmail } = body;
+    const {
+      titre,
+      typeConge,
+      dateDebut,
+      dateFin,
+      nombreJours,
+      motif,
+      demandeurNom,
+      demandeurEmail,
+      demandeurLookupId,
+      managerEmail,
+      supHierarchiqueLookupId,
+    } = body;
 
     if (!titre || !dateDebut || !dateFin || !demandeurEmail) {
       return NextResponse.json(
@@ -22,7 +34,9 @@ export async function POST(request: Request) {
       motif,
       demandeurNom: demandeurNom || demandeurEmail.split('@')[0],
       demandeurEmail,
+      demandeurLookupId,
       managerEmail,
+      supHierarchiqueLookupId,
     });
 
     return NextResponse.json({ success: true, id });

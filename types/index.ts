@@ -81,7 +81,9 @@ export interface DemandeConge {
   statut: StatutConge;
   demandeurNom: string;
   demandeurEmail: string;
+  demandeurLookupId?: number | string;
   managerEmail?: string;
+  supHierarchiqueLookupId?: number | string;
   motifRefus?: string;
   dateCreation?: string;
   dateValidationN1?: string;

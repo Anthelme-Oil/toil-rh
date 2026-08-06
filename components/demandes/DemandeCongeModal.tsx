@@ -20,6 +20,8 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
   const [motif, setMotif] = useState('');
   const [demandeurInput, setDemandeurInput] = useState(userEmail || userNom || '');
   const [managerEmail, setManagerEmail] = useState('');
+  const [demandeurLookupId, setDemandeurLookupId] = useState<string>('28');
+  const [supHierarchiqueLookupId, setSupHierarchiqueLookupId] = useState<string>('12');
   const [statutDemande, setStatutDemande] = useState('Soumise');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,9 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
           motif,
           demandeurEmail: demandeurInput || userEmail || 'user@togooil.com',
           demandeurNom: userNom || demandeurInput || 'Employé T-OIL',
+          demandeurLookupId: demandeurLookupId ? parseInt(demandeurLookupId, 10) : undefined,
           managerEmail,
+          supHierarchiqueLookupId: supHierarchiqueLookupId ? parseInt(supHierarchiqueLookupId, 10) : undefined,
         }),
       });
 
