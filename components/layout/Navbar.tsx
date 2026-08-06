@@ -168,7 +168,7 @@ export default function Navbar() {
 
                     {/* Bouton Connexion SSO Microsoft 365 */}
                     <button
-                      onClick={() => signIn('microsoft-entra-id')}
+                      onClick={() => signIn('azure-ad')}
                       className="w-full py-2.5 px-3 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors shadow-sm"
                     >
                       <UserCheck className="w-4 h-4" />

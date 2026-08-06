@@ -38,7 +38,7 @@ export default function SignInPage() {
 
         {/* Bouton SSO Microsoft */}
         <button
-          onClick={() => signIn('microsoft-entra-id', { callbackUrl: '/' })}
+          onClick={() => signIn('azure-ad', { callbackUrl: '/' })}
           className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-[#2F2F2F] hover:bg-[#404040] text-white rounded-xl font-semibold text-sm transition-colors duration-200 focus-ring"
           id="btn-signin-microsoft"
         >
