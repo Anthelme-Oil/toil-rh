@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { creerDemandeConge, getDemandesCongesUtilisateur } from '@/lib/demandes';
+import { creerDemandeConge, getDemandesCongesUtilisateur, getDemandesCongesAValider } from '@/lib/demandes';
 
 export async function POST(request: Request) {
   try {
@@ -49,12 +49,18 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get('email');
+  const role = searchParams.get('role'); // 'n1' | 'rh'
 
   if (!email) {
     return NextResponse.json({ error: 'Email requis' }, { status: 400 });
   }
 
   try {
+    if (role === 'n1' || role === 'rh') {
+      const demandes = await getDemandesCongesAValider(email, role === 'n1' ? 'N1' : 'RH');
+      return NextResponse.json({ demandes });
+    }
+
     const demandes = await getDemandesCongesUtilisateur(email);
     return NextResponse.json({ demandes });
   } catch (error: unknown) {

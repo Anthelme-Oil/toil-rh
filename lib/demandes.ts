@@ -310,6 +310,29 @@ export async function creerDemandeConge(
 }
 
 /**
+ * Helper pour convertir un item SharePoint en objet DemandeConge
+ */
+function mapSPItemToDemandeConge(item: any): DemandeConge {
+  const f = item.fields || {};
+  return {
+    id: item.id,
+    titre: f.Title || 'Demande de congé',
+    typeConge: (f.Typedecong_x00e9_ || f.SousType || 'conge_paye') as DemandeConge['typeConge'],
+    dateDebut: f.Dated_x00e9_butcong_x00e9_ || f.DateDebut || '',
+    dateFin: f.Datefincong_x00e9_ || f.DateFin || '',
+    nombreJours: parseFloat(f.NombreJours || '1'),
+    motif: f.Description || f.Motif || '',
+    statut: (f.Statutdelademande || f.Statut || 'En attente de validation') as StatutConge,
+    demandeurNom: f.DemandeurNom || '',
+    demandeurEmail: f.DemandeurEmail || '',
+    demandeurLookupId: f.DemandeurLookupId,
+    supHierarchiqueLookupId: f.Sup_x00e9_rieurhi_x00e9_rarchiquLookupId,
+    managerEmail: f.ManagerEmail || '',
+    dateCreation: f.Created || f.DateCreation || '',
+  };
+}
+
+/**
  * Récupère les demandes de congés soumises par un utilisateur.
  */
 export async function getDemandesCongesUtilisateur(email: string): Promise<DemandeConge[]> {
@@ -318,37 +341,43 @@ export async function getDemandesCongesUtilisateur(email: string): Promise<Deman
   const siteBase = getSiteApiBase();
 
   try {
+    const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
+    const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
+    let userLookupId: string | number | undefined;
+
+    if (userList) {
+      const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
+      const target = itemsRes.value.find((it: any) => {
+        const f = it.fields || {};
+        const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
+        const nameStr = (f.Name || '').toLowerCase().trim();
+        const key = email.toLowerCase().trim();
+        return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
+      });
+      if (target) userLookupId = target.id;
+    }
+
     const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items`)
-      .expand('fields')
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
       .get();
 
-    return (response.value || []).map((item: Record<string, unknown>) => {
-      const fields = item.fields as Record<string, string>;
-      return {
-        id: item.id as string,
-        titre: fields.Title || 'Demande de Congé',
-        typeConge: (fields.SousType as DemandeConge['typeConge']) || 'conge_paye',
-        dateDebut: fields.DateDebut || '',
-        dateFin: fields.DateFin || '',
-        nombreJours: parseFloat(fields.NombreJours || '1'),
-        motif: fields.Description || '',
-        statut: (fields.Statut as StatutConge) || 'EN_ATTENTE_N1',
-        demandeurNom: fields.DemandeurNom || '',
-        demandeurEmail: fields.DemandeurEmail || '',
-        managerEmail: fields.ManagerEmail || '',
-        motifRefus: fields.MotifRefus || undefined,
-        dateCreation: fields.DateCreation || '',
-      };
+    const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
+
+    if (!email) return allDemandes;
+
+    return allDemandes.filter((d: DemandeConge) => {
+      if (userLookupId && String(d.demandeurLookupId) === String(userLookupId)) return true;
+      if (d.demandeurEmail && d.demandeurEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
+      return false;
     });
   } catch (error) {
-    console.error('[Demandes] Erreur récupération demandes de congés:', error);
+    console.error('[Demandes] Erreur récupération demandes de congés utilisateur:', error);
     return [];
   }
 }
 
 /**
- * Récupère les demandes en attente de validation pour un Manager N+1 ou pour l'équipe RH.
+ * Récupère les demandes à valider pour un Supérieur Hiérarchique (N+1) ou RH.
  */
 export async function getDemandesCongesAValider(
   email: string,
@@ -358,31 +387,38 @@ export async function getDemandesCongesAValider(
   if (!graphClient) return [];
   const siteBase = getSiteApiBase();
 
-  const filterStatut = role === 'N1' ? "fields/Statut eq 'EN_ATTENTE_N1'" : "fields/Statut eq 'EN_ATTENTE_RH'";
-  const filterEmail = role === 'N1' ? ` and fields/ManagerEmail eq '${email}'` : '';
-
   try {
+    const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
+    const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
+    let userLookupId: string | number | undefined;
+
+    if (userList) {
+      const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
+      const target = itemsRes.value.find((it: any) => {
+        const f = it.fields || {};
+        const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
+        const nameStr = (f.Name || '').toLowerCase().trim();
+        const key = email.toLowerCase().trim();
+        return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
+      });
+      if (target) userLookupId = target.id;
+    }
+
     const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items`)
-      .expand('fields')
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
       .get();
 
-    return (response.value || []).map((item: Record<string, unknown>) => {
-      const fields = item.fields as Record<string, string>;
-      return {
-        id: item.id as string,
-        titre: fields.Title || 'Demande de Congé',
-        typeConge: (fields.SousType as DemandeConge['typeConge']) || 'conge_paye',
-        dateDebut: fields.DateDebut || '',
-        dateFin: fields.DateFin || '',
-        nombreJours: parseFloat(fields.NombreJours || '1'),
-        motif: fields.Description || '',
-        statut: (fields.Statut as StatutConge) || (role === 'N1' ? 'EN_ATTENTE_N1' : 'EN_ATTENTE_RH'),
-        demandeurNom: fields.DemandeurNom || '',
-        demandeurEmail: fields.DemandeurEmail || '',
-        managerEmail: fields.ManagerEmail || '',
-        dateCreation: fields.DateCreation || '',
-      };
+    const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
+
+    if (role === 'RH') {
+      return allDemandes;
+    }
+
+    // Role N+1 : Filtrer les demandes destinées à cet utilisateur comme Supérieur Hiérarchique
+    return allDemandes.filter((d: DemandeConge) => {
+      if (userLookupId && String(d.supHierarchiqueLookupId) === String(userLookupId)) return true;
+      if (d.managerEmail && d.managerEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
+      return false;
     });
   } catch (error) {
     console.error('[Demandes] Erreur récupération demandes à valider:', error);
@@ -403,22 +439,16 @@ export async function traiterDemandeConge(
   if (!graphClient) return false;
   const siteBase = getSiteApiBase();
 
-  let nouveauStatut: StatutConge;
+  let nouveauStatut: string;
   if (action === 'APPROUVER') {
-    nouveauStatut = role === 'N1' ? 'EN_ATTENTE_RH' : 'APPROUVEE';
+    nouveauStatut = role === 'N1' ? 'Approuvée par N+1' : 'Accordée';
   } else {
-    nouveauStatut = role === 'N1' ? 'REFUSEE_N1' : 'REFUSEE_RH';
+    nouveauStatut = 'Refusée';
   }
 
   const patchFields: Record<string, string> = {
-    Statut: nouveauStatut,
+    Statutdelademande: nouveauStatut,
   };
-
-  if (role === 'N1') {
-    patchFields.DateValidationN1 = new Date().toISOString();
-  } else {
-    patchFields.DateValidationRH = new Date().toISOString();
-  }
 
   if (motifRefus) {
     patchFields.MotifRefus = motifRefus;
@@ -426,8 +456,8 @@ export async function traiterDemandeConge(
 
   try {
     await graphClient
-      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items/${id}`)
-      .patch({ fields: patchFields });
+      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items/${id}/fields`)
+      .patch(patchFields);
 
     return true;
   } catch (error) {

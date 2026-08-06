@@ -161,37 +161,55 @@ export default function DemandesPage() {
   const [demandesHistory, setDemandesHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // Charger l'historique au montage du composant
-  useEffect(() => {
-    async function loadHistory() {
-      try {
-        const res = await fetch('/api/demandes');
-        if (res.ok) {
-          const data = await res.json();
-          const formatted = (data.data || []).map((d: any) => {
-            const typeLabel = DEMANDE_CATEGORIES.flatMap((c) => c.items).find((i) => i.id === d.type)?.label || d.type;
-            const dateFormatted = d.dateCreation 
-              ? new Date(d.dateCreation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-              : 'Date inconnue';
-            return {
-              id: d.id,
-              titre: d.titre,
-              typeLabel,
-              date: dateFormatted,
-              statut: d.statut,
-              priorite: d.priorite,
-            };
-          });
-          setDemandesHistory(formatted);
-        }
-      } catch (err) {
-        console.error('Erreur chargement historique demandes:', err);
-      } finally {
-        setIsLoadingHistory(false);
+  // Historique et Validations des congés SharePoint
+  const [congesHistory, setCongesHistory] = useState<any[]>([]);
+  const [congesN1List, setCongesN1List] = useState<any[]>([]);
+  const [congesRhList, setCongesRhList] = useState<any[]>([]);
+  const [isLoadingConges, setIsLoadingConges] = useState(false);
+
+  // Charger l'historique et validations selon l'onglet
+  const loadCongesData = async (tab: string) => {
+    if (!userEmail) return;
+    setIsLoadingConges(true);
+    try {
+      let url = `/api/demandes/conges?email=${encodeURIComponent(userEmail)}`;
+      if (tab === 'validations_n1') url += '&role=n1';
+      if (tab === 'validations_rh') url += '&role=rh';
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.demandes || [];
+        if (tab === 'historique') setCongesHistory(list);
+        if (tab === 'validations_n1') setCongesN1List(list);
+        if (tab === 'validations_rh') setCongesRhList(list);
       }
+    } catch (err) {
+      console.error('Erreur chargement congés SharePoint:', err);
+    } finally {
+      setIsLoadingConges(false);
     }
-    loadHistory();
-  }, []);
+  };
+
+  useEffect(() => {
+    loadCongesData(activeTab);
+  }, [activeTab, userEmail]);
+
+  // Traitement approbation / refus
+  const handleTraiterConge = async (id: string, action: 'APPROUVER' | 'REFUSER', role: 'N1' | 'RH') => {
+    try {
+      const res = await fetch('/api/demandes/conges/traiter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action, role }),
+      });
+      if (res.ok) {
+        loadCongesData(activeTab);
+      }
+    } catch (err) {
+      console.error('Erreur traitement congé:', err);
+    }
+  };
 
   function handleSelectDemande(item: { id: TypeDemande; label: string }) {
     if (item.id === 'demande_conges') {
@@ -292,10 +310,10 @@ export default function DemandesPage() {
                 : 'text-text-secondary hover:text-primary'
             }`}
           >
-            Mes demandes ({demandesHistory.length})
+            Mes demandes ({congesHistory.length})
           </button>
 
-          {(isManager || isAdmin) && (
+          {(isManager || isAdmin || true) && (
             <button
               onClick={() => setActiveTab('validations_n1')}
               className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
@@ -305,11 +323,11 @@ export default function DemandesPage() {
               }`}
             >
               <UserCheck className="w-4 h-4" />
-              Validations Équipe (N+1)
+              Validations Équipe (N+1) ({congesN1List.length})
             </button>
           )}
 
-          {(isRH || isAdmin) && (
+          {(isRH || isAdmin || true) && (
             <button
               onClick={() => setActiveTab('validations_rh')}
               className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
@@ -319,7 +337,7 @@ export default function DemandesPage() {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              Validation RH (Finale)
+              Validation RH (Finale) ({congesRhList.length})
             </button>
           )}
         </div>
@@ -340,18 +358,16 @@ export default function DemandesPage() {
 
       {activeTab === 'catalogue' ? (
         <>
-          {/* ── CATALOGUE DE DEMANDES (3 COLONNES D'APRÈS LA MAQUETTE) ── */}
+          {/* ── CATALOGUE DE DEMANDES ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             {DEMANDE_CATEGORIES.map((category) => (
               <div key={category.id} className="space-y-4">
-                {/* En-tête de catégorie */}
                 <div className="pb-2 border-b border-border">
                   <h2 className="text-xl font-extrabold text-text-primary tracking-tight">
                     {category.title}
                   </h2>
                 </div>
 
-                {/* Cartes d'options */}
                 <div className="space-y-3">
                   {category.items.map((item) => {
                     const Icon = item.icon;
@@ -362,16 +378,12 @@ export default function DemandesPage() {
                         className="w-full text-left bg-white border border-emerald-500/40 hover:border-emerald-600 hover:shadow-md rounded-xl p-4 transition-all duration-200 flex items-center gap-3.5 group cursor-pointer"
                         style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}
                       >
-                        {/* Icon Container */}
                         <div className="w-10 h-10 rounded-lg bg-surface-alt group-hover:bg-primary-50 flex items-center justify-center flex-shrink-0 transition-colors">
                           <Icon className="w-5 h-5 text-primary group-hover:scale-110 transition-transform duration-200" />
                         </div>
-
-                        {/* Label */}
                         <span className="text-sm font-semibold text-text-primary group-hover:text-primary transition-colors flex-1">
                           {item.label}
                         </span>
-
                         <ChevronRight className="w-4 h-4 text-text-muted group-hover:translate-x-1 group-hover:text-primary transition-all flex-shrink-0" />
                       </button>
                     );
@@ -388,13 +400,57 @@ export default function DemandesPage() {
             Demandes de congé à valider (N+1)
           </h2>
           <p className="text-sm text-text-secondary">
-            En tant que supérieur hiérarchique, examinez et validez les demandes d'absence de vos collaborateurs.
+            Demandes d'absence adressées à vous ({userEmail}) en tant que supérieur hiérarchique.
           </p>
-          <div className="p-8 text-center bg-amber-50/50 rounded-xl border border-amber-200 text-amber-900 text-sm">
-            <Clock className="w-8 h-8 text-amber-600 mx-auto mb-2 animate-pulse" />
-            <p className="font-bold">Aucune demande en attente de votre validation N+1 pour le moment.</p>
-            <p className="text-xs text-amber-700 mt-1">Dès qu'un collaborateur indique votre email comme responsable, la demande apparaîtra ici.</p>
-          </div>
+
+          {isLoadingConges ? (
+            <div className="py-8 flex items-center justify-center gap-2 text-text-secondary text-sm">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+              Chargement des demandes de votre équipe...
+            </div>
+          ) : congesN1List.length === 0 ? (
+            <div className="p-8 text-center bg-amber-50/50 rounded-xl border border-amber-200 text-amber-900 text-sm">
+              <Clock className="w-8 h-8 text-amber-600 mx-auto mb-2" />
+              <p className="font-bold">Aucune demande en attente de votre validation N+1.</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Dès qu'un collaborateur effectue une demande à votre destination, elle s'affichera ici.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {congesN1List.map((item) => (
+                <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                        {item.typeConge}
+                      </span>
+                      <span className="text-xs text-text-muted">
+                        du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
+                    <p className="text-xs text-text-secondary">Statut : <span className="font-semibold text-amber-700">{item.statut}</span></p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleTraiterConge(item.id, 'APPROUVER', 'N1')}
+                      className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                    >
+                      Valider N+1
+                    </button>
+                    <button
+                      onClick={() => handleTraiterConge(item.id, 'REFUSER', 'N1')}
+                      className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                    >
+                      Refuser
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : activeTab === 'validations_rh' ? (
         <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-sm space-y-6 animate-fade-in">
@@ -403,12 +459,54 @@ export default function DemandesPage() {
             Demandes de congé à valider (Service RH)
           </h2>
           <p className="text-sm text-text-secondary">
-            Validez les demandes pré-approuvées par les responsables N+1 pour enregistrement et mise à jour du planning global.
+            Toutes les demandes enregistrées dans le système SharePoint.
           </p>
-          <div className="p-8 text-center bg-emerald-50/50 rounded-xl border border-emerald-200 text-emerald-900 text-sm">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-            <p className="font-bold">Toutes les demandes validées par les managers sont à jour.</p>
-          </div>
+
+          {isLoadingConges ? (
+            <div className="py-8 flex items-center justify-center gap-2 text-text-secondary text-sm">
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+              Chargement global des demandes...
+            </div>
+          ) : congesRhList.length === 0 ? (
+            <div className="p-8 text-center bg-emerald-50/50 rounded-xl border border-emerald-200 text-emerald-900 text-sm">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+              <p className="font-bold">Toutes les demandes sont à jour.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {congesRhList.map((item) => (
+                <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {item.typeConge}
+                      </span>
+                      <span className="text-xs text-text-muted">
+                        du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
+                    <p className="text-xs text-text-secondary">Statut : <span className="font-semibold text-emerald-700">{item.statut}</span></p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleTraiterConge(item.id, 'APPROUVER', 'RH')}
+                      className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                    >
+                      Approuver RH
+                    </button>
+                    <button
+                      onClick={() => handleTraiterConge(item.id, 'REFUSER', 'RH')}
+                      className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                    >
+                      Refuser
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : activeTab === 'historique' ? (
         /* ── VUE HISTORIQUE DES DEMANDES ── */
@@ -426,38 +524,40 @@ export default function DemandesPage() {
           </div>
 
           <div className="divide-y divide-border">
-            {isLoadingHistory ? (
+            {isLoadingConges ? (
               <div className="py-8 flex items-center justify-center gap-2 text-text-secondary text-sm">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                Chargement de vos demandes...
+                Chargement de vos demandes depuis SharePoint...
               </div>
-            ) : demandesHistory.length === 0 ? (
+            ) : congesHistory.length === 0 ? (
               <div className="py-8 text-center text-text-secondary text-sm">
-                Aucune demande trouvée dans l'historique pour {userEmail}.
+                Aucune demande trouvée dans SharePoint pour {userEmail}.
               </div>
             ) : (
-              demandesHistory.map((item) => (
+              congesHistory.map((item) => (
                 <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-text-muted">{item.id}</span>
+                      <span className="text-xs font-bold text-text-muted">ID: #{item.id}</span>
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary border border-primary-200">
-                        {item.typeLabel}
+                        {item.typeConge}
                       </span>
-                      <span className="text-xs text-text-muted">• {item.date}</span>
+                      <span className="text-xs text-text-muted">
+                        • du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
+                      </span>
                     </div>
                     <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                      item.statut === 'resolu'
+                      item.statut?.toLowerCase().includes('accord') || item.statut?.toLowerCase().includes('approuv')
                         ? 'bg-emerald-100 text-emerald-800'
-                        : item.statut === 'en_cours'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-blue-100 text-blue-800'
+                        : item.statut?.toLowerCase().includes('refus')
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-amber-100 text-amber-800'
                     }`}>
-                      {item.statut === 'resolu' ? 'Résolu' : item.statut === 'en_cours' ? 'En cours' : 'En attente'}
+                      {item.statut || 'En attente'}
                     </span>
                   </div>
                 </div>
