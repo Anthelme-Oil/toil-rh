@@ -211,7 +211,20 @@ export async function creerDemandeConge(
       [titleCol]: demande.titre,
       [dateDebutCol]: demande.dateDebut,
       [dateFinCol]: demande.dateFin,
-      [typeCol]: demande.typeConge === 'conge_paye' ? 'Congé Payé' : demande.typeConge.toUpperCase(),
+      [typeCol]:
+        demande.typeConge === 'conge_paye'
+          ? 'Congé Payé'
+          : demande.typeConge === 'autre'
+          ? 'Autre'
+          : demande.typeConge === 'rtt'
+          ? 'RTT'
+          : demande.typeConge === 'maladie'
+          ? 'Maladie'
+          : demande.typeConge === 'maternite_paternite'
+          ? 'Maternité / Paternité'
+          : demande.typeConge === 'sans_solde'
+          ? 'Sans Solde'
+          : 'Autre',
       [statutCol]: 'Soumise',
     };
 

@@ -13,11 +13,11 @@ interface Props {
 }
 
 export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', userNom = '' }: Props) {
-  const [typeConge, setTypeConge] = useState<TypeConge>('conge_paye');
+  const [typeConge, setTypeConge] = useState<TypeConge>('autre');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [nombreJours, setNombreJours] = useState(1);
-  const [motif, setMotif] = useState('');
+  const [motif, setMotif] = useState('Demande de congé');
   const [demandeurInput, setDemandeurInput] = useState(userEmail || userNom || '');
   const [managerEmail, setManagerEmail] = useState('');
   const [demandeurLookupId, setDemandeurLookupId] = useState<string>('12');
@@ -144,11 +144,10 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               <label className="block text-xs font-semibold text-text-secondary mb-1">Titre</label>
               <input
                 type="text"
-                placeholder="ex: Demande de Congé Payé"
-                value={motif}
+                value={motif || 'Demande de congé'}
                 onChange={(e) => setMotif(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                readOnly
+                className="w-full px-3 py-2 bg-surface-alt/70 border border-border rounded-xl text-sm text-text-secondary font-medium focus:outline-none cursor-not-allowed"
               />
             </div>
 
@@ -224,6 +223,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
                 onChange={(e) => setTypeConge(e.target.value as TypeConge)}
                 className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
               >
+                <option value="autre">Autre</option>
                 <option value="conge_paye">Congé Payé</option>
                 <option value="rtt">RTT</option>
                 <option value="maladie">Congé Maladie</option>
