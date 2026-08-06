@@ -233,21 +233,6 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               </select>
             </div>
 
-            {/* Statut de la demande */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Statut de la demande</label>
-              <select
-                value={statutDemande}
-                onChange={(e) => setStatutDemande(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-              >
-                <option value="Soumise">Soumise</option>
-                <option value="En attente de validation">En attente de validation</option>
-                <option value="Accordée">Accordée</option>
-                <option value="Refusée">Refusée</option>
-              </select>
-            </div>
-
             {/* Footer Buttons */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
               <button

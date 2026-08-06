@@ -44,7 +44,7 @@ export default function HeroBanner() {
           }}
         >
           <Image
-            src="/images/Banner2.png"
+            src="/images/banner2.png"
             alt="Bannière d'accueil T-OIL"
             fill
             className="object-cover object-center"

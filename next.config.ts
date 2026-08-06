@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'graph.microsoft.com',
       },
+      {
+        protocol: 'https',
+        hostname: '*.office.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.office365.com',
+      },
     ],
   },
 };
