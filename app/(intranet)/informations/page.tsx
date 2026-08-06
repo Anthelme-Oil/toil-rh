@@ -59,13 +59,13 @@ export default async function InformationsPage() {
           </div>
         </div>
 
-        <Link
+        {/* <Link
           href="/informations/creer"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-medium shadow-sm transition-all"
         >
           <Plus className="w-4 h-4" />
           Publier un blog / actualité
-        </Link>
+        </Link> */}
       </div>
 
 
