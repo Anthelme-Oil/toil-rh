@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, UserCheck, AlertCircle, CheckCircle2, FileText, Send } from 'lucide-react';
+import { X, Calendar, Clock, UserCheck, AlertCircle, CheckCircle2, Send } from 'lucide-react';
 import type { TypeConge } from '@/types';
+import { useUser } from '@/context/UserContext';
 
 interface Props {
   isOpen: boolean;
@@ -12,26 +13,20 @@ interface Props {
   userNom?: string;
 }
 
-export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', userNom = '' }: Props) {
+export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propEmail = '', userNom: propNom = '' }: Props) {
+  const { userEmail: contextEmail, userName: contextName } = useUser();
+
+  const currentEmail = propEmail || contextEmail || 'employe@togooil.com';
+  const currentNom = propNom || contextName || currentEmail.split('@')[0];
+
   const [typeConge, setTypeConge] = useState<TypeConge>('autre');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [nombreJours, setNombreJours] = useState(1);
-  const [motif, setMotif] = useState('Demande de congé');
-  const [demandeurInput, setDemandeurInput] = useState(userEmail || userNom || '');
   const [managerEmail, setManagerEmail] = useState('');
-  const [demandeurLookupId, setDemandeurLookupId] = useState<string>('12');
-  const [supHierarchiqueLookupId, setSupHierarchiqueLookupId] = useState<string>('28');
-  const [statutDemande, setStatutDemande] = useState('Soumise');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
-
-  useEffect(() => {
-    if (userEmail || userNom) {
-      setDemandeurInput(userEmail || userNom);
-    }
-  }, [userEmail, userNom]);
 
   // Calcul automatique du nombre de jours (hors week-ends)
   useEffect(() => {
@@ -70,17 +65,15 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titre: motif || `Demande de Congé (${typeConge.replace('_', ' ').toUpperCase()})`,
+          titre: 'Demande de congé',
           typeConge,
           dateDebut,
           dateFin,
           nombreJours,
-          motif,
-          demandeurEmail: demandeurInput || userEmail || 'user@togooil.com',
-          demandeurNom: userNom || demandeurInput || 'Employé T-OIL',
-          demandeurLookupId: demandeurLookupId ? parseInt(demandeurLookupId, 10) : undefined,
+          motif: 'Demande de congé',
+          demandeurEmail: currentEmail,
+          demandeurNom: currentNom,
           managerEmail,
-          supHierarchiqueLookupId: supHierarchiqueLookupId ? parseInt(supHierarchiqueLookupId, 10) : undefined,
         }),
       });
 
@@ -139,32 +132,25 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               </div>
             )}
 
-            {/* Titre */}
+            {/* 1. Type de congé (EN PREMIER CHAMP DU FORMULAIRE) */}
             <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Titre</label>
-              <input
-                type="text"
-                value={motif || 'Demande de congé'}
-                onChange={(e) => setMotif(e.target.value)}
-                readOnly
-                className="w-full px-3 py-2 bg-surface-alt/70 border border-border rounded-xl text-sm text-text-secondary font-medium focus:outline-none cursor-not-allowed"
-              />
-            </div>
-
-            {/* Demandeur */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Demandeur</label>
-              <input
-                type="text"
-                placeholder="Enter a name or email address"
-                value={demandeurInput}
-                onChange={(e) => setDemandeurInput(e.target.value)}
-                required
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
+              <select
+                value={typeConge}
+                onChange={(e) => setTypeConge(e.target.value as TypeConge)}
                 className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-              />
+              >
+                <option value="autre">Autre</option>
+                <option value="conge_paye">Congé Payé</option>
+                <option value="rtt">RTT</option>
+                <option value="maladie">Congé Maladie</option>
+                <option value="maternite_paternite">Maternité / Paternité</option>
+                <option value="evenement_familial">Événement Familial</option>
+                <option value="sans_solde">Congé Sans Solde</option>
+              </select>
             </div>
 
-            {/* Période (Date début congé & Date fin congé) */}
+            {/* 2. Période (Date début congé & Date fin congé) */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-text-secondary mb-1">Date début congé</label>
@@ -188,7 +174,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               </div>
             </div>
 
-            {/* Nombre de jours calculé */}
+            {/* 3. Nombre de jours calculé */}
             <div className="p-2.5 bg-surface-alt/60 rounded-xl flex items-center justify-between border border-border/50">
               <div className="flex items-center gap-2 text-xs text-text-secondary">
                 <Clock className="w-4 h-4 text-primary" />
@@ -197,7 +183,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
               <span className="text-sm font-bold text-primary">{nombreJours} jour(s)</span>
             </div>
 
-            {/* Supérieur hiérarchique */}
+            {/* 4. Supérieur hiérarchique */}
             <div>
               <label className="block text-xs font-semibold text-text-secondary mb-1">
                 Supérieur hiérarchique
@@ -213,24 +199,6 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail = '', 
                 />
                 <UserCheck className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
               </div>
-            </div>
-
-            {/* Type de congé */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
-              <select
-                value={typeConge}
-                onChange={(e) => setTypeConge(e.target.value as TypeConge)}
-                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-              >
-                <option value="autre">Autre</option>
-                <option value="conge_paye">Congé Payé</option>
-                <option value="rtt">RTT</option>
-                <option value="maladie">Congé Maladie</option>
-                <option value="maternite_paternite">Maternité / Paternité</option>
-                <option value="evenement_familial">Événement Familial</option>
-                <option value="sans_solde">Congé Sans Solde</option>
-              </select>
             </div>
 
             {/* Footer Buttons */}

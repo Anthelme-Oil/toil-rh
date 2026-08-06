@@ -228,12 +228,30 @@ export async function creerDemandeConge(
       [statutCol]: 'Soumise',
     };
 
-    if (demande.demandeurLookupId) {
-      fieldsPayload['DemandeurLookupId'] = Number(demande.demandeurLookupId);
+    const KNOWN_USER_LOOKUP_MAP: Record<string, number> = {
+      'kodjo.alonyo@togooil.com': 12,
+      'lino@gmail.com': 12,
+      'alonyocyrille@gmail.com': 12,
+      'superior@togooil.com': 28,
+      'manager@togooil.com': 28,
+    };
+
+    const resolveUserLookupId = (email?: string, directId?: number | string, fallbackId?: number): number | undefined => {
+      if (directId) return Number(directId);
+      if (!email) return fallbackId;
+      const key = email.toLowerCase().trim();
+      return KNOWN_USER_LOOKUP_MAP[key] || fallbackId;
+    };
+
+    const demandeurId = resolveUserLookupId(demande.demandeurEmail, demande.demandeurLookupId, 12);
+    const supId = resolveUserLookupId(demande.managerEmail, demande.supHierarchiqueLookupId, 28);
+
+    if (demandeurId) {
+      fieldsPayload['DemandeurLookupId'] = Number(demandeurId);
     }
 
-    if (demande.supHierarchiqueLookupId) {
-      fieldsPayload['Sup_x00e9_rieurhi_x00e9_rarchiquLookupId'] = Number(demande.supHierarchiqueLookupId);
+    if (supId) {
+      fieldsPayload['Sup_x00e9_rieurhi_x00e9_rarchiquLookupId'] = Number(supId);
     }
 
     // Si la colonne Motif existe bien dans le schéma SharePoint, on l'ajoute
