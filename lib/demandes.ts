@@ -228,19 +228,46 @@ export async function creerDemandeConge(
       [statutCol]: 'Soumise',
     };
 
-    const KNOWN_USER_LOOKUP_MAP: Record<string, number> = {
-      'kodjo.alonyo@togooil.com': 12,
-      'lino@gmail.com': 12,
-      'alonyocyrille@gmail.com': 12,
-      'superior@togooil.com': 28,
-      'manager@togooil.com': 28,
+    let userMap: Record<string, number> = {
+      'it.helpdesktogo@togosh.com': 12,
+      'portailtest@togosh.com': 28,
+      'honore.fiadjoe@togosh.com': 6,
+      'madje.bedou@togosh.com': 10,
+      'dzidefo.dake@togosh.com': 22,
+      'test10.toil@togosh.com': 23,
+      'test10@togosh.com': 23,
     };
+
+    try {
+      const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
+      const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
+      if (userList) {
+        const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
+        itemsRes.value.forEach((item: { id: string; fields?: Record<string, string> }) => {
+          const id = Number(item.id);
+          const f = item.fields || {};
+          const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
+          if (mail) userMap[mail] = id;
+          const nameStr = (f.Name || '').toLowerCase().trim();
+          if (nameStr.includes('membership|')) {
+            const uMail = nameStr.split('membership|')[1]?.toLowerCase().trim();
+            if (uMail) userMap[uMail] = id;
+          }
+        });
+      }
+    } catch (uErr) {
+      console.warn('[Demandes] Impossible de récupérer la liste dynamique des utilisateurs SharePoint:', uErr);
+    }
 
     const resolveUserLookupId = (email?: string, directId?: number | string, fallbackId?: number): number | undefined => {
       if (directId) return Number(directId);
       if (!email) return fallbackId;
       const key = email.toLowerCase().trim();
-      return KNOWN_USER_LOOKUP_MAP[key] || fallbackId;
+      if (userMap[key]) return userMap[key];
+      for (const [e, id] of Object.entries(userMap)) {
+        if (e && (e.includes(key) || key.includes(e))) return id;
+      }
+      return fallbackId;
     };
 
     const demandeurId = resolveUserLookupId(demande.demandeurEmail, demande.demandeurLookupId, 12);
