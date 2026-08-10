@@ -187,7 +187,7 @@ function mapRowToDemandeConge(row: any): DemandeConge {
   }
 
   const piecesJointes: PieceJointe[] | undefined =
-    extra.piecesJointes || (row.piece_jointe ? [{ name: row.piece_jointe, contentBase64: '' }] : undefined);
+    extra.piecesJointes || (row.piece_jointe ? [{ name: row.piece_jointe.split('/').pop() || 'document', url: row.piece_jointe }] : undefined);
 
   return {
     id: row.id,
