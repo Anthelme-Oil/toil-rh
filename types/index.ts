@@ -172,3 +172,36 @@ export interface CompteursDemandesParType {
   rh: number;
 }
 
+/** Document rattaché à un module Onboarding */
+export interface OnboardingDocument {
+  id: string;
+  titre: string;
+  url: string;
+  format: 'pdf' | 'doc' | 'xls';
+  tailleFormatted?: string;
+}
+
+/** Module d'Onboarding / Vidéo de présentation */
+export interface OnboardingModule {
+  id: string;
+  code: string;
+  titre: string;
+  description: string;
+  categorie: 'culture' | 'securite' | 'it' | 'rh';
+  videoUrl?: string;
+  thumbnailUrl: string;
+  dureeMinutes: number;
+  ordre: number;
+  estObligatoire: boolean;
+  documentsAssocies?: OnboardingDocument[];
+}
+
+/** Suivi individuel de progression d'Onboarding */
+export interface UserOnboardingProgress {
+  userEmail: string;
+  modulesCompletes: string[];
+  pourcentageGlobal: number;
+  dernierAcces?: string;
+}
+
+

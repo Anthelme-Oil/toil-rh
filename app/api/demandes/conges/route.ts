@@ -57,14 +57,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Email requis' }, { status: 400 });
   }
 
+  // Headers de cache HTTP (60s stale-while-revalidate pour navigation rapide)
+  const cacheHeaders = {
+    'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+  };
+
   try {
     if (role === 'n1' || role === 'rh') {
       const demandes = await getDemandesCongesAValider(email, role === 'n1' ? 'N1' : 'RH');
-      return NextResponse.json({ demandes });
+      return NextResponse.json({ demandes }, { headers: cacheHeaders });
     }
 
     const demandes = await getDemandesCongesUtilisateur(email);
-    return NextResponse.json({ demandes });
+    return NextResponse.json({ demandes }, { headers: cacheHeaders });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return NextResponse.json({ error: message }, { status: 500 });

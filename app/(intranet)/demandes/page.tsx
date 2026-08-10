@@ -4,7 +4,7 @@
 // Page Demandes & Services — Catalogue des demandes & Formulaire
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -167,9 +167,26 @@ export default function DemandesPage() {
   const [congesRhList, setCongesRhList] = useState<any[]>([]);
   const [isLoadingConges, setIsLoadingConges] = useState(false);
 
+  // ⚡ Cache client : ne pas refetch les données déjà chargées pour chaque onglet
+  const congesCacheRef = useRef<Map<string, { data: any[]; fetchedAt: number }>>(new Map());
+  const CONGES_CLIENT_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
   // Charger l'historique et validations selon l'onglet
-  const loadCongesData = async (tab: string) => {
+  const loadCongesData = async (tab: string, forceRefresh = false) => {
     if (!userEmail) return;
+
+    // Vérifier le cache client avant tout fetch
+    const cacheKey = `${tab}:${userEmail}`;
+    if (!forceRefresh) {
+      const cached = congesCacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.fetchedAt < CONGES_CLIENT_CACHE_TTL) {
+        if (tab === 'historique') setCongesHistory(cached.data);
+        if (tab === 'validations_n1') setCongesN1List(cached.data);
+        if (tab === 'validations_rh') setCongesRhList(cached.data);
+        return;
+      }
+    }
+
     setIsLoadingConges(true);
     try {
       let url = `/api/demandes/conges?email=${encodeURIComponent(userEmail)}`;
@@ -180,6 +197,10 @@ export default function DemandesPage() {
       if (res.ok) {
         const data = await res.json();
         const list = data.demandes || [];
+
+        // Stocker en cache client
+        congesCacheRef.current.set(cacheKey, { data: list, fetchedAt: Date.now() });
+
         if (tab === 'historique') setCongesHistory(list);
         if (tab === 'validations_n1') setCongesN1List(list);
         if (tab === 'validations_rh') setCongesRhList(list);
@@ -189,6 +210,11 @@ export default function DemandesPage() {
     } finally {
       setIsLoadingConges(false);
     }
+  };
+
+  // Invalide tout le cache client (après une mutation)
+  const invalidateCongesCache = () => {
+    congesCacheRef.current.clear();
   };
 
   useEffect(() => {
@@ -204,7 +230,8 @@ export default function DemandesPage() {
         body: JSON.stringify({ id, action, role }),
       });
       if (res.ok) {
-        loadCongesData(activeTab);
+        invalidateCongesCache();
+        loadCongesData(activeTab, true);
       }
     } catch (err) {
       console.error('Erreur traitement congé:', err);
@@ -571,7 +598,11 @@ export default function DemandesPage() {
       <DemandeCongeModal
         isOpen={isCongeModalOpen}
         onClose={() => setIsCongeModalOpen(false)}
-        onSuccess={() => setActiveTab('historique')}
+        onSuccess={() => {
+          invalidateCongesCache();
+          loadCongesData('historique', true);
+          setActiveTab('historique');
+        }}
       />
     </div>
   );

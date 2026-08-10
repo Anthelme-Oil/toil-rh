@@ -14,7 +14,9 @@ export async function GET(request: Request) {
 
   try {
     const permissions = await getUserPermissions(email);
-    return NextResponse.json(permissions);
+    return NextResponse.json(permissions, {
+      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=600' },
+    });
   } catch (error: unknown) {
     return NextResponse.json(
       { role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false },

@@ -16,7 +16,13 @@ import {
   LIST_DEMANDES_ID,
   LIST_CONGES_ID,
 } from './graph';
+import { serverCache } from './cache';
 import type { DemandeInterne, CompteursDemandesParType } from '@/types';
+
+// TTL du cache pour les données de congés (2 min — bon compromis fraîcheur/perf)
+const CONGES_CACHE_TTL = 2 * 60 * 1000;
+// TTL du cache pour les compteurs du dashboard (3 min)
+const COMPTEURS_CACHE_TTL = 3 * 60 * 1000;
 
 // ═══════════════════════════════════════════════════════════════
 // ACTUALITÉS ET DEMANDES
@@ -112,20 +118,26 @@ export async function getDemandesUtilisateur(
 export async function getCompteursDemandesParType(
   email: string
 ): Promise<CompteursDemandesParType> {
-  try {
-    const demandes = await getDemandesUtilisateur(email, 100);
-    const enCours = demandes.filter(d => d.statut !== 'resolu' && d.statut !== 'refuse');
+  return serverCache.getOrFetch(
+    `compteurs:${email.toLowerCase().trim()}`,
+    async () => {
+      try {
+        const demandes = await getDemandesUtilisateur(email, 100);
+        const enCours = demandes.filter(d => d.statut !== 'resolu' && d.statut !== 'refuse');
 
-    return {
-      materiel: enCours.filter(d => d.type === 'materiel').length,
-      acces: enCours.filter(d => d.type === 'acces').length,
-      it: enCours.filter(d => d.type === 'it').length,
-      rh: enCours.filter(d => d.type === 'rh').length,
-    };
-  } catch (error) {
-    console.error('[Demandes] Erreur compteurs:', error);
-    return { materiel: 0, acces: 0, it: 0, rh: 0 };
-  }
+        return {
+          materiel: enCours.filter(d => d.type === 'materiel').length,
+          acces: enCours.filter(d => d.type === 'acces').length,
+          it: enCours.filter(d => d.type === 'it').length,
+          rh: enCours.filter(d => d.type === 'rh').length,
+        };
+      } catch (error) {
+        console.error('[Demandes] Erreur compteurs:', error);
+        return { materiel: 0, acces: 0, it: 0, rh: 0 };
+      }
+    },
+    COMPTEURS_CACHE_TTL,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -310,6 +322,10 @@ export async function creerDemandeConge(
       }
     }
 
+    // ⚡ Invalidation du cache après mutation
+    serverCache.invalidateByPrefix('conges:');
+    serverCache.invalidateByPrefix('compteurs:');
+
     return response.id;
   } catch (error: unknown) {
     console.error('[Demandes] Erreur création demande de congé (Détails):', error);
@@ -354,44 +370,50 @@ function mapSPItemToDemandeConge(item: any): DemandeConge {
  * Récupère les demandes de congés soumises par un utilisateur.
  */
 export async function getDemandesCongesUtilisateur(email: string): Promise<DemandeConge[]> {
-  const graphClient = getGraphClient();
-  if (!graphClient) return [];
-  const siteBase = getSiteApiBase();
+  return serverCache.getOrFetch(
+    `conges:user:${email.toLowerCase().trim()}`,
+    async () => {
+      const graphClient = getGraphClient();
+      if (!graphClient) return [];
+      const siteBase = getSiteApiBase();
 
-  try {
-    const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
-    const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
-    let userLookupId: string | number | undefined;
+      try {
+        const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
+        const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
+        let userLookupId: string | number | undefined;
 
-    if (userList) {
-      const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
-      const target = itemsRes.value.find((it: any) => {
-        const f = it.fields || {};
-        const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
-        const nameStr = (f.Name || '').toLowerCase().trim();
-        const key = email.toLowerCase().trim();
-        return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
-      });
-      if (target) userLookupId = target.id;
-    }
+        if (userList) {
+          const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
+          const target = itemsRes.value.find((it: any) => {
+            const f = it.fields || {};
+            const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
+            const nameStr = (f.Name || '').toLowerCase().trim();
+            const key = email.toLowerCase().trim();
+            return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
+          });
+          if (target) userLookupId = target.id;
+        }
 
-    const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
-      .get();
+        const response = await graphClient
+          .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
+          .get();
 
-    const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
+        const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
 
-    if (!email) return allDemandes;
+        if (!email) return allDemandes;
 
-    return allDemandes.filter((d: DemandeConge) => {
-      if (userLookupId && String(d.demandeurLookupId) === String(userLookupId)) return true;
-      if (d.demandeurEmail && d.demandeurEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
-      return false;
-    });
-  } catch (error) {
-    console.error('[Demandes] Erreur récupération demandes de congés utilisateur:', error);
-    return [];
-  }
+        return allDemandes.filter((d: DemandeConge) => {
+          if (userLookupId && String(d.demandeurLookupId) === String(userLookupId)) return true;
+          if (d.demandeurEmail && d.demandeurEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
+          return false;
+        });
+      } catch (error) {
+        console.error('[Demandes] Erreur récupération demandes de congés utilisateur:', error);
+        return [];
+      }
+    },
+    CONGES_CACHE_TTL,
+  );
 }
 
 /**
@@ -401,47 +423,53 @@ export async function getDemandesCongesAValider(
   email: string,
   role: 'N1' | 'RH'
 ): Promise<DemandeConge[]> {
-  const graphClient = getGraphClient();
-  if (!graphClient) return [];
-  const siteBase = getSiteApiBase();
+  return serverCache.getOrFetch(
+    `conges:valider:${role}:${email.toLowerCase().trim()}`,
+    async () => {
+      const graphClient = getGraphClient();
+      if (!graphClient) return [];
+      const siteBase = getSiteApiBase();
 
-  try {
-    const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
-    const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
-    let userLookupId: string | number | undefined;
+      try {
+        const listsRes = await graphClient.api(`${siteBase}/lists?$select=id,displayName,name,system`).get();
+        const userList = listsRes.value.find((l: { name?: string; displayName?: string }) => l.name === 'users' || l.displayName?.includes('utilisateur'));
+        let userLookupId: string | number | undefined;
 
-    if (userList) {
-      const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
-      const target = itemsRes.value.find((it: any) => {
-        const f = it.fields || {};
-        const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
-        const nameStr = (f.Name || '').toLowerCase().trim();
-        const key = email.toLowerCase().trim();
-        return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
-      });
-      if (target) userLookupId = target.id;
-    }
+        if (userList) {
+          const itemsRes = await graphClient.api(`${siteBase}/lists/${userList.id}/items?expand=fields`).get();
+          const target = itemsRes.value.find((it: any) => {
+            const f = it.fields || {};
+            const mail = (f.EMail || f.UserName || '').toLowerCase().trim();
+            const nameStr = (f.Name || '').toLowerCase().trim();
+            const key = email.toLowerCase().trim();
+            return mail === key || (nameStr.includes('membership|') && nameStr.includes(key));
+          });
+          if (target) userLookupId = target.id;
+        }
 
-    const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
-      .get();
+        const response = await graphClient
+          .api(`${siteBase}/lists/${LIST_CONGES_ID}/items?expand=fields`)
+          .get();
 
-    const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
+        const allDemandes = (response.value || []).map(mapSPItemToDemandeConge);
 
-    if (role === 'RH') {
-      return allDemandes;
-    }
+        if (role === 'RH') {
+          return allDemandes;
+        }
 
-    // Role N+1 : Filtrer les demandes destinées à cet utilisateur comme Supérieur Hiérarchique
-    return allDemandes.filter((d: DemandeConge) => {
-      if (userLookupId && String(d.supHierarchiqueLookupId) === String(userLookupId)) return true;
-      if (d.managerEmail && d.managerEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
-      return false;
-    });
-  } catch (error) {
-    console.error('[Demandes] Erreur récupération demandes à valider:', error);
-    return [];
-  }
+        // Role N+1 : Filtrer les demandes destinées à cet utilisateur comme Supérieur Hiérarchique
+        return allDemandes.filter((d: DemandeConge) => {
+          if (userLookupId && String(d.supHierarchiqueLookupId) === String(userLookupId)) return true;
+          if (d.managerEmail && d.managerEmail.toLowerCase().trim() === email.toLowerCase().trim()) return true;
+          return false;
+        });
+      } catch (error) {
+        console.error('[Demandes] Erreur récupération demandes à valider:', error);
+        return [];
+      }
+    },
+    CONGES_CACHE_TTL,
+  );
 }
 
 /**
@@ -476,6 +504,9 @@ export async function traiterDemandeConge(
     await graphClient
       .api(`${siteBase}/lists/${LIST_CONGES_ID}/items/${id}/fields`)
       .patch(patchFields);
+
+    // ⚡ Invalidation du cache après mutation
+    serverCache.invalidateByPrefix('conges:');
 
     return true;
   } catch (error) {
