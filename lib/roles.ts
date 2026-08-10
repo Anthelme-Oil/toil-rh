@@ -1,5 +1,5 @@
 import 'server-only';
-import { prisma, withRetry } from './prisma';
+import { query, execute, generateId } from './db';
 
 export interface UserRoleRecord {
   id: string;
@@ -47,16 +47,12 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
 ];
 
 /**
- * Récupère tous les utilisateurs et leurs rôles depuis la base de données MySQL via Prisma
+ * Récupère tous les utilisateurs et leurs rôles depuis la base MySQL via mysql2
  */
 export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
   try {
-    const dbUsers = await withRetry(() =>
-      prisma.utilisateur.findMany({
-        orderBy: {
-          nom: 'asc',
-        },
-      })
+    const dbUsers = await query<any>(
+      'SELECT id, nom, email, role, email_manager, est_rh, est_com FROM utilisateurs ORDER BY nom ASC'
     );
 
     if (dbUsers.length === 0) {
@@ -70,12 +66,12 @@ export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
       name: u.nom,
       email: u.email,
       role: u.role as UserRoleRecord['role'],
-      managerEmail: u.emailManager || '',
-      isRH: u.estRH,
-      isCom: u.estCom,
+      managerEmail: u.email_manager || '',
+      isRH: Boolean(u.est_rh),
+      isCom: Boolean(u.est_com),
     }));
   } catch (error) {
-    console.error('[Roles] Erreur lecture MySQL via Prisma:', error);
+    console.error('[Roles] Erreur lecture MySQL via mysql2:', error);
     return getFallbackUserRoles();
   }
 }
@@ -140,7 +136,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
 }
 
 /**
- * Crée ou met à jour un utilisateur dans MySQL via Prisma
+ * Crée ou met à jour un utilisateur dans MySQL via mysql2
  */
 export async function saveOrUpdateUserRole(data: {
   id?: string;
@@ -154,27 +150,34 @@ export async function saveOrUpdateUserRole(data: {
   try {
     const cleanEmail = data.email.toLowerCase().trim();
     const cleanManagerEmail = (data.managerEmail || '').toLowerCase().trim();
+    const nameTrimmed = data.name.trim();
+    const isRHNum = data.isRH ? 1 : 0;
+    const isComNum = data.isCom ? 1 : 0;
+    const now = new Date();
 
-    await withRetry(() =>
-      prisma.utilisateur.upsert({
-        where: { email: cleanEmail },
-        update: {
-          nom: data.name.trim(),
-          role: data.role,
-          emailManager: cleanManagerEmail,
-          estRH: Boolean(data.isRH),
-          estCom: Boolean(data.isCom),
-        },
-        create: {
-          nom: data.name.trim(),
-          email: cleanEmail,
-          role: data.role,
-          emailManager: cleanManagerEmail,
-          estRH: Boolean(data.isRH),
-          estCom: Boolean(data.isCom),
-        },
-      })
-    );
+    const sql = `
+      INSERT INTO utilisateurs (id, nom, email, role, email_manager, est_rh, est_com, cree_le, mis_a_jour_le)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        nom = VALUES(nom),
+        role = VALUES(role),
+        email_manager = VALUES(email_manager),
+        est_rh = VALUES(est_rh),
+        est_com = VALUES(est_com),
+        mis_a_jour_le = VALUES(mis_a_jour_le)
+    `;
+
+    await execute(sql, [
+      data.id || generateId(),
+      nameTrimmed,
+      cleanEmail,
+      data.role,
+      cleanManagerEmail,
+      isRHNum,
+      isComNum,
+      now,
+      now,
+    ]);
 
     return { success: true };
   } catch (err: unknown) {
@@ -190,11 +193,7 @@ export async function saveOrUpdateUserRole(data: {
 export async function deleteUserRole(email: string): Promise<{ success: boolean; error?: string }> {
   try {
     const cleanEmail = email.toLowerCase().trim();
-    await withRetry(() =>
-      prisma.utilisateur.delete({
-        where: { email: cleanEmail },
-      })
-    );
+    await execute('DELETE FROM utilisateurs WHERE email = ?', [cleanEmail]);
     return { success: true };
   } catch (err: unknown) {
     console.error('[Roles] Erreur suppression utilisateur MySQL:', err);
@@ -209,26 +208,14 @@ export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; 
   try {
     let count = 0;
     for (const u of DEFAULT_USERS) {
-      await withRetry(() =>
-        prisma.utilisateur.upsert({
-          where: { email: u.email },
-          update: {
-            nom: u.name,
-            role: u.role,
-            emailManager: u.managerEmail,
-            estRH: u.isRH,
-            estCom: u.isCom,
-          },
-          create: {
-            nom: u.name,
-            email: u.email,
-            role: u.role,
-            emailManager: u.managerEmail,
-            estRH: u.isRH,
-            estCom: u.isCom,
-          },
-        })
-      );
+      await saveOrUpdateUserRole({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        managerEmail: u.managerEmail,
+        isRH: u.isRH,
+        isCom: u.isCom,
+      });
       count++;
     }
     return { success: true, count };

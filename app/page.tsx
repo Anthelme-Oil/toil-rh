@@ -48,7 +48,7 @@ export default async function DashboardPage() {
   const evenements = spEvenements.length > 0 ? spEvenements : mockEvenements;
   
   // Si tous les compteurs sont à 0, on montre les compteurs mock pour la démo
-  const aDesDemandes = Object.values(spCompteurs).some(val => val > 0);
+  const aDesDemandes = Object.values(spCompteurs).some((val: number) => val > 0);
   const compteurs = aDesDemandes ? spCompteurs : mockCompteurs;
 
   return (

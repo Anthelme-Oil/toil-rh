@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// NextAuth.js — Configuration Microsoft Entra ID (Azure AD) + Prisma MySQL Sync
+// NextAuth.js — Configuration Microsoft Entra ID (Azure AD) + MySQL Sync via mysql2
 // ═══════════════════════════════════════════════════════════════
 
 import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
-import { prisma } from './prisma';
+import { query, execute, generateId } from './db';
 
 declare module 'next-auth' {
   interface Session {
@@ -63,27 +63,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const cleanEmail = email.toLowerCase().trim();
           const azureId = (profile?.sub || account?.providerAccountId || token.sub) as string | undefined;
           const displayName = user?.name || token.name || cleanEmail.split('@')[0];
+          const now = new Date();
 
           // Upsert dans MySQL sans écraser les rôles et le N+1 définis dans la page admin
-          const dbUser = await prisma.utilisateur.upsert({
-            where: { email: cleanEmail },
-            update: {
-              nom: displayName,
-              ...(azureId ? { azureId } : {}),
-            },
-            create: {
-              email: cleanEmail,
-              nom: displayName,
-              azureId,
-              role: 'EMPLOYE',
-              estRH: false,
-            },
-          });
+          const sql = `
+            INSERT INTO utilisateurs (id, nom, email, azure_id, role, est_rh, est_com, cree_le, mis_a_jour_le)
+            VALUES (?, ?, ?, ?, 'EMPLOYE', 0, 0, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              nom = VALUES(nom),
+              azure_id = COALESCE(VALUES(azure_id), azure_id),
+              mis_a_jour_le = VALUES(mis_a_jour_le)
+          `;
+          await execute(sql, [generateId(), displayName, cleanEmail, azureId || null, now, now]);
 
-          token.role = dbUser.role;
-          token.isRH = dbUser.estRH;
-          token.managerEmail = dbUser.emailManager || '';
-          token.dbUserId = dbUser.id;
+          const rows = await query<any>('SELECT * FROM utilisateurs WHERE email = ?', [cleanEmail]);
+          if (rows.length > 0) {
+            const dbUser = rows[0];
+            token.role = dbUser.role;
+            token.isRH = Boolean(dbUser.est_rh);
+            token.managerEmail = dbUser.email_manager || '';
+            token.dbUserId = dbUser.id;
+          }
         } catch (dbErr) {
           console.error('[Auth] Erreur de synchronisation MySQL pour', email, dbErr);
         }

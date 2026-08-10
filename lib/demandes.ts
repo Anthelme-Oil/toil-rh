@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
-// Service Demandes Internes — Connexion MySQL via Prisma ORM
+// Service Demandes Internes — Connexion Directe MySQL via mysql2
 // ═══════════════════════════════════════════════════════════════
 
 import 'server-only';
-import { prisma, withRetry } from './prisma';
+import { query, execute, generateId } from './db';
 import type { DemandeInterne, CompteursDemandesParType, DemandeConge, StatutConge, PieceJointe } from '@/types';
 
 // ═══════════════════════════════════════════════════════════════
@@ -11,27 +11,24 @@ import type { DemandeInterne, CompteursDemandesParType, DemandeConge, StatutCong
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Crée une nouvelle demande interne dans MySQL via Prisma.
+ * Crée une nouvelle demande interne dans MySQL.
  */
 export async function creerDemande(demande: DemandeInterne): Promise<string> {
   try {
-    const created = await withRetry(() =>
-      prisma.demande.create({
-        data: {
-          titre: demande.titre,
-          typeDemande: (demande.type || 'AUTRE').toUpperCase(),
-          statut: 'EN_ATTENTE',
-          emailDemandeur: demande.demandeurEmail.toLowerCase().trim(),
-          nomDemandeur: demande.demandeurNom || demande.demandeurEmail.split('@')[0],
-          motif: demande.description,
-          donneesFormulaire: {
-            priorite: demande.priorite,
-          },
-        },
-      })
-    );
+    const id = generateId();
+    const cleanEmail = demande.demandeurEmail.toLowerCase().trim();
+    const nom = demande.demandeurNom || cleanEmail.split('@')[0];
+    const typeDem = (demande.type || 'AUTRE').toUpperCase();
+    const now = new Date();
+    const donneesFormulaire = JSON.stringify({ priorite: demande.priorite });
 
-    return created.id;
+    const sql = `
+      INSERT INTO demandes (id, titre, type_demande, statut, email_demandeur, nom_demandeur, motif, donnees_formulaire, cree_le, mis_a_jour_le)
+      VALUES (?, ?, ?, 'EN_ATTENTE', ?, ?, ?, ?, ?, ?)
+    `;
+
+    await execute(sql, [id, demande.titre, typeDem, cleanEmail, nom, demande.description, donneesFormulaire, now, now]);
+    return id;
   } catch (error) {
     console.error('[Demandes] Erreur création demande MySQL:', error);
     throw new Error('Impossible de créer la demande. Veuillez réessayer.');
@@ -47,49 +44,51 @@ export async function getDemandesUtilisateur(
 ): Promise<DemandeInterne[]> {
   try {
     const cleanEmail = email.toLowerCase().trim();
-    const rows = await withRetry(() =>
-      prisma.demande.findMany({
-        where: {
-          emailDemandeur: cleanEmail,
-          typeDemande: {
-            not: 'CONGE',
-          },
-        },
-        orderBy: {
-          creeLe: 'desc',
-        },
-        take: top,
-      })
-    );
+    const sql = `
+      SELECT * FROM demandes 
+      WHERE email_demandeur = ? AND type_demande != 'CONGE' 
+      ORDER BY cree_le DESC 
+      LIMIT ?
+    `;
+    const rows = await query<any>(sql, [cleanEmail, top]);
 
-    return rows.map((r) => {
-      const extra = (r.donneesFormulaire as Record<string, unknown>) || {};
+    return rows.map((row) => {
+      let priorite: DemandeInterne['priorite'] = 'normale';
+      if (row.donnees_formulaire) {
+        try {
+          const parsed = typeof row.donnees_formulaire === 'string' ? JSON.parse(row.donnees_formulaire) : row.donnees_formulaire;
+          if (parsed?.priorite) priorite = parsed.priorite;
+        } catch {}
+      }
+
+      let type: DemandeInterne['type'] = 'it';
+      const t = (row.type_demande || '').toLowerCase();
+      if (t === 'materiel') type = 'materiel';
+      else if (t === 'acces') type = 'acces';
+      else if (t === 'rh') type = 'rh';
+
       return {
-        id: r.id,
-        titre: r.titre,
-        type: r.typeDemande.toLowerCase() as DemandeInterne['type'],
-        description: r.motif || '',
-        priorite: (extra.priorite as DemandeInterne['priorite']) || 'moyenne',
-        statut: (r.statut.toLowerCase() === 'approuve' ? 'resolu' : r.statut.toLowerCase()) as DemandeInterne['statut'],
-        demandeurEmail: r.emailDemandeur,
-        demandeurNom: r.nomDemandeur,
-        dateCreation: r.creeLe.toISOString(),
-        dateResolution: r.dateValidationRH?.toISOString() || r.dateValidationN1?.toISOString(),
-        commentaires: r.commentaireRH || r.commentaireN1 || undefined,
+        id: row.id,
+        titre: row.titre || 'Demande sans titre',
+        description: row.motif || '',
+        type,
+        priorite,
+        statut: row.statut === 'EN_ATTENTE' ? 'soumis' : row.statut === 'APPROUVE' ? 'resolu' : 'en_cours',
+        dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
+        demandeurEmail: row.email_demandeur || cleanEmail,
+        demandeurNom: row.nom_demandeur || '',
       };
     });
   } catch (error) {
-    console.error('[Demandes] Erreur récupération demandes MySQL:', error);
+    console.error('[Demandes] Erreur lecture demandes utilisateur MySQL:', error);
     return [];
   }
 }
 
 /**
- * Récupère les compteurs de demandes par type pour un utilisateur.
+ * Récupère le nombre de demandes en cours par catégorie.
  */
-export async function getCompteursDemandesParType(
-  email: string
-): Promise<CompteursDemandesParType> {
+export async function getCompteursDemandesUtilisateur(email: string): Promise<CompteursDemandesParType> {
   try {
     const demandes = await getDemandesUtilisateur(email, 100);
     const enCours = demandes.filter((d) => d.statut !== 'resolu' && d.statut !== 'refuse');
@@ -106,42 +105,53 @@ export async function getCompteursDemandesParType(
   }
 }
 
+export { getCompteursDemandesUtilisateur as getCompteursDemandesParType };
+
 // ═══════════════════════════════════════════════════════════════
 // 2. WORKFLOW DE DEMANDE DE CONGÉS (N+1 -> RH)
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Crée une nouvelle demande de congé dans MySQL via Prisma.
+ * Crée une nouvelle demande de congé dans MySQL via mysql2.
  */
 export async function creerDemandeConge(
   demande: Omit<DemandeConge, 'id' | 'statut' | 'dateCreation'>
 ): Promise<string> {
   try {
+    const id = generateId();
     const cleanEmail = demande.demandeurEmail.toLowerCase().trim();
     const cleanManagerEmail = (demande.managerEmail || '').toLowerCase().trim();
     const mainAttachmentName = demande.piecesJointes?.[0]?.name || null;
+    const now = new Date();
+    const dateDeb = demande.dateDebut ? new Date(demande.dateDebut) : null;
+    const dateF = demande.dateFin ? new Date(demande.dateFin) : null;
+    const donneesFormulaire = demande.piecesJointes ? JSON.stringify({ piecesJointes: demande.piecesJointes }) : null;
 
-    const created = await withRetry(() =>
-      prisma.demande.create({
-        data: {
-          titre: demande.titre,
-          typeDemande: 'CONGE',
-          statut: 'EN_ATTENTE',
-          emailDemandeur: cleanEmail,
-          nomDemandeur: demande.demandeurNom || cleanEmail.split('@')[0],
-          emailManager: cleanManagerEmail,
-          typeConge: demande.typeConge || 'conge_paye',
-          dateDebut: demande.dateDebut ? new Date(demande.dateDebut) : null,
-          dateFin: demande.dateFin ? new Date(demande.dateFin) : null,
-          nombreJours: demande.nombreJours || 1,
-          motif: demande.motif || '',
-          pieceJointe: mainAttachmentName,
-          donneesFormulaire: demande.piecesJointes ? JSON.parse(JSON.stringify({ piecesJointes: demande.piecesJointes })) : undefined,
-        },
-      })
-    );
+    const sql = `
+      INSERT INTO demandes (
+        id, titre, type_demande, statut, email_demandeur, nom_demandeur, email_manager,
+        type_conge, date_debut, date_fin, nombre_jours, motif, piece_jointe, donnees_formulaire, cree_le, mis_a_jour_le
+      ) VALUES (?, ?, 'CONGE', 'EN_ATTENTE', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-    return created.id;
+    await execute(sql, [
+      id,
+      demande.titre,
+      cleanEmail,
+      demande.demandeurNom || cleanEmail.split('@')[0],
+      cleanManagerEmail,
+      demande.typeConge || 'conge_paye',
+      dateDeb,
+      dateF,
+      demande.nombreJours || 1,
+      demande.motif || '',
+      mainAttachmentName,
+      donneesFormulaire,
+      now,
+      now,
+    ]);
+
+    return id;
   } catch (error: unknown) {
     console.error('[Demandes] Erreur création demande de congé MySQL:', error);
     const detail = error instanceof Error ? error.message : String(error);
@@ -150,36 +160,42 @@ export async function creerDemandeConge(
 }
 
 /**
- * Convertit un enregistrement Prisma `demandes` en objet `DemandeConge`
+ * Convertit un enregistrement SQL `demandes` en objet `DemandeConge`
  */
-function mapPrismaToDemandeConge(row: any): DemandeConge {
+function mapRowToDemandeConge(row: any): DemandeConge {
   let statutFormatted: StatutConge = 'En attente de validation';
-  if (row.statut === 'APPROUVE' || row.statutRH === 'APPROUVE') {
+  if (row.statut === 'APPROUVE' || row.statut_rh === 'APPROUVE') {
     statutFormatted = 'Accordée';
-  } else if (row.statutN1 === 'APPROUVE' && row.statutRH === 'EN_ATTENTE') {
+  } else if (row.statut_n1 === 'APPROUVE' && row.statut_rh === 'EN_ATTENTE') {
     statutFormatted = 'EN_ATTENTE_RH';
-  } else if (row.statut === 'REFUSE' || row.statutN1 === 'REFUSE' || row.statutRH === 'REFUSE') {
+  } else if (row.statut === 'REFUSE' || row.statut_n1 === 'REFUSE' || row.statut_rh === 'REFUSE') {
     statutFormatted = 'Refusée';
   }
 
-  const extra = (row.donneesFormulaire as Record<string, any>) || {};
+  let extra: Record<string, any> = {};
+  if (row.donnees_formulaire) {
+    try {
+      extra = typeof row.donnees_formulaire === 'string' ? JSON.parse(row.donnees_formulaire) : row.donnees_formulaire;
+    } catch {}
+  }
+
   const piecesJointes: PieceJointe[] | undefined =
-    extra.piecesJointes || (row.pieceJointe ? [{ name: row.pieceJointe, contentBase64: '' }] : undefined);
+    extra.piecesJointes || (row.piece_jointe ? [{ name: row.piece_jointe, contentBase64: '' }] : undefined);
 
   return {
     id: row.id,
     titre: row.titre || 'Demande de congé',
-    typeConge: (row.typeConge || 'conge_paye') as DemandeConge['typeConge'],
-    dateDebut: row.dateDebut ? row.dateDebut.toISOString() : '',
-    dateFin: row.dateFin ? row.dateFin.toISOString() : '',
-    nombreJours: row.nombreJours || 1,
+    typeConge: (row.type_conge || 'conge_paye') as DemandeConge['typeConge'],
+    dateDebut: row.date_debut ? new Date(row.date_debut).toISOString() : '',
+    dateFin: row.date_fin ? new Date(row.date_fin).toISOString() : '',
+    nombreJours: row.nombre_jours || 1,
     motif: row.motif || '',
     statut: statutFormatted,
-    demandeurNom: row.nomDemandeur || '',
-    demandeurEmail: row.emailDemandeur || '',
-    managerEmail: row.emailManager || '',
-    dateCreation: row.creeLe ? row.creeLe.toISOString() : '',
-    pieceJointeUrl: row.pieceJointe || undefined,
+    demandeurNom: row.nom_demandeur || '',
+    demandeurEmail: row.email_demandeur || '',
+    managerEmail: row.email_manager || '',
+    dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
+    pieceJointeUrl: row.piece_jointe || undefined,
     piecesJointes: piecesJointes,
   };
 }
@@ -190,19 +206,12 @@ function mapPrismaToDemandeConge(row: any): DemandeConge {
 export async function getDemandesCongesUtilisateur(email: string): Promise<DemandeConge[]> {
   try {
     const cleanEmail = email.toLowerCase().trim();
-    const rows = await withRetry(() =>
-      prisma.demande.findMany({
-        where: {
-          emailDemandeur: cleanEmail,
-          typeDemande: 'CONGE',
-        },
-        orderBy: {
-          creeLe: 'desc',
-        },
-      })
+    const rows = await query<any>(
+      'SELECT * FROM demandes WHERE email_demandeur = ? AND type_demande = "CONGE" ORDER BY cree_le DESC',
+      [cleanEmail]
     );
 
-    return rows.map(mapPrismaToDemandeConge);
+    return rows.map(mapRowToDemandeConge);
   } catch (error) {
     console.error('[Demandes] Erreur lecture demandes congés utilisateur MySQL:', error);
     return [];
@@ -220,33 +229,19 @@ export async function getDemandesCongesAValider(
     const cleanEmail = email.toLowerCase().trim();
 
     if (role === 'RH') {
-      const rows = await withRetry(() =>
-        prisma.demande.findMany({
-          where: {
-            typeDemande: 'CONGE',
-          },
-          orderBy: {
-            creeLe: 'desc',
-          },
-        })
+      const rows = await query<any>(
+        'SELECT * FROM demandes WHERE type_demande = "CONGE" ORDER BY cree_le DESC'
       );
-      return rows.map(mapPrismaToDemandeConge);
+      return rows.map(mapRowToDemandeConge);
     }
 
-    // Role N+1 : Les demandes où emailManager correspond
-    const rows = await withRetry(() =>
-      prisma.demande.findMany({
-        where: {
-          typeDemande: 'CONGE',
-          emailManager: cleanEmail,
-        },
-        orderBy: {
-          creeLe: 'desc',
-        },
-      })
+    // Role N+1 : Les demandes où email_manager correspond
+    const rows = await query<any>(
+      'SELECT * FROM demandes WHERE type_demande = "CONGE" AND LOWER(email_manager) = ? ORDER BY cree_le DESC',
+      [cleanEmail]
     );
 
-    return rows.map(mapPrismaToDemandeConge);
+    return rows.map(mapRowToDemandeConge);
   } catch (error) {
     console.error('[Demandes] Erreur demandes à valider MySQL:', error);
     return [];
@@ -264,31 +259,23 @@ export async function traiterDemandeConge(
 ): Promise<boolean> {
   try {
     const newStatut = action === 'APPROUVER' ? 'APPROUVE' : 'REFUSE';
+    const now = new Date();
 
     if (role === 'N1') {
-      await withRetry(() =>
-        prisma.demande.update({
-          where: { id },
-          data: {
-            statutN1: newStatut,
-            dateValidationN1: new Date(),
-            commentaireN1: motifRefus || null,
-            ...(newStatut === 'REFUSE' ? { statut: 'REFUSE' } : {}),
-          },
-        })
-      );
+      const sql = `
+        UPDATE demandes 
+        SET statut_n1 = ?, date_validation_n1 = ?, commentaire_n1 = ?, mis_a_jour_le = ?
+        ${newStatut === 'REFUSE' ? ", statut = 'REFUSE'" : ''}
+        WHERE id = ?
+      `;
+      await execute(sql, [newStatut, now, motifRefus || null, now, id]);
     } else {
-      await withRetry(() =>
-        prisma.demande.update({
-          where: { id },
-          data: {
-            statutRH: newStatut,
-            dateValidationRH: new Date(),
-            commentaireRH: motifRefus || null,
-            statut: newStatut,
-          },
-        })
-      );
+      const sql = `
+        UPDATE demandes 
+        SET statut_rh = ?, date_validation_rh = ?, commentaire_rh = ?, statut = ?, mis_a_jour_le = ?
+        WHERE id = ?
+      `;
+      await execute(sql, [newStatut, now, motifRefus || null, newStatut, now, id]);
     }
 
     return true;
