@@ -1,16 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
-// NextAuth.js — Configuration Microsoft Entra ID (Azure AD)
-// ═══════════════════════════════════════════════════════════════
-//
-// SSO avec Microsoft 365 via le provider Azure AD.
-// Le token d'accès est conservé dans la session pour permettre
-// les appels Graph "On-Behalf-Of" côté serveur.
+// NextAuth.js — Configuration Microsoft Entra ID (Azure AD) + Prisma MySQL Sync
 // ═══════════════════════════════════════════════════════════════
 
 import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
+import { prisma } from './prisma';
 
-// Augmentation des types pour inclure l'accessToken
 declare module 'next-auth' {
   interface Session {
     accessToken?: string;
@@ -19,6 +14,9 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      role?: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
+      isRH?: boolean;
+      managerEmail?: string;
       departement?: string;
     };
   }
@@ -34,7 +32,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID || 'common'}/v2.0`,
       authorization: {
         params: {
-          // Scopes nécessaires pour Graph API
           scope: [
             'openid',
             'profile',
@@ -50,26 +47,67 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     /**
-     * Callback JWT : conserve le token d'accès Microsoft
-     * dans le JWT pour les appels Graph ultérieurs.
+     * Callback JWT : lors de la connexion Microsoft, upsert automatique dans MySQL 
+     * et association avec le rôle / N+1 configuré par l'Admin.
      */
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile, user }) {
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
       }
+
+      const email = user?.email || token.email;
+      if (email) {
+        try {
+          const cleanEmail = email.toLowerCase().trim();
+          const azureId = (profile?.sub || account?.providerAccountId || token.sub) as string | undefined;
+          const displayName = user?.name || token.name || cleanEmail.split('@')[0];
+
+          // Upsert dans MySQL sans écraser les rôles et le N+1 définis dans la page admin
+          const dbUser = await prisma.utilisateur.upsert({
+            where: { email: cleanEmail },
+            update: {
+              nom: displayName,
+              ...(azureId ? { azureId } : {}),
+            },
+            create: {
+              email: cleanEmail,
+              nom: displayName,
+              azureId,
+              role: 'EMPLOYE',
+              estRH: false,
+            },
+          });
+
+          token.role = dbUser.role;
+          token.isRH = dbUser.estRH;
+          token.managerEmail = dbUser.emailManager || '';
+          token.dbUserId = dbUser.id;
+        } catch (dbErr) {
+          console.error('[Auth] Erreur de synchronisation MySQL pour', email, dbErr);
+        }
+      }
+
       return token;
     },
 
     /**
-     * Callback Session : expose le token d'accès
-     * dans l'objet session côté serveur uniquement.
+     * Callback Session : transmet les rôles, permissions et N+1 à la session utilisateur
      */
     async session({ session, token }) {
       session.accessToken = token.accessToken as string;
-      if (token.sub) {
-        session.user.id = token.sub;
+      if (token.sub || token.dbUserId) {
+        session.user.id = (token.dbUserId || token.sub) as string;
+      }
+      if (token.role) {
+        session.user.role = token.role as 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
+      }
+      if (token.isRH !== undefined) {
+        session.user.isRH = Boolean(token.isRH);
+      }
+      if (token.managerEmail) {
+        session.user.managerEmail = token.managerEmail as string;
       }
       return session;
     },
@@ -80,7 +118,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/auth/error',
   },
 
-  // Cookie sécurisé en production
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === 'production'

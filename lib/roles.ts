@@ -1,84 +1,225 @@
 import 'server-only';
-import { getGraphClient, getSiteApiBase } from './graph';
-import { serverCache } from './cache';
+import { prisma } from './prisma';
 
-export type UserRole = 'ADMIN' | 'RH' | 'MANAGER' | 'EMPLOYE';
+export interface UserRoleRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
+  managerEmail: string;
+  isRH: boolean;
+}
 
-export interface UserPermissions {
-  role: UserRole;
+const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
+  {
+    name: 'Lino Lino',
+    email: 'lino@gmail.com',
+    role: 'ADMIN',
+    managerEmail: '',
+    isRH: true,
+  },
+  {
+    name: 'IT Helpdesk',
+    email: 'it_helpdesk@compel-toil.com',
+    role: 'MANAGER',
+    managerEmail: 'lino@gmail.com',
+    isRH: false,
+  },
+  {
+    name: 'Responsable RH',
+    email: 'rh@compel-toil.com',
+    role: 'RH',
+    managerEmail: 'lino@gmail.com',
+    isRH: true,
+  },
+  {
+    name: 'Portail Test',
+    email: 'portail_test@compel-toil.com',
+    role: 'EMPLOYE',
+    managerEmail: 'it_helpdesk@compel-toil.com',
+    isRH: false,
+  },
+];
+
+/**
+ * Récupère tous les utilisateurs et leurs rôles depuis la base de données MySQL via Prisma
+ */
+export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
+  try {
+    const dbUsers = await prisma.utilisateur.findMany({
+      orderBy: {
+        nom: 'asc',
+      },
+    });
+
+    if (dbUsers.length === 0) {
+      console.log('[Roles] Base vide. Initialisation des utilisateurs par défaut...');
+      await seedDefaultRolesToDatabase();
+      return getAllUserRoles();
+    }
+
+    return dbUsers.map((u) => ({
+      id: u.id,
+      name: u.nom,
+      email: u.email,
+      role: u.role as UserRoleRecord['role'],
+      managerEmail: u.emailManager || '',
+      isRH: u.estRH,
+    }));
+  } catch (error) {
+    console.error('[Roles] Erreur lecture MySQL via Prisma:', error);
+    return getFallbackUserRoles();
+  }
+}
+
+/**
+ * Obtenir les permissions dynamiques d'un utilisateur par son email
+ */
+export async function getUserPermissionsByEmail(email?: string | null): Promise<{
+  role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
+  managerEmail: string;
+  name: string;
+}> {
+  if (!email) {
+    return {
+      role: 'EMPLOYE',
+      isRH: false,
+      isManager: false,
+      isAdmin: false,
+      managerEmail: '',
+      name: '',
+    };
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const allRoles = await getAllUserRoles();
+  const user = allRoles.find((u) => u.email.toLowerCase().trim() === cleanEmail);
+
+  if (!user) {
+    return {
+      role: 'EMPLOYE',
+      isRH: false,
+      isManager: false,
+      isAdmin: false,
+      managerEmail: '',
+      name: '',
+    };
+  }
+
+  const isManager =
+    user.role === 'MANAGER' ||
+    user.role === 'ADMIN' ||
+    allRoles.some((u) => u.managerEmail.toLowerCase().trim() === cleanEmail);
+  const isRH = user.isRH || user.role === 'RH' || user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN';
+
+  return {
+    role: user.role,
+    isRH,
+    isManager,
+    isAdmin,
+    managerEmail: user.managerEmail,
+    name: user.name,
+  };
 }
 
-const LIST_ROLES_ID = process.env.LIST_ROLES_ID || 'Configuration_Roles';
+/**
+ * Crée ou met à jour un utilisateur dans MySQL via Prisma
+ */
+export async function saveOrUpdateUserRole(data: {
+  id?: string;
+  name: string;
+  email: string;
+  role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
+  managerEmail?: string;
+  isRH?: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const cleanEmail = data.email.toLowerCase().trim();
+    const cleanManagerEmail = (data.managerEmail || '').toLowerCase().trim();
 
-const DEFAULT_PERMISSIONS: UserPermissions = {
-  role: 'EMPLOYE',
-  isRH: false,
-  isManager: false,
-  isAdmin: false,
-};
+    await prisma.utilisateur.upsert({
+      where: { email: cleanEmail },
+      update: {
+        nom: data.name.trim(),
+        role: data.role,
+        emailManager: cleanManagerEmail,
+        estRH: Boolean(data.isRH),
+      },
+      create: {
+        nom: data.name.trim(),
+        email: cleanEmail,
+        role: data.role,
+        emailManager: cleanManagerEmail,
+        estRH: Boolean(data.isRH),
+      },
+    });
 
-// TTL : 10 minutes pour les rôles (données très stables)
-const ROLES_CACHE_TTL = 10 * 60 * 1000;
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Roles] Erreur sauvegarde utilisateur dans MySQL:', err);
+    const msg = err instanceof Error ? err.message : 'Erreur base de données';
+    return { success: false, error: msg };
+  }
+}
 
 /**
- * Interroge la liste SharePoint "Configuration_Roles" pour obtenir le rôle de l'utilisateur.
- * ⚡ Les résultats sont mis en cache pendant 10 min pour éviter les appels Graph API répétitifs.
- * Si l'utilisateur n'y est pas renseigné, son rôle par défaut est "EMPLOYE".
+ * Supprime un utilisateur de la base MySQL
  */
-export async function getUserPermissions(email: string): Promise<UserPermissions> {
-  if (!email) {
-    return DEFAULT_PERMISSIONS;
+export async function deleteUserRole(email: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    await prisma.utilisateur.delete({
+      where: { email: cleanEmail },
+    });
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Roles] Erreur suppression utilisateur MySQL:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Erreur suppression' };
   }
+}
 
-  const graphClient = getGraphClient();
-  if (!graphClient) {
-    return DEFAULT_PERMISSIONS;
+/**
+ * Seeding initial des utilisateurs par défaut dans MySQL
+ */
+export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    let count = 0;
+    for (const u of DEFAULT_USERS) {
+      await prisma.utilisateur.upsert({
+        where: { email: u.email },
+        update: {
+          nom: u.name,
+          role: u.role,
+          emailManager: u.managerEmail,
+          estRH: u.isRH,
+        },
+        create: {
+          nom: u.name,
+          email: u.email,
+          role: u.role,
+          emailManager: u.managerEmail,
+          estRH: u.isRH,
+        },
+      });
+      count++;
+    }
+    return { success: true, count };
+  } catch (err) {
+    console.error('[Roles] Erreur Seeding MySQL:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Erreur seeding' };
   }
+}
 
-  return serverCache.getOrFetch<UserPermissions>(
-    `role:${email.toLowerCase().trim()}`,
-    async () => {
-      const siteBase = getSiteApiBase();
-
-      try {
-        const response = await graphClient
-          .api(`${siteBase}/lists/${LIST_ROLES_ID}/items`)
-          .expand('fields')
-          .get();
-
-        const items = response.value || [];
-        const matched = items.find((item: Record<string, unknown>) => {
-          const f = (item.fields || {}) as Record<string, string>;
-          const itemEmail = (f.Email || f.EmailUser || f.Title || '').toLowerCase().trim();
-          return itemEmail === email.toLowerCase().trim();
-        });
-
-        if (matched) {
-          const fields = matched.fields as Record<string, string>;
-          const rawRole = (fields.Role || fields.R_x00f4_le || fields.Rôle || fields.Title || '').toUpperCase().trim();
-
-          const isRH = rawRole.includes('RH') || rawRole.includes('DRH');
-          const isManager = rawRole.includes('RESPONSABLE') || rawRole.includes('MANAGER') || rawRole.includes('CHEF') || rawRole.includes('N1') || isRH;
-          const isAdmin = rawRole.includes('ADMIN');
-
-          const role: UserRole = isAdmin ? 'ADMIN' : isRH ? 'RH' : isManager ? 'MANAGER' : 'EMPLOYE';
-
-          return {
-            role,
-            isRH: isRH || isAdmin,
-            isManager: isManager || isAdmin,
-            isAdmin,
-          };
-        }
-      } catch (error) {
-        console.warn(`[Roles] Erreur lecture liste ${LIST_ROLES_ID}, rôle par défaut attribué (EMPLOYE).`, error);
-      }
-
-      return DEFAULT_PERMISSIONS;
-    },
-    ROLES_CACHE_TTL,
-  );
+/**
+ * Fallback local si la base de données n'est pas encore connectée
+ */
+function getFallbackUserRoles(): UserRoleRecord[] {
+  return DEFAULT_USERS.map((u, idx) => ({
+    id: `local-${idx + 1}`,
+    ...u,
+  }));
 }

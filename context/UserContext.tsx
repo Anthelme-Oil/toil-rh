@@ -118,7 +118,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     fetchInFlightRef.current = email;
 
     try {
-      const res = await fetch(`/api/auth/role?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/roles/me?email=${encodeURIComponent(email)}`);
       if (res.ok) {
         const data = await res.json();
         setPermissions(data);

@@ -12,7 +12,11 @@
     "@auth/core": "^0.41.3",
     "@azure/identity": "^4.13.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@prisma/adapter-mariadb": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "lucide-react": "^1.28.0",
+    "mariadb": "^3.5.3",
+    "mysql2": "^3.23.3",
     "next": "16.2.12",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.2.4",
@@ -25,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

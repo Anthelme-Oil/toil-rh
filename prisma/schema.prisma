@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 1. Table Utilisateurs (Synchro Microsoft Entra ID + Panneau Admin)
+// ═══════════════════════════════════════════════════════════════
+model Utilisateur {
+  id             String    @id @default(cuid())
+  azureId        String?   @unique @map("azure_id")
+  nom            String    @map("nom")
+  email          String    @unique @map("email")
+  role           String    @default("EMPLOYE") @map("role") // EMPLOYE, MANAGER, RH, ADMIN
+  emailManager   String?   @default("") @map("email_manager") // Email du supérieur hiérarchique N+1
+  estRH          Boolean   @default(false) @map("est_rh")
+  departement    String?   @map("departement")
+  poste          String?   @map("poste")
+  creeLe         DateTime  @default(now()) @map("cree_le")
+  misAJourLe     DateTime  @updatedAt @map("mis_a_jour_le")
+
+  demandes       Demande[] @relation("DemandesUtilisateur")
+
+  @@map("utilisateurs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 2. Table Unique pour toutes les Demandes (Congés, IT, Salle, RH...)
+// ═══════════════════════════════════════════════════════════════
+model Demande {
+  id                String       @id @default(cuid())
+  titre             String       @map("titre")
+  typeDemande       String       @map("type_demande") // "CONGE", "IT", "SALLE", "MATERIEL", "DOCUMENT_RH"
+  statut            String       @default("EN_ATTENTE") @map("statut") // EN_ATTENTE, APPROUVE, REFUSE, ANNULE
+
+  // Identité du Demandeur
+  utilisateurId     String?      @map("utilisateur_id")
+  utilisateur       Utilisateur? @relation("DemandesUtilisateur", fields: [utilisateurId], references: [id], onDelete: SetNull)
+  emailDemandeur    String       @map("email_demandeur")
+  nomDemandeur      String       @map("nom_demandeur")
+
+  // Supérieur N+1 & Validation
+  emailManager      String?      @default("") @map("email_manager")
+  statutN1          String       @default("EN_ATTENTE") @map("statut_n1")
+  dateValidationN1  DateTime?    @map("date_validation_n1")
+  commentaireN1     String?      @map("commentaire_n1")
+
+  // Validation RH / Admin
+  statutRH          String       @default("EN_ATTENTE") @map("statut_rh")
+  dateValidationRH  DateTime?    @map("date_validation_rh")
+  commentaireRH     String?      @map("commentaire_rh")
+
+  // Détails génériques des formulaires
+  dateDebut         DateTime?    @map("date_debut")
+  dateFin           DateTime?    @map("date_fin")
+  nombreJours       Float?       @map("nombre_jours")
+  typeConge         String?      @map("type_conge") // paye, conge_maladie, sans_solde, etc.
+  motif             String?      @db.Text @map("motif")
+  pieceJointe       String?      @map("piece_jointe")
+
+  // Données dynamiques spécifiques aux sous-formulaires (ex: IT, réservation salle, etc.)
+  donneesFormulaire Json?        @map("donnees_formulaire")
+
+  creeLe            DateTime     @default(now()) @map("cree_le")
+  misAJourLe        DateTime     @updatedAt @map("mis_a_jour_le")
+
+  @@map("demandes")
+}

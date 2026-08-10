@@ -30,7 +30,7 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react';
-import type { TypeDemande, PrioriteDemande } from '@/types';
+import type { TypeDemande, PrioriteDemande, DemandeConge } from '@/types';
 import { DemandeCongeModal } from '@/components/demandes/DemandeCongeModal';
 
 interface DemandeOption {
@@ -221,15 +221,50 @@ export default function DemandesPage() {
     loadCongesData(activeTab);
   }, [activeTab, userEmail]);
 
+  // État pour la modale de motif de refus
+  const [refusalModal, setRefusalModal] = useState<{
+    isOpen: boolean;
+    id?: string;
+    role?: 'N1' | 'RH';
+    item?: DemandeConge;
+  }>({ isOpen: false });
+  const [refusalReason, setRefusalReason] = useState('');
+  const [isSubmittingRefusal, setIsSubmittingRefusal] = useState(false);
+
   // Traitement approbation / refus
-  const handleTraiterConge = async (id: string, action: 'APPROUVER' | 'REFUSER', role: 'N1' | 'RH') => {
+  const handleTraiterConge = async (
+    id: string,
+    action: 'APPROUVER' | 'REFUSER',
+    role: 'N1' | 'RH',
+    motifRefusParam?: string,
+    item?: DemandeConge
+  ) => {
+    if (action === 'REFUSER' && !motifRefusParam) {
+      setRefusalModal({ isOpen: true, id, role, item });
+      setRefusalReason('');
+      return;
+    }
+
     try {
       const res = await fetch('/api/demandes/conges/traiter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action, role }),
+        body: JSON.stringify({
+          id,
+          action,
+          role,
+          motifRefus: motifRefusParam,
+          demandeurNom: item?.demandeurNom,
+          demandeurEmail: item?.demandeurEmail,
+          typeConge: item?.typeConge,
+          dateDebut: item?.dateDebut,
+          dateFin: item?.dateFin,
+          nombreJours: item?.nombreJours,
+        }),
       });
       if (res.ok) {
+        setRefusalModal({ isOpen: false });
+        setRefusalReason('');
         invalidateCongesCache();
         loadCongesData(activeTab, true);
       }
@@ -604,6 +639,73 @@ export default function DemandesPage() {
           setActiveTab('historique');
         }}
       />
+
+      {/* Modale de Saisie Obligatoire du Motif de Refus */}
+      {refusalModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 border border-slate-100 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600" /> Saisie du Motif de Refus
+              </h3>
+              <button
+                onClick={() => setRefusalModal({ isOpen: false })}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Veuillez indiquer la raison de ce refus. Ce motif sera enregistré dans SharePoint et transmis au collaborateur.
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Motif de Refus <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="ex: Chevauchement avec les congés de l'équipe / Période de forte activité..."
+                value={refusalReason}
+                onChange={(e) => setRefusalReason(e.target.value)}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 focus:bg-white transition-all text-slate-800"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRefusalModal({ isOpen: false })}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={!refusalReason.trim() || isSubmittingRefusal}
+                onClick={async () => {
+                  if (!refusalModal.id || !refusalModal.role) return;
+                  setIsSubmittingRefusal(true);
+                  await handleTraiterConge(
+                    refusalModal.id,
+                    'REFUSER',
+                    refusalModal.role,
+                    refusalReason,
+                    refusalModal.item
+                  );
+                  setIsSubmittingRefusal(false);
+                }}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmittingRefusal && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirmer le Refus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

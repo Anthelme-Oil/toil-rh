@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { creerDemandeConge, getDemandesCongesUtilisateur, getDemandesCongesAValider } from '@/lib/demandes';
+import { getUserPermissionsByEmail } from '@/lib/roles';
+import { sendLeaveNotificationEmail, getEmailTemplateN1 } from '@/lib/email';
+
+// Force HMR reload for Prisma Client models update
+
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +19,7 @@ export async function POST(request: Request) {
       demandeurNom,
       demandeurEmail,
       demandeurLookupId,
-      managerEmail,
+      managerEmail: initialManagerEmail,
       supHierarchiqueLookupId,
       piecesJointes,
     } = body;
@@ -24,6 +29,13 @@ export async function POST(request: Request) {
         { error: 'Champs obligatoires manquants (titre, dates, email).' },
         { status: 400 }
       );
+    }
+
+    // Résolution du Manager Email depuis le service de rôles si non spécifié
+    let targetManagerEmail = initialManagerEmail;
+    if (!targetManagerEmail) {
+      const userPerms = await getUserPermissionsByEmail(demandeurEmail);
+      targetManagerEmail = userPerms.managerEmail;
     }
 
     const id = await creerDemandeConge({
@@ -36,10 +48,26 @@ export async function POST(request: Request) {
       demandeurNom: demandeurNom || demandeurEmail.split('@')[0],
       demandeurEmail,
       demandeurLookupId,
-      managerEmail,
+      managerEmail: targetManagerEmail,
       supHierarchiqueLookupId,
       piecesJointes,
     });
+
+    // Envoi de la notification e-mail au N+1 s'il est identifié
+    if (targetManagerEmail) {
+      sendLeaveNotificationEmail({
+        to: targetManagerEmail,
+        subject: `[Validation Requis] Demande de congé de ${demandeurNom || demandeurEmail}`,
+        html: getEmailTemplateN1({
+          demandeurNom: demandeurNom || demandeurEmail,
+          typeConge: typeConge || 'Congé Payé',
+          dateDebut: new Date(dateDebut).toLocaleDateString('fr-FR'),
+          dateFin: new Date(dateFin).toLocaleDateString('fr-FR'),
+          nombreJours: parseFloat(nombreJours) || 1,
+          motif,
+        }),
+      }).catch((e) => console.warn('Échec envoi mail asynchrone N+1:', e));
+    }
 
     return NextResponse.json({ success: true, id });
   } catch (error: unknown) {

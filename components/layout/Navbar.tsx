@@ -12,7 +12,7 @@ import { Search, Bell, Settings, HelpCircle, Menu, X, UserCheck } from 'lucide-r
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 
-const navLinks = [
+const baseNavLinks = [
   { label: 'Accueil', href: '/' },
   { label: 'Informations', href: '/informations' },
   { label: 'Outils', href: '/outils' },
@@ -27,7 +27,12 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { userEmail, userName, userRole, setUserEmail } = useUser();
+  const { userEmail, userName, userRole, isAdmin, isRH, setUserEmail } = useUser();
+
+  const navLinks = [
+    ...baseNavLinks,
+    { label: '⚙️ Admin', href: '/admin/roles' },
+  ];
 
   const isActive = (href: string) => {
     if (href === '/') {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserPermissions } from '@/lib/roles';
+import { getUserPermissionsByEmail } from '@/lib/roles';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const permissions = await getUserPermissions(email);
+    const permissions = await getUserPermissionsByEmail(email);
     return NextResponse.json(permissions, {
       headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=600' },
     });

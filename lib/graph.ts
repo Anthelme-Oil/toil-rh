@@ -29,6 +29,7 @@ export const LIST_DEMANDES_ID = process.env.LIST_DEMANDES_ID || 'DemandesInterne
 export const LIST_CONGES_ID = process.env.LIST_CONGES_ID || 'e8b6d5aa-a928-46eb-b70f-7ed51cc64efd';
 export const LIST_EVENEMENTS_ID = process.env.LIST_EVENEMENTS_ID || 'Evenements';
 export const LIST_ANNONCES_ID = process.env.LIST_ANNONCES_ID || 'Annonces';
+export const LIST_ROLES_ID = process.env.LIST_ROLES_ID || 'Autorisation par utilisateurs';
 
 // ── Bibliothèques documentaires ──
 export const DRIVE_PROCEDURES_IT = process.env.DRIVE_PROCEDURES_IT || 'Procedures_IT';
