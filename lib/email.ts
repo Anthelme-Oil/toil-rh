@@ -84,7 +84,7 @@ export function getEmailTemplateN1({
         </div>
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder au Portail pour Valider</a>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder à mon Espace Manager pour Valider</a>
         </p>
       </div>
 
