@@ -50,14 +50,14 @@ export default function Navbar() {
             </Link>
 
             {/* ── Navigation Desktop ── */}
-            <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 ml-2 xl:ml-4 flex-1 justify-center" id="nav-main">
+            <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 ml-4 xl:ml-6 flex-1 justify-start" id="nav-main">
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative px-2 py-1.5 xl:px-3 text-xs xl:text-[13px] transition-all duration-200 rounded-lg whitespace-nowrap focus-ring ${
+                    className={`relative px-2.5 py-1.5 xl:px-3.5 text-xs xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap focus-ring ${
                       active
                         ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-0.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-primary after:rounded-full'
                         : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'

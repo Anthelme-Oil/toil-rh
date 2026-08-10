@@ -75,7 +75,7 @@ export default function VideosSection() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold shadow-sm transition-all duration-200 hover:scale-[1.02]"
         >
           <GraduationCap className="w-4 h-4 text-amber-300" />
-          Parcours Onboarding
+          Formations
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>

@@ -24,7 +24,7 @@ export default function Logo({ className = '', size = 40, showText = true }: Log
         className="object-contain flex-shrink-0"
         priority
       />
-      {showText && (
+      {/* {showText && (
         <div className="leading-tight hidden sm:block">
           <div className="text-[10px] font-bold tracking-widest text-text-secondary uppercase">
             COMPEL STSL
@@ -33,7 +33,7 @@ export default function Logo({ className = '', size = 40, showText = true }: Log
             T-Oil
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
