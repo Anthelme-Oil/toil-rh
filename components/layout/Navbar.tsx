@@ -51,16 +51,16 @@ export default function Navbar() {
             </Link>
 
             {/* ── Navigation Desktop ── */}
-            <nav className="hidden lg:flex items-center gap-1 ml-6" id="nav-main">
+            <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 ml-2 xl:ml-4 flex-1 justify-center" id="nav-main">
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative px-3.5 py-2 text-sm transition-all duration-200 rounded-lg whitespace-nowrap focus-ring ${
+                    className={`relative px-2 py-1.5 xl:px-3 text-xs xl:text-[13px] transition-all duration-200 rounded-lg whitespace-nowrap focus-ring ${
                       active
-                        ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-1 after:left-3 after:right-3 after:h-[2.5px] after:bg-primary after:rounded-full'
+                        ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-0.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-primary after:rounded-full'
                         : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'
                     }`}
                     id={`nav-link-${link.href.replace('/', '') || 'home'}`}
@@ -72,20 +72,20 @@ export default function Navbar() {
             </nav>
 
             {/* ── Actions droites ── */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               {/* Barre de recherche */}
               <div
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
+                className={`hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                   searchFocused
-                    ? 'border-primary bg-white ring-2 ring-primary-100 w-60'
-                    : 'border-border bg-surface-alt/80 w-48'
+                    ? 'border-primary bg-white ring-2 ring-primary-100 w-52'
+                    : 'border-border bg-surface-alt/80 w-36'
                 }`}
               >
                 <Search className="w-4 h-4 text-text-muted flex-shrink-0" />
                 <input
                   type="text"
                   placeholder="Rechercher"
-                  className="bg-transparent text-sm outline-none w-full placeholder:text-text-muted"
+                  className="bg-transparent text-xs outline-none w-full placeholder:text-text-muted"
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                   id="nav-search"
