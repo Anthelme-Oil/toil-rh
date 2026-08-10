@@ -214,16 +214,14 @@ export async function creerDemandeConge(
       [typeCol]:
         demande.typeConge === 'conge_paye'
           ? 'Congé Payé'
-          : demande.typeConge === 'autre'
-          ? 'Autre'
-          : demande.typeConge === 'rtt'
-          ? 'RTT'
           : demande.typeConge === 'maladie'
-          ? 'Maladie'
+          ? 'Arrêt Maladie'
           : demande.typeConge === 'maternite_paternite'
           ? 'Maternité / Paternité'
           : demande.typeConge === 'sans_solde'
           ? 'Sans Solde'
+          : demande.typeConge === 'evenement_familial'
+          ? 'Événement Familial'
           : 'Autre',
       [statutCol]: 'Soumise',
     };
@@ -291,6 +289,26 @@ export async function creerDemandeConge(
       .post({
         fields: fieldsPayload,
       });
+
+    // Traitement et envoi des pièces jointes à SharePoint si présent
+    if (demande.piecesJointes && demande.piecesJointes.length > 0 && response.id) {
+      for (const file of demande.piecesJointes) {
+        try {
+          const rawBase64 = file.contentBase64.includes(',')
+            ? file.contentBase64.split(',')[1]
+            : file.contentBase64;
+          const buffer = Buffer.from(rawBase64, 'base64');
+
+          await graphClient
+            .api(`${siteBase}/lists/${LIST_CONGES_ID}/items/${response.id}/attachments/${encodeURIComponent(file.name)}`)
+            .put(buffer);
+
+          console.log(`[Demandes] Pièce jointe téléversée avec succès: ${file.name}`);
+        } catch (attachErr) {
+          console.warn(`[Demandes] Échec de l'envoi de la pièce jointe ${file.name}:`, attachErr);
+        }
+      }
+    }
 
     return response.id;
   } catch (error: unknown) {

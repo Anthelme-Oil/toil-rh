@@ -16,6 +16,7 @@ export async function POST(request: Request) {
       demandeurLookupId,
       managerEmail,
       supHierarchiqueLookupId,
+      piecesJointes,
     } = body;
 
     if (!titre || !dateDebut || !dateFin || !demandeurEmail) {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       demandeurLookupId,
       managerEmail,
       supHierarchiqueLookupId,
+      piecesJointes,
     });
 
     return NextResponse.json({ success: true, id });

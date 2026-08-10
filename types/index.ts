@@ -55,7 +55,7 @@ export type PrioriteDemande = 'basse' | 'normale' | 'haute' | 'urgente';
 export type StatutDemande = 'soumis' | 'en_cours' | 'resolu' | 'refuse';
 
 /** Types de congés */
-export type TypeConge = 'autre' | 'conge_paye' | 'rtt' | 'maladie' | 'maternite_paternite' | 'sans_solde' | 'evenement_familial';
+export type TypeConge = 'autre' | 'conge_paye' | 'maladie' | 'maternite_paternite' | 'sans_solde' | 'evenement_familial';
 
 /** Statuts du workflow de validation des congés */
 export type StatutConge = 
@@ -68,6 +68,12 @@ export type StatutConge =
   | 'APPROUVEE'
   | 'REFUSEE_N1'
   | 'REFUSEE_RH';
+
+export interface PieceJointe {
+  name: string;
+  contentBase64: string;
+  sizeFormatted?: string;
+}
 
 /** Interface spécifique pour une Demande de Congés */
 export interface DemandeConge {
@@ -89,7 +95,9 @@ export interface DemandeConge {
   dateValidationN1?: string;
   dateValidationRH?: string;
   pieceJointeUrl?: string;
+  piecesJointes?: PieceJointe[];
 }
+
 
 /** Demande interne (Microsoft List) */
 export interface DemandeInterne {
@@ -146,6 +154,16 @@ export interface UtilisateurSession {
   poste?: string;
 }
 
+/** Utilisateur de l'annuaire Microsoft 365 / Entra ID */
+export interface UserDirectoryItem {
+  id: string;
+  displayName: string;
+  mail: string;
+  userPrincipalName: string;
+  jobTitle?: string;
+  department?: string;
+}
+
 /** Compteurs de demandes par type */
 export interface CompteursDemandesParType {
   materiel: number;
@@ -153,3 +171,4 @@ export interface CompteursDemandesParType {
   it: number;
   rh: number;
 }
+

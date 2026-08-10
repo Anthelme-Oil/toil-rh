@@ -313,7 +313,7 @@ export default function DemandesPage() {
             Mes demandes ({congesHistory.length})
           </button>
 
-          {(isManager || isAdmin || true) && (
+          {(isManager || isAdmin) && (
             <button
               onClick={() => setActiveTab('validations_n1')}
               className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
@@ -327,7 +327,7 @@ export default function DemandesPage() {
             </button>
           )}
 
-          {(isRH || isAdmin || true) && (
+          {(isRH || isAdmin) && (
             <button
               onClick={() => setActiveTab('validations_rh')}
               className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
