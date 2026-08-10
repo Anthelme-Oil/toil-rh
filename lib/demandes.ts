@@ -169,7 +169,7 @@ export async function creerDemandeConge(
 /**
  * Convertit un enregistrement SQL `demandes` en objet `DemandeConge`
  */
-function mapRowToDemandeConge(row: any): DemandeConge {
+export function mapRowToDemandeConge(row: any): DemandeConge {
   let statutFormatted: StatutConge = 'En attente de validation';
   if (row.statut === 'APPROUVE' || row.statut_rh === 'APPROUVE') {
     statutFormatted = 'Accordée';
