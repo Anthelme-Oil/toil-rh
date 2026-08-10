@@ -23,12 +23,22 @@ function parseDatabaseUrl(rawUrl?: string) {
       user,
       password,
       database,
-      connectionLimit: 15,
+      connectionLimit: 10,
+      minimumIdle: 0,
+      idleTimeout: 10, // Fermer les connexions inactives au bout de 10s pour éviter la péremption du socket
       connectTimeout: 10000,
       acquireTimeout: 10000,
     };
   } catch {
-    return { host: '127.0.0.1', port: 3306, user: 'root', database: 'toil_db' };
+    return {
+      host: '127.0.0.1',
+      port: 3306,
+      user: 'root',
+      database: 'toil_db',
+      connectionLimit: 10,
+      minimumIdle: 0,
+      idleTimeout: 10,
+    };
   }
 }
 
@@ -49,4 +59,41 @@ export const prisma = getPrisma();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
+}
+
+/**
+ * Robustesse maximale : Exécute une opération Prisma avec re-tentatives automatiques
+ * et déconnexion/reconnexion forcée en cas d'erreur de socket (ECONNRESET)
+ */
+export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    const errString = String(err) + (err instanceof Error ? err.message : '');
+    const isConnError =
+      errString.includes('ECONNRESET') ||
+      errString.includes('ClosedConnection') ||
+      errString.includes('connection') ||
+      errString.includes('socket') ||
+      errString.includes('Protocol error') ||
+      errString.includes('write ECONNRESET');
+
+    if (retries > 0 && isConnError) {
+      console.warn(`[Prisma Retry] Coupure de socket MySQL détectée (ECONNRESET). Reconnexion du pool (reste ${retries} tentative(s))...`);
+      try {
+        await prisma.$disconnect();
+      } catch {
+        // Ignorer l'erreur de déconnexion si le socket est déjà mort
+      }
+      try {
+        await prisma.$connect();
+      } catch {
+        // Ignorer l'erreur de reconnexion immédiate
+      }
+      // Attente courte avant de re-tester la requête
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return await withRetry(fn, retries - 1);
+    }
+    throw err;
+  }
 }

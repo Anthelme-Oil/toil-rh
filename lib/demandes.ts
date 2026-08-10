@@ -3,24 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import 'server-only';
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 import type { DemandeInterne, CompteursDemandesParType, DemandeConge, StatutConge, PieceJointe } from '@/types';
-
-/**
- * Robustesse : Relance une opération Prisma en cas de micro-déconnexion MySQL (ECONNRESET)
- */
-async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
-  try {
-    return await fn();
-  } catch (err: any) {
-    const isConnReset = err?.message?.includes('ECONNRESET') || err?.code === 'ECONNRESET' || String(err).includes('ECONNRESET');
-    if (retries > 0 && isConnReset) {
-      console.warn('[Prisma] Reconnexion MySQL suite à une coupure ECONNRESET...');
-      return await withRetry(fn, retries - 1);
-    }
-    throw err;
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════
 // 1. DEMANDES INTERNES GÉNÉRIQUES (IT, Matériel, Accès, RH)

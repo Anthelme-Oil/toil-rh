@@ -1,5 +1,5 @@
 import 'server-only';
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 
 export interface UserRoleRecord {
   id: string;
@@ -51,11 +51,13 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
  */
 export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
   try {
-    const dbUsers = await prisma.utilisateur.findMany({
-      orderBy: {
-        nom: 'asc',
-      },
-    });
+    const dbUsers = await withRetry(() =>
+      prisma.utilisateur.findMany({
+        orderBy: {
+          nom: 'asc',
+        },
+      })
+    );
 
     if (dbUsers.length === 0) {
       console.log('[Roles] Base vide. Initialisation des utilisateurs par défaut...');
@@ -153,24 +155,26 @@ export async function saveOrUpdateUserRole(data: {
     const cleanEmail = data.email.toLowerCase().trim();
     const cleanManagerEmail = (data.managerEmail || '').toLowerCase().trim();
 
-    await prisma.utilisateur.upsert({
-      where: { email: cleanEmail },
-      update: {
-        nom: data.name.trim(),
-        role: data.role,
-        emailManager: cleanManagerEmail,
-        estRH: Boolean(data.isRH),
-        estCom: Boolean(data.isCom),
-      },
-      create: {
-        nom: data.name.trim(),
-        email: cleanEmail,
-        role: data.role,
-        emailManager: cleanManagerEmail,
-        estRH: Boolean(data.isRH),
-        estCom: Boolean(data.isCom),
-      },
-    });
+    await withRetry(() =>
+      prisma.utilisateur.upsert({
+        where: { email: cleanEmail },
+        update: {
+          nom: data.name.trim(),
+          role: data.role,
+          emailManager: cleanManagerEmail,
+          estRH: Boolean(data.isRH),
+          estCom: Boolean(data.isCom),
+        },
+        create: {
+          nom: data.name.trim(),
+          email: cleanEmail,
+          role: data.role,
+          emailManager: cleanManagerEmail,
+          estRH: Boolean(data.isRH),
+          estCom: Boolean(data.isCom),
+        },
+      })
+    );
 
     return { success: true };
   } catch (err: unknown) {
@@ -186,9 +190,11 @@ export async function saveOrUpdateUserRole(data: {
 export async function deleteUserRole(email: string): Promise<{ success: boolean; error?: string }> {
   try {
     const cleanEmail = email.toLowerCase().trim();
-    await prisma.utilisateur.delete({
-      where: { email: cleanEmail },
-    });
+    await withRetry(() =>
+      prisma.utilisateur.delete({
+        where: { email: cleanEmail },
+      })
+    );
     return { success: true };
   } catch (err: unknown) {
     console.error('[Roles] Erreur suppression utilisateur MySQL:', err);
@@ -203,24 +209,26 @@ export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; 
   try {
     let count = 0;
     for (const u of DEFAULT_USERS) {
-      await prisma.utilisateur.upsert({
-        where: { email: u.email },
-        update: {
-          nom: u.name,
-          role: u.role,
-          emailManager: u.managerEmail,
-          estRH: u.isRH,
-          estCom: u.isCom,
-        },
-        create: {
-          nom: u.name,
-          email: u.email,
-          role: u.role,
-          emailManager: u.managerEmail,
-          estRH: u.isRH,
-          estCom: u.isCom,
-        },
-      });
+      await withRetry(() =>
+        prisma.utilisateur.upsert({
+          where: { email: u.email },
+          update: {
+            nom: u.name,
+            role: u.role,
+            emailManager: u.managerEmail,
+            estRH: u.isRH,
+            estCom: u.isCom,
+          },
+          create: {
+            nom: u.name,
+            email: u.email,
+            role: u.role,
+            emailManager: u.managerEmail,
+            estRH: u.isRH,
+            estCom: u.isCom,
+          },
+        })
+      );
       count++;
     }
     return { success: true, count };
