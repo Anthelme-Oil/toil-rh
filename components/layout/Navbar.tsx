@@ -27,10 +27,11 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { userEmail, userName, userRole, isAdmin, isRH, isCom, setUserEmail } = useUser();
+  const { userEmail, userName, userRole, isAdmin, isRH, isManager, isCom, setUserEmail } = useUser();
 
   const navLinks = [
     ...baseNavLinks,
+    ...(isManager || isRH || isAdmin ? [{ label: '📋 Validation Manager', href: '/demandes/validation' }] : []),
     ...(isAdmin || isCom ? [{ label: '✍️ Publication', href: '/publications' }] : []),
     ...(isAdmin ? [{ label: '⚙️ Admin', href: '/admin/roles' }] : []),
   ];

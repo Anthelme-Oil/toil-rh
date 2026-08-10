@@ -17,11 +17,12 @@ import {
   Mail,
   Trash2,
 } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 import type { UserRoleRecord } from '@/lib/roles';
 
 export default function AdminRolesPage() {
-  const { refreshPermissions } = useUser();
+  const { isAdmin, setUserEmail, refreshPermissions } = useUser();
   const [users, setUsers] = useState<UserRoleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -157,6 +158,49 @@ export default function AdminRolesPage() {
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6">
+        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto border border-red-200 shadow-sm">
+          <ShieldCheck className="w-8 h-8 text-red-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Accès Réservé aux Administrateurs</h1>
+          <p className="text-slate-500 text-sm mt-2">
+            Cette page d'administration nécessite d'être connecté avec un compte Administrateur (tel que{' '}
+            <strong className="text-slate-800">it.helpdesk@togosh.com</strong>).
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm text-left">
+          <button
+            onClick={() => signIn('azure-ad')}
+            className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2"
+          >
+            <Mail className="w-4 h-4" />
+            <span>Connexion Microsoft 365 (Sélectionner un compte Admin)</span>
+          </button>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink mx-3 text-slate-400 text-xs font-semibold">ou Mode Démo</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          <button
+            onClick={() => {
+              setUserEmail('it.helpdesk@togosh.com');
+              refreshPermissions();
+            }}
+            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+          >
+            <span>Bascule rapide vers le compte Admin par défaut (it.helpdesk@togosh.com)</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">

@@ -13,6 +13,14 @@ export interface UserRoleRecord {
 
 const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
   {
+    name: 'IT Helpdesk TogoSH',
+    email: 'it.helpdesk@togosh.com',
+    role: 'ADMIN',
+    managerEmail: '',
+    isRH: true,
+    isCom: true,
+  },
+  {
     name: 'Lino Lino',
     email: 'lino@gmail.com',
     role: 'ADMIN',
@@ -24,7 +32,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     name: 'IT Helpdesk',
     email: 'it_helpdesk@compel-toil.com',
     role: 'MANAGER',
-    managerEmail: 'lino@gmail.com',
+    managerEmail: 'it.helpdesk@togosh.com',
     isRH: false,
     isCom: false,
   },
@@ -32,7 +40,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     name: 'Responsable RH',
     email: 'rh@compel-toil.com',
     role: 'RH',
-    managerEmail: 'lino@gmail.com',
+    managerEmail: 'it.helpdesk@togosh.com',
     isRH: true,
     isCom: true,
   },
@@ -40,7 +48,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     name: 'Portail Test',
     email: 'portail_test@compel-toil.com',
     role: 'EMPLOYE',
-    managerEmail: 'it_helpdesk@compel-toil.com',
+    managerEmail: 'it.helpdesk@togosh.com',
     isRH: false,
     isCom: false,
   },
@@ -101,6 +109,20 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
   }
 
   const cleanEmail = email.toLowerCase().trim();
+
+  // Le compte it.helpdesk@togosh.com est toujours ADMIN par défaut
+  if (cleanEmail === 'it.helpdesk@togosh.com') {
+    return {
+      role: 'ADMIN',
+      isRH: true,
+      isManager: true,
+      isAdmin: true,
+      isCom: true,
+      managerEmail: '',
+      name: 'IT Helpdesk (Admin)',
+    };
+  }
+
   const allRoles = await getAllUserRoles();
   const user = allRoles.find((u) => u.email.toLowerCase().trim() === cleanEmail);
 

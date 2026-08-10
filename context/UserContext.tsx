@@ -16,13 +16,13 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType>({
-  userEmail: 'lino@gmail.com',
-  userName: 'Lino lino',
-  userRole: 'EMPLOYE',
-  isRH: false,
-  isManager: false,
-  isAdmin: false,
-  isCom: false,
+  userEmail: 'it.helpdesk@togosh.com',
+  userName: 'IT Helpdesk (Admin)',
+  userRole: 'ADMIN',
+  isRH: true,
+  isManager: true,
+  isAdmin: true,
+  isCom: true,
   setUserEmail: () => {},
   refreshPermissions: () => {},
 });
@@ -74,14 +74,14 @@ function setCachedPermissions(
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  const [userEmail, setUserEmailState] = useState<string>('lino@gmail.com');
-  const [userName, setUserName] = useState<string>('Lino lino');
+  const [userEmail, setUserEmailState] = useState<string>('it.helpdesk@togosh.com');
+  const [userName, setUserName] = useState<string>('IT Helpdesk (Admin)');
   const [permissions, setPermissions] = useState({
-    role: 'EMPLOYE',
-    isRH: false,
-    isManager: false,
-    isAdmin: false,
-    isCom: false,
+    role: 'ADMIN',
+    isRH: true,
+    isManager: true,
+    isAdmin: true,
+    isCom: true,
   });
 
   // Guard pour ne pas fetch en doublon (React strict mode + fast nav)
