@@ -29,10 +29,10 @@ export function HeroOnboarding({
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         {/* Partie Gauche : Salutation & Présentation */}
         <div className="space-y-4 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-emerald-200 text-xs font-semibold tracking-wide uppercase">
+          {/* <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-emerald-200 text-xs font-semibold tracking-wide uppercase">
             <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
             Parcours d'Intégration T-OIL
-          </div>
+          </div> */}
 
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
             Bienvenue chez T-OIL, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-amber-300">{userName}</span> !
