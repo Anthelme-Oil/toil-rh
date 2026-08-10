@@ -111,6 +111,8 @@ export { getCompteursDemandesUtilisateur as getCompteursDemandesParType };
 // 2. WORKFLOW DE DEMANDE DE CONGÉS (N+1 -> RH)
 // ═══════════════════════════════════════════════════════════════
 
+import { processAndSaveAttachments } from './storage';
+
 /**
  * Crée une nouvelle demande de congé dans MySQL via mysql2.
  */
@@ -121,11 +123,16 @@ export async function creerDemandeConge(
     const id = generateId();
     const cleanEmail = demande.demandeurEmail.toLowerCase().trim();
     const cleanManagerEmail = (demande.managerEmail || '').toLowerCase().trim();
-    const mainAttachmentName = demande.piecesJointes?.[0]?.name || null;
+
+    // Traitement et sauvegarde physique des fichiers lourds dans /public/uploads/
+    const processedAttachments = await processAndSaveAttachments(demande.piecesJointes);
+
+    const mainAttachmentName = processedAttachments?.[0]?.name || null;
+    const mainAttachmentUrl = processedAttachments?.[0]?.url || null;
     const now = new Date();
     const dateDeb = demande.dateDebut ? new Date(demande.dateDebut) : null;
     const dateF = demande.dateFin ? new Date(demande.dateFin) : null;
-    const donneesFormulaire = demande.piecesJointes ? JSON.stringify({ piecesJointes: demande.piecesJointes }) : null;
+    const donneesFormulaire = processedAttachments.length > 0 ? JSON.stringify({ piecesJointes: processedAttachments }) : null;
 
     const sql = `
       INSERT INTO demandes (
@@ -145,7 +152,7 @@ export async function creerDemandeConge(
       dateF,
       demande.nombreJours || 1,
       demande.motif || '',
-      mainAttachmentName,
+      mainAttachmentUrl || mainAttachmentName,
       donneesFormulaire,
       now,
       now,

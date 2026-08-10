@@ -71,7 +71,8 @@ export type StatutConge =
 
 export interface PieceJointe {
   name: string;
-  contentBase64: string;
+  contentBase64?: string;
+  url?: string;
   sizeFormatted?: string;
 }
 
