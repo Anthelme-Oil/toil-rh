@@ -10,6 +10,7 @@ interface UserContextType {
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
+  isCom: boolean;
   setUserEmail: (email: string) => void;
   refreshPermissions: () => void;
 }
@@ -21,6 +22,7 @@ const UserContext = createContext<UserContextType>({
   isRH: false,
   isManager: false,
   isAdmin: false,
+  isCom: false,
   setUserEmail: () => {},
   refreshPermissions: () => {},
 });
@@ -35,6 +37,7 @@ interface CachedPermissions {
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
+  isCom: boolean;
   cachedAt: number;
 }
 
@@ -56,7 +59,7 @@ function getCachedPermissions(email: string): CachedPermissions | null {
 
 function setCachedPermissions(
   email: string,
-  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean }
+  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean }
 ) {
   if (typeof window === 'undefined') return;
   try {
@@ -78,6 +81,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     isRH: false,
     isManager: false,
     isAdmin: false,
+    isCom: false,
   });
 
   // Guard pour ne pas fetch en doublon (React strict mode + fast nav)
@@ -108,6 +112,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           isRH: cached.isRH,
           isManager: cached.isManager,
           isAdmin: cached.isAdmin,
+          isCom: cached.isCom,
         });
         return;
       }
@@ -153,6 +158,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isRH: permissions.isRH,
         isManager: permissions.isManager,
         isAdmin: permissions.isAdmin,
+        isCom: permissions.isCom,
         setUserEmail,
         refreshPermissions: () => fetchPermissions(userEmail, true),
       }}

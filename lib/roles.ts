@@ -8,6 +8,7 @@ export interface UserRoleRecord {
   role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
   managerEmail: string;
   isRH: boolean;
+  isCom: boolean;
 }
 
 const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
@@ -17,6 +18,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     role: 'ADMIN',
     managerEmail: '',
     isRH: true,
+    isCom: true,
   },
   {
     name: 'IT Helpdesk',
@@ -24,6 +26,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     role: 'MANAGER',
     managerEmail: 'lino@gmail.com',
     isRH: false,
+    isCom: false,
   },
   {
     name: 'Responsable RH',
@@ -31,6 +34,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     role: 'RH',
     managerEmail: 'lino@gmail.com',
     isRH: true,
+    isCom: true,
   },
   {
     name: 'Portail Test',
@@ -38,6 +42,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     role: 'EMPLOYE',
     managerEmail: 'it_helpdesk@compel-toil.com',
     isRH: false,
+    isCom: false,
   },
 ];
 
@@ -65,6 +70,7 @@ export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
       role: u.role as UserRoleRecord['role'],
       managerEmail: u.emailManager || '',
       isRH: u.estRH,
+      isCom: u.estCom,
     }));
   } catch (error) {
     console.error('[Roles] Erreur lecture MySQL via Prisma:', error);
@@ -80,6 +86,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
+  isCom: boolean;
   managerEmail: string;
   name: string;
 }> {
@@ -89,6 +96,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isRH: false,
       isManager: false,
       isAdmin: false,
+      isCom: false,
       managerEmail: '',
       name: '',
     };
@@ -104,6 +112,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isRH: false,
       isManager: false,
       isAdmin: false,
+      isCom: false,
       managerEmail: '',
       name: '',
     };
@@ -115,12 +124,14 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
     allRoles.some((u) => u.managerEmail.toLowerCase().trim() === cleanEmail);
   const isRH = user.isRH || user.role === 'RH' || user.role === 'ADMIN';
   const isAdmin = user.role === 'ADMIN';
+  const isCom = user.isCom || isRH || isAdmin;
 
   return {
     role: user.role,
     isRH,
     isManager,
     isAdmin,
+    isCom,
     managerEmail: user.managerEmail,
     name: user.name,
   };
@@ -136,6 +147,7 @@ export async function saveOrUpdateUserRole(data: {
   role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
   managerEmail?: string;
   isRH?: boolean;
+  isCom?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const cleanEmail = data.email.toLowerCase().trim();
@@ -148,6 +160,7 @@ export async function saveOrUpdateUserRole(data: {
         role: data.role,
         emailManager: cleanManagerEmail,
         estRH: Boolean(data.isRH),
+        estCom: Boolean(data.isCom),
       },
       create: {
         nom: data.name.trim(),
@@ -155,6 +168,7 @@ export async function saveOrUpdateUserRole(data: {
         role: data.role,
         emailManager: cleanManagerEmail,
         estRH: Boolean(data.isRH),
+        estCom: Boolean(data.isCom),
       },
     });
 
@@ -196,6 +210,7 @@ export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; 
           role: u.role,
           emailManager: u.managerEmail,
           estRH: u.isRH,
+          estCom: u.isCom,
         },
         create: {
           nom: u.name,
@@ -203,6 +218,7 @@ export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; 
           role: u.role,
           emailManager: u.managerEmail,
           estRH: u.isRH,
+          estCom: u.isCom,
         },
       });
       count++;

@@ -37,6 +37,7 @@ export default function AdminRolesPage() {
     role: 'EMPLOYE' as UserRoleRecord['role'],
     managerEmail: '',
     isRH: false,
+    isCom: false,
   });
 
   const loadUsers = async () => {
@@ -134,7 +135,7 @@ export default function AdminRolesPage() {
           type: 'success',
         });
         setIsAddModalOpen(false);
-        setNewUser({ name: '', email: '', role: 'EMPLOYE', managerEmail: '', isRH: false });
+        setNewUser({ name: '', email: '', role: 'EMPLOYE', managerEmail: '', isRH: false, isCom: false });
         await loadUsers();
         refreshPermissions();
         setTimeout(() => setNotification(null), 3000);
@@ -167,7 +168,7 @@ export default function AdminRolesPage() {
             Gestion des Utilisateurs & Rôles
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Gérez les autorisations d'accès, les administrateurs et les supérieurs hiérarchiques (N+1).
+            Gérez les autorisations d'accès, les administrateurs, les accès RH, Com et les supérieurs N+1.
           </p>
         </div>
 
@@ -245,7 +246,8 @@ export default function AdminRolesPage() {
                   <th className="py-3 px-5">Utilisateur</th>
                   <th className="py-3 px-5">Rôle</th>
                   <th className="py-3 px-5">Manager Direct (N+1)</th>
-                  <th className="py-3 px-5 text-center">Accès RH</th>
+                  <th className="py-3 px-3 text-center">Accès RH</th>
+                  <th className="py-3 px-3 text-center">Publi. Com</th>
                   <th className="py-3 px-5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -312,7 +314,7 @@ export default function AdminRolesPage() {
                     </td>
 
                     {/* Accès RH Toggle */}
-                    <td className="py-3.5 px-5 text-center">
+                    <td className="py-3.5 px-3 text-center">
                       <input
                         type="checkbox"
                         checked={user.isRH}
@@ -323,6 +325,21 @@ export default function AdminRolesPage() {
                           );
                         }}
                         className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                      />
+                    </td>
+
+                    {/* Accès Com (Publication) Toggle */}
+                    <td className="py-3.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={user.isCom}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setUsers((prev) =>
+                            prev.map((u) => (u.id === user.id ? { ...u, isCom: checked } : u))
+                          );
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer accent-blue-600"
                       />
                     </td>
 
@@ -425,8 +442,8 @@ export default function AdminRolesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Accès RH</label>
-                  <div className="flex items-center h-9">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Autorisations</label>
+                  <div className="space-y-1.5 pt-1">
                     <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
                       <input
                         type="checkbox"
@@ -434,7 +451,16 @@ export default function AdminRolesPage() {
                         onChange={(e) => setNewUser({ ...newUser, isRH: e.target.checked })}
                         className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 accent-emerald-600"
                       />
-                      <span>Membre RH</span>
+                      <span>Accès RH</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={newUser.isCom}
+                        onChange={(e) => setNewUser({ ...newUser, isCom: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 accent-blue-600"
+                      />
+                      <span>Publication Com</span>
                     </label>
                   </div>
                 </div>

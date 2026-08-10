@@ -23,5 +23,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Reload server configuration for updated Prisma schema models
 export default nextConfig;
