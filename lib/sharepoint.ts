@@ -130,6 +130,40 @@ export async function getActualiteById(id: string): Promise<Actualite | null> {
 
 
 /**
+ * Uploade un document (ex: justificatif de congé, pièce jointe) dans la bibliothèque de documents SharePoint Online.
+ * @param buffer - Le contenu binaire du fichier
+ * @param fileName - Le nom du fichier
+ * @param folder - Le dossier cible dans la bibliothèque (ex: 'Justificatifs_Conges')
+ */
+export async function uploadDocumentToSharePoint(
+  buffer: Buffer,
+  fileName: string,
+  folder: string = 'Justificatifs_Conges'
+): Promise<string | null> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    return null;
+  }
+  const siteBase = getSiteApiBase();
+
+  try {
+    const timestamp = Date.now();
+    const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `${folder}/${timestamp}_${cleanFileName}`;
+    const driveId = DRIVE_PROCEDURES_RH || DRIVE_PROCEDURES_IT;
+
+    const response = await graphClient
+      .api(`${siteBase}/drives/${driveId}/root:/${path}:/content`)
+      .put(buffer);
+
+    return (response.webUrl as string) || null;
+  } catch (error) {
+    console.error('[SharePoint] Erreur upload document vers SharePoint Online:', error);
+    return null;
+  }
+}
+
+/**
  * Uploade une image de couverture pour un blog dans la bibliothèque SharePoint.
  * @param buffer - Le contenu binaire du fichier
  * @param fileName - Le nom du fichier avec extension

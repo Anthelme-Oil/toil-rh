@@ -2,10 +2,12 @@ import 'server-only';
 import fs from 'fs/promises';
 import path from 'path';
 import type { PieceJointe } from '@/types';
+import { uploadDocumentToSharePoint } from './sharepoint';
 
 /**
- * Traite et enregistre les pièces jointes (fichiers base64) sur le disque local dans /public/uploads/
- * et retourne la liste des pièces jointes légères avec leurs URLs d'accès direct.
+ * Traite et enregistre les pièces jointes :
+ * 1. En priorité dans la bibliothèque de documents SharePoint Online via Microsoft Graph API.
+ * 2. En fallback local dans /public/uploads/ si SharePoint n'est pas encore configuré.
  */
 export async function processAndSaveAttachments(
   piecesJointes?: PieceJointe[]
@@ -15,11 +17,6 @@ export async function processAndSaveAttachments(
   }
 
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-
-  try {
-    await fs.mkdir(uploadDir, { recursive: true });
-  } catch {}
-
   const processed: PieceJointe[] = [];
 
   for (const pj of piecesJointes) {
@@ -35,19 +32,39 @@ export async function processAndSaveAttachments(
       }
 
       const buffer = Buffer.from(base64Data, 'base64');
+      const fileName = pj.name || 'document';
+
+      // 1. Tenter l'upload direct dans SharePoint Online
+      const spUrl = await uploadDocumentToSharePoint(buffer, fileName, 'Justificatifs_Conges');
+
+      if (spUrl) {
+        console.log(`[Storage] Fichier "${fileName}" stocké dans SharePoint Online :`, spUrl);
+        processed.push({
+          name: fileName,
+          url: spUrl,
+        });
+        continue;
+      }
+
+      // 2. Fallback stockage local si SharePoint n'est pas configuré
+      try {
+        await fs.mkdir(uploadDir, { recursive: true });
+      } catch {}
+
       const timePrefix = Date.now();
-      const sanitizedName = (pj.name || 'piece_jointe').replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const fileName = `${timePrefix}_${sanitizedName}`;
-      const filePath = path.join(uploadDir, fileName);
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const localFileName = `${timePrefix}_${sanitizedName}`;
+      const filePath = path.join(uploadDir, localFileName);
 
       await fs.writeFile(filePath, buffer);
 
+      console.log(`[Storage] Fichier "${fileName}" stocké localement : /uploads/${localFileName}`);
       processed.push({
-        name: pj.name,
-        url: `/uploads/${fileName}`,
+        name: fileName,
+        url: `/uploads/${localFileName}`,
       });
     } catch (err) {
-      console.error('[Storage] Erreur sauvegarde fichier local:', err);
+      console.error('[Storage] Erreur sauvegarde fichier:', err);
       processed.push({
         name: pj.name,
       });
