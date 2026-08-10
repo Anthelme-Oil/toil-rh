@@ -56,7 +56,7 @@ export default function Navbar() {
             </Link>
 
             {/* ── Navigation Desktop ── */}
-            <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 ml-4 xl:ml-6 flex-1 justify-start" id="nav-main">
+            <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 ml-4 xl:ml-6 flex-1 justify-end mr-3 xl:mr-5" id="nav-main">
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
@@ -80,10 +80,10 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {/* Barre de recherche */}
               <div
-                className={`hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
+                className={`hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                   searchFocused
                     ? 'border-primary bg-white ring-2 ring-primary-100 w-52'
-                    : 'border-border bg-surface-alt/80 w-36'
+                    : 'border-border bg-surface-alt/80 w-36 xl:w-44'
                 }`}
               >
                 <Search className="w-4 h-4 text-text-muted flex-shrink-0" />
