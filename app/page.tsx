@@ -12,6 +12,7 @@ import HeroBanner from '@/components/dashboard/HeroBanner';
 import ActualitesSection from '@/components/dashboard/ActualitesSection';
 import AccesRapidesSection from '@/components/dashboard/AccesRapidesSection';
 import MesDemandesSection from '@/components/dashboard/MesDemandesSection';
+import VideosSection from '@/components/dashboard/VideosSection';
 import AnnoncesSection from '@/components/dashboard/AnnoncesSection';
 import EvenementsSection from '@/components/dashboard/EvenementsSection';
 
@@ -60,15 +61,18 @@ export default async function DashboardPage() {
 
       {/* ── Contenu principal (glisse par-dessus la bannière au scroll) ── */}
       <main className="relative z-10 flex-1">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-8 space-y-8">
           {/* ── Ligne 1 : Actualités / Accès rapides / Mes demandes ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <ActualitesSection actualites={actualites} />
             <AccesRapidesSection outils={outilsM365} />
             <MesDemandesSection compteurs={compteurs} />
           </div>
 
-          {/* ── Ligne 2 : Annonces / Événements ── */}
+          {/* ── Ligne 2 : Section Vidéos & Actualités Médias (avec accès Onboarding) ── */}
+          <VideosSection />
+
+          {/* ── Ligne 3 : Annonces / Événements ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AnnoncesSection annonces={annonces} />
             <EvenementsSection evenements={evenements} />

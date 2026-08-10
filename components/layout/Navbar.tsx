@@ -17,7 +17,6 @@ const navLinks = [
   { label: 'Informations', href: '/informations' },
   { label: 'Outils', href: '/outils' },
   { label: 'Demandes & Services', href: '/demandes' },
-  { label: 'Onboarding', href: '/onboarding' },
   { label: 'Réservations', href: '/reservations' },
   { label: 'Formations', href: '/formations' },
   { label: 'Communautés', href: '/communautes' },
