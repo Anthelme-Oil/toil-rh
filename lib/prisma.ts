@@ -25,7 +25,7 @@ function parseDatabaseUrl(rawUrl?: string) {
       database,
       connectionLimit: 10,
       minimumIdle: 0,
-      idleTimeout: 10, // Fermer les connexions inactives au bout de 10s pour éviter la péremption du socket
+      idleTimeout: 30, // Fermeture propre des sockets inactifs après 30s
       connectTimeout: 10000,
       acquireTimeout: 10000,
     };
@@ -37,7 +37,7 @@ function parseDatabaseUrl(rawUrl?: string) {
       database: 'toil_db',
       connectionLimit: 10,
       minimumIdle: 0,
-      idleTimeout: 10,
+      idleTimeout: 30,
     };
   }
 }
@@ -55,15 +55,43 @@ export function getPrisma(): PrismaClient {
   return globalForPrisma.prisma;
 }
 
-export const prisma = getPrisma();
+/**
+ * Recrée une nouvelle instance propre de PrismaClient et de son pool MariaDB
+ */
+export function resetPrismaClient(): PrismaClient {
+  try {
+    if (globalForPrisma.prisma) {
+      globalForPrisma.prisma.$disconnect().catch(() => {});
+    }
+  } catch {
+    // Ignorer
+  }
+  globalForPrisma.prisma = createClient();
+  return globalForPrisma.prisma;
+}
+
+/**
+ * Proxy dynamique vers l'instance active de PrismaClient.
+ * Permet la réinstanciation transparente du pool mariadb sans casser les références importées.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop: keyof PrismaClient) {
+    const client = getPrisma();
+    const value = client[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = getPrisma();
 }
 
 /**
  * Robustesse maximale : Exécute une opération Prisma avec re-tentatives automatiques
- * et déconnexion/reconnexion forcée en cas d'erreur de socket (ECONNRESET)
+ * et réinstanciation intégrale du pool MariaDB en cas de rupture de socket (ECONNRESET / pool ending)
  */
 export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   try {
@@ -76,21 +104,15 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T
       errString.includes('connection') ||
       errString.includes('socket') ||
       errString.includes('Protocol error') ||
-      errString.includes('write ECONNRESET');
+      errString.includes('write ECONNRESET') ||
+      errString.includes('pool is ending') ||
+      errString.includes('45037');
 
     if (retries > 0 && isConnError) {
-      console.warn(`[Prisma Retry] Coupure de socket MySQL détectée (ECONNRESET). Reconnexion du pool (reste ${retries} tentative(s))...`);
-      try {
-        await prisma.$disconnect();
-      } catch {
-        // Ignorer l'erreur de déconnexion si le socket est déjà mort
-      }
-      try {
-        await prisma.$connect();
-      } catch {
-        // Ignorer l'erreur de reconnexion immédiate
-      }
-      // Attente courte avant de re-tester la requête
+      console.warn(
+        `[Prisma Retry] Coupure de socket MySQL/Pool terminée. Régénération du pool (${retries} tentative(s) restante(s))...`
+      );
+      resetPrismaClient();
       await new Promise((resolve) => setTimeout(resolve, 300));
       return await withRetry(fn, retries - 1);
     }
