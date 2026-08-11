@@ -15,6 +15,8 @@ const PUBLIC_ROUTES = [
   '/auth/signin',
   '/auth/error',
   '/api/auth',
+  '/api/images',    // Proxy images SharePoint — chargé directement par le navigateur (src img)
+  '/api/uploads',   // Fichiers uploadés localement — servis publiquement
 ];
 
 export function middleware(request: NextRequest) {
