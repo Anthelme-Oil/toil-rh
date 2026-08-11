@@ -31,8 +31,15 @@ function getCatStyle(cat?: string) {
 }
 
 export default async function InformationsPage() {
-  const spActualites = await getActualites(20);
-  const actualites = spActualites.length > 0 ? spActualites : mockActualites;
+  const spActualites = await getActualites(100);
+  const actualites = spActualites.length > 0 ? spActualites : [...mockActualites];
+
+  // Tri garanti du plus récent au plus ancien
+  actualites.sort((a, b) => {
+    const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;
+    const dateB = b.datePublication ? new Date(b.datePublication).getTime() : 0;
+    return dateB - dateA;
+  });
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">

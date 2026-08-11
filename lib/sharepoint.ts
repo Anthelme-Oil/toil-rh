@@ -68,22 +68,33 @@ export async function getActualites(top: number = 5): Promise<Actualite[]> {
     const response = await graphClient
       .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items`)
       .expand('fields')
-      .top(top)
+      .top(100)
       .get();
 
-    return (response.value || []).map((item: Record<string, unknown>) => {
+    const items: Actualite[] = (response.value || []).map((item: Record<string, unknown>) => {
       const fields = item.fields as Record<string, string>;
       const id = item.id as string;
       return {
         id,
         titre: fields.Title || '',
         description: fields.Description || '',
-        datePublication: fields.DatePublication || '',
+        contenu: fields.Contenu || '',
+        datePublication: fields.DatePublication || (item.createdDateTime as string) || '',
         imageUrl: extractImageUrl(fields, id),
         categorie: fields.Categorie || undefined,
+        auteur: fields.Auteur || undefined,
         lienVersPage: fields.LienVersPage || undefined,
       };
     });
+
+    // Tri par date de publication DÉCROISSANTE (du plus récent au plus ancien)
+    items.sort((a, b) => {
+      const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;
+      const dateB = b.datePublication ? new Date(b.datePublication).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return items.slice(0, top);
   } catch (error) {
     console.error('[SharePoint] Erreur récupération actualités:', error);
     return [];
