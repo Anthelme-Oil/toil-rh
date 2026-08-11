@@ -30,8 +30,8 @@ function formatSharePointUrl(rawUrl: string): string {
   if (url.startsWith('data:') || url.startsWith('/')) {
     return url;
   }
-  if (url.includes('sharepoint.com') && !url.includes('download=1')) {
-    url += url.includes('?') ? '&download=1' : '?download=1';
+  if (url.includes('sharepoint.com')) {
+    return `/api/images/proxy?url=${encodeURIComponent(url)}`;
   }
   return url;
 }

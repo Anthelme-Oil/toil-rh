@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import fs from 'fs';
+import path from 'path';
 import { creerActualite, getActualites, uploadBlogImage } from '@/lib/sharepoint';
 
 export async function GET() {
@@ -31,19 +33,34 @@ export async function POST(request: Request) {
 
     let imageUrl: string | undefined = undefined;
 
-    // 1. Conversion de l'image en Base64 Data URL pour affichage garanti sans problème de CORS / Auth SharePoint
+    // 1. Sauvegarde locale de l'image pour affichage direct (court et compatible SharePoint < 255 chars)
     if (imageFile && imageFile.size > 0) {
-      const bytes = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const mimeType = imageFile.type || 'image/jpeg';
-      const base64 = buffer.toString('base64');
-      imageUrl = `data:${mimeType};base64,${base64}`;
-
-      // Envoi optionnel vers le Drive SharePoint si configuré
       try {
-        await uploadBlogImage(buffer, imageFile.name);
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'blogs');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const timestamp = Date.now();
+        const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filename = `${timestamp}_${cleanFileName}`;
+        const filePath = path.join(uploadDir, filename);
+
+        const bytes = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        fs.writeFileSync(filePath, buffer);
+
+        // URL relative courte (< 50 caractères)
+        imageUrl = `/uploads/blogs/${filename}`;
+
+        // Upload optionnel vers le Drive SharePoint si configuré
+        try {
+          await uploadBlogImage(buffer, imageFile.name);
+        } catch (err) {
+          console.warn('[SharePoint Drive] Upload image optionnel ignoré:', err);
+        }
       } catch (err) {
-        console.warn('[SharePoint Drive] Upload image optionnel ignoré:', err);
+        console.error('[API Actualités] Erreur sauvegarde locale de l\'image:', err);
       }
     }
 
@@ -56,7 +73,7 @@ export async function POST(request: Request) {
       imageUrl,
     });
 
-    // 3. Purge du cache Next.js pour affichage instantané sur toutes les pages
+    // 3. Purge du cache Next.js pour affichage instantané
     revalidatePath('/informations');
     revalidatePath('/');
 
