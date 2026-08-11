@@ -45,7 +45,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full transition-all duration-200">
-      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 pt-3">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4">
         <div
           className="bg-white/95 backdrop-blur-md rounded-2xl border border-border/80 px-3 sm:px-5 shadow-sm transition-all duration-200"
           style={{ boxShadow: 'var(--shadow-card)' }}
