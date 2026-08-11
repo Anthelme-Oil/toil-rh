@@ -1,36 +1,53 @@
 'use client';
 
+// ═══════════════════════════════════════════════════════════════
+// UserContext — Source unique d'identité via NextAuth (SSO Microsoft)
+// ═══════════════════════════════════════════════════════════════
+// L'identité utilisateur provient UNIQUEMENT de la session NextAuth.
+// Les permissions (rôle, isRH, isManager, etc.) sont lues depuis MySQL
+// via l'API /api/roles/me (protégée par session serveur).
+// ═══════════════════════════════════════════════════════════════
+
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface UserContextType {
+  /** Email de l'utilisateur connecté (vide si non connecté) */
   userEmail: string;
+  /** Nom affiché de l'utilisateur */
   userName: string;
+  /** Rôle principal (EMPLOYE, MANAGER, RH, ADMIN) */
   userRole: string;
+  /** Flags de permissions */
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
   isCom: boolean;
-  setUserEmail: (email: string) => void;
+  /** L'utilisateur est-il authentifié via SSO ? */
+  isAuthenticated: boolean;
+  /** Chargement en cours des permissions ? */
+  isLoading: boolean;
+  /** Forcer le rechargement des permissions depuis le serveur */
   refreshPermissions: () => void;
 }
 
 const UserContext = createContext<UserContextType>({
-  userEmail: 'it.helpdesk@togosh.com',
-  userName: 'IT Helpdesk (Admin)',
-  userRole: 'ADMIN',
-  isRH: true,
-  isManager: true,
-  isAdmin: true,
-  isCom: true,
-  setUserEmail: () => {},
+  userEmail: '',
+  userName: '',
+  userRole: 'EMPLOYE',
+  isRH: false,
+  isManager: false,
+  isAdmin: false,
+  isCom: false,
+  isAuthenticated: false,
+  isLoading: true,
   refreshPermissions: () => {},
 });
 
-// ── Helpers cache sessionStorage ──
+// ── Cache sessionStorage (évite les requêtes en doublon lors de la navigation) ──
 
 const CACHE_KEY_PREFIX = 'toil_permissions_';
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes (aligné sur le cache serveur)
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 interface CachedPermissions {
   role: string;
@@ -38,6 +55,7 @@ interface CachedPermissions {
   isManager: boolean;
   isAdmin: boolean;
   isCom: boolean;
+  name: string;
   cachedAt: number;
 }
 
@@ -59,7 +77,7 @@ function getCachedPermissions(email: string): CachedPermissions | null {
 
 function setCachedPermissions(
   email: string,
-  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean }
+  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean; name: string }
 ) {
   if (typeof window === 'undefined') return;
   try {
@@ -68,42 +86,40 @@ function setCachedPermissions(
       JSON.stringify({ ...perms, cachedAt: Date.now() })
     );
   } catch {
-    // sessionStorage plein ou indisponible — on ignore
+    // sessionStorage plein ou indisponible
   }
 }
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const [userEmail, setUserEmailState] = useState<string>('it.helpdesk@togosh.com');
-  const [userName, setUserName] = useState<string>('IT Helpdesk (Admin)');
-  const [permissions, setPermissions] = useState({
-    role: 'ADMIN',
-    isRH: true,
-    isManager: true,
-    isAdmin: true,
-    isCom: true,
-  });
+  const { data: session, status } = useSession();
 
-  // Guard pour ne pas fetch en doublon (React strict mode + fast nav)
+  // État par défaut = non connecté, aucun privilège
+  const [permissions, setPermissions] = useState({
+    role: 'EMPLOYE',
+    isRH: false,
+    isManager: false,
+    isAdmin: false,
+    isCom: false,
+    name: '',
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Guard pour ne pas fetch en doublon
   const fetchInFlightRef = useRef<string | null>(null);
 
-  // Si l'utilisateur est connecté via NextAuth/Microsoft 365, utiliser son email réel
-  useEffect(() => {
-    if (session?.user?.email) {
-      setUserEmailState(session.user.email);
-      setUserName(session.user.name || session.user.email);
-    } else {
-      const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('toil_simulated_email') : null;
-      if (savedEmail) {
-        setUserEmailState(savedEmail);
-      }
-    }
-  }, [session]);
+  // Email et nom proviennent uniquement de la session NextAuth
+  const userEmail = session?.user?.email || '';
+  const sessionName = session?.user?.name || '';
+  const isAuthenticated = status === 'authenticated' && !!userEmail;
 
   const fetchPermissions = useCallback(async (email: string, forceRefresh = false) => {
-    if (!email) return;
+    if (!email) {
+      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, name: '' });
+      setIsLoading(false);
+      return;
+    }
 
-    // 1. Vérification du cache sessionStorage (instantané, 0 requête)
+    // 1. Cache sessionStorage (instantané, 0 requête)
     if (!forceRefresh) {
       const cached = getCachedPermissions(email);
       if (cached) {
@@ -113,53 +129,67 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           isManager: cached.isManager,
           isAdmin: cached.isAdmin,
           isCom: cached.isCom,
+          name: cached.name,
         });
+        setIsLoading(false);
         return;
       }
     }
 
-    // 2. Éviter les requêtes en double si un fetch est déjà en cours pour cet email
+    // 2. Éviter les requêtes en double
     if (fetchInFlightRef.current === email) return;
     fetchInFlightRef.current = email;
 
     try {
-      const res = await fetch(`/api/roles/me?email=${encodeURIComponent(email)}`);
+      // L'API /api/roles/me lit l'email depuis la session serveur (auth())
+      const res = await fetch('/api/roles/me');
       if (res.ok) {
         const data = await res.json();
-        setPermissions(data);
-        setCachedPermissions(email, data);
+        const perms = {
+          role: data.role || 'EMPLOYE',
+          isRH: data.isRH || false,
+          isManager: data.isManager || false,
+          isAdmin: data.isAdmin || false,
+          isCom: data.isCom || false,
+          name: data.name || '',
+        };
+        setPermissions(perms);
+        setCachedPermissions(email, perms);
       }
     } catch (err) {
-      console.error('Erreur récupération permissions:', err);
+      console.error('[UserContext] Erreur récupération permissions:', err);
     } finally {
       fetchInFlightRef.current = null;
+      setIsLoading(false);
     }
   }, []);
 
+  // Charger les permissions dès que la session est disponible
   useEffect(() => {
+    if (status === 'loading') return; // Attendre que NextAuth ait fini
     if (userEmail) {
       fetchPermissions(userEmail);
+    } else {
+      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, name: '' });
+      setIsLoading(false);
     }
-  }, [userEmail, fetchPermissions]);
+  }, [userEmail, status, fetchPermissions]);
 
-  const setUserEmail = (email: string) => {
-    setUserEmailState(email);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('toil_simulated_email', email);
-    }
-  };
+  // Le nom affiché = nom de la session SSO, ou nom stocké en BD via permissions
+  const displayName = sessionName || permissions.name || userEmail.split('@')[0] || '';
 
   return (
     <UserContext.Provider
       value={{
         userEmail,
-        userName,
+        userName: displayName,
         userRole: permissions.role,
         isRH: permissions.isRH,
         isManager: permissions.isManager,
         isAdmin: permissions.isAdmin,
         isCom: permissions.isCom,
-        setUserEmail,
+        isAuthenticated,
+        isLoading,
         refreshPermissions: () => fetchPermissions(userEmail, true),
       }}
     >

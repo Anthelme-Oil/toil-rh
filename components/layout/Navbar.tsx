@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
 import { Search, Bell, Settings, HelpCircle, Menu, X, UserCheck } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 
 const baseNavLinks = [
@@ -27,11 +27,11 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { userEmail, userName, userRole, isAdmin, isRH, isManager, isCom, setUserEmail } = useUser();
+  const { userEmail, userName, userRole, isAdmin, isRH, isManager, isCom, isAuthenticated } = useUser();
 
   const navLinks = [
     ...baseNavLinks,
-    ...(isManager || isRH || isAdmin ? [{ label: '📋 Validation Manager', href: '/demandes/validation' }] : []),
+    ...(isManager || isRH || isAdmin ? [{ label: '📋 Validation', href: '/demandes/validation' }] : []),
     ...(isAdmin || isCom ? [{ label: '✍️ Publication', href: '/publications' }] : []),
     ...(isAdmin ? [{ label: '⚙️ Admin', href: '/admin/roles' }] : []),
   ];
@@ -45,28 +45,28 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full transition-all duration-200">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-3">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 pt-3">
         <div
-          className="bg-white/95 backdrop-blur-md rounded-2xl border border-border/80 px-4 sm:px-6 shadow-sm transition-all duration-200"
+          className="bg-white/95 backdrop-blur-md rounded-2xl border border-border/80 px-3 sm:px-5 shadow-sm transition-all duration-200"
           style={{ boxShadow: 'var(--shadow-card)' }}
         >
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
             {/* ── Logo ── */}
             <Link href="/" className="flex-shrink-0 focus-ring" id="nav-logo">
               <Logo />
             </Link>
 
             {/* ── Navigation Desktop ── */}
-            <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 ml-4 xl:ml-6 flex-1 justify-end mr-3 xl:mr-5" id="nav-main">
+            <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 2xl:gap-1.5 min-w-0 overflow-x-auto scrollbar-none py-1 mx-2" id="nav-main">
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative px-2.5 py-1.5 xl:px-3.5 text-xs xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap focus-ring ${
+                    className={`relative px-2 py-1.5 xl:px-2.5 2xl:px-3 text-[11px] xl:text-xs 2xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap flex-shrink-0 focus-ring ${
                       active
-                        ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-0.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-primary after:rounded-full'
+                        ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-0.5 after:left-1.5 after:right-1.5 after:h-[2.5px] after:bg-primary after:rounded-full'
                         : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'
                     }`}
                     id={`nav-link-${link.href.replace('/', '') || 'home'}`}
@@ -78,13 +78,13 @@ export default function Navbar() {
             </nav>
 
             {/* ── Actions droites ── */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
               {/* Barre de recherche */}
               <div
-                className={`hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
+                className={`hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                   searchFocused
-                    ? 'border-primary bg-white ring-2 ring-primary-100 w-52'
-                    : 'border-border bg-surface-alt/80 w-36 xl:w-44'
+                    ? 'border-primary bg-white ring-2 ring-primary-100 w-48'
+                    : 'border-border bg-surface-alt/80 w-36'
                 }`}
               >
                 <Search className="w-4 h-4 text-text-muted flex-shrink-0" />
@@ -134,39 +134,35 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-border shadow-xl p-4 z-50 animate-fade-in space-y-4">
                     <div className="flex items-center gap-3 pb-3 border-b border-border">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-sm">
-                        {userEmail.charAt(0).toUpperCase()}
+                        {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-text-primary truncate">{userName}</p>
-                        <p className="text-[11px] text-text-muted truncate">{userEmail}</p>
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-primary-50 text-primary text-[10px] font-extrabold uppercase">
-                          Rôle : {userRole}
-                        </span>
+                        <p className="text-xs font-bold text-text-primary truncate">{userName || 'Non connecté'}</p>
+                        <p className="text-[11px] text-text-muted truncate">{userEmail || 'Aucune session active'}</p>
+                        {userRole && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-primary-50 text-primary text-[10px] font-extrabold uppercase">
+                            Rôle : {userRole}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Simulation / Test de compte */}
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-text-secondary">
-                        Changer de compte (Mode test/démo) :
-                      </label>
-                      <input
-                        type="email"
-                        value={userEmail}
-                        onChange={(e) => setUserEmail(e.target.value)}
-                        placeholder="ex: lino@gmail.com"
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface-alt text-text-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                      />
-                    </div>
-
-                    {/* Bouton Connexion SSO Microsoft 365 */}
-                    <button
-                      onClick={() => signIn('azure-ad')}
-                      className="w-full py-2.5 px-3 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors shadow-sm"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      Connexion Microsoft 365 (Entra ID)
-                    </button>
+                    {isAuthenticated ? (
+                      <button
+                        onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                        className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                      >
+                        Se déconnecter
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => signIn('azure-ad')}
+                        className="w-full py-2.5 px-3 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors shadow-sm"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                        Connexion Microsoft 365
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

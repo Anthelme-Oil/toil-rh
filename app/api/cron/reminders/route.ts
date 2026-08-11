@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     );
 
     let rhCount = 0;
-    const rhEmail = process.env.NOTIFICATION_RH_EMAIL || 'rh@compel-toil.com';
+    const rhEmail = process.env.RH_NOTIFICATION_EMAIL || process.env.NOTIFICATION_RH_EMAIL || 'rh@compel-toil.com';
     for (const row of pendingRHRows) {
       const demande = mapRowToDemandeConge(row);
       await sendLeaveNotificationEmail({

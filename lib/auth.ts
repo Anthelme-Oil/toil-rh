@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════════
-// NextAuth.js — Configuration Microsoft Entra ID (Azure AD) + MySQL Sync via mysql2
+// NextAuth.js — Configuration Microsoft Entra ID (Azure AD) + Credentials + MySQL Sync via mysql2
 // ═══════════════════════════════════════════════════════════════
 
 import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
+import Credentials from 'next-auth/providers/credentials';
 import { query, execute, generateId } from './db';
+import { getUserPermissionsByEmail } from './roles';
 
 declare module 'next-auth' {
   interface Session {
@@ -43,11 +45,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
     }),
+    Credentials({
+      id: 'credentials',
+      name: 'Connexion Directe / Démo',
+      credentials: {
+        email: { label: 'Email', type: 'text' },
+      },
+      async authorize(credentials) {
+        const rawEmail = credentials?.email as string | undefined;
+        if (!rawEmail) return null;
+
+        const cleanEmail = rawEmail.toLowerCase().trim();
+        const perms = await getUserPermissionsByEmail(cleanEmail);
+
+        // Si l'utilisateur n'existe pas encore en BD, on l'upsert
+        const now = new Date();
+        const displayName = perms.name || cleanEmail.split('@')[0];
+        try {
+          const sql = `
+            INSERT INTO utilisateurs (id, nom, email, role, est_rh, est_com, cree_le, mis_a_jour_le)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              nom = VALUES(nom),
+              mis_a_jour_le = VALUES(mis_a_jour_le)
+          `;
+          await execute(sql, [
+            generateId(),
+            displayName,
+            cleanEmail,
+            perms.role,
+            perms.isRH ? 1 : 0,
+            perms.isCom ? 1 : 0,
+            now,
+            now,
+          ]);
+        } catch (e) {
+          console.warn('[Auth] Avertissement upsert credentials:', e);
+        }
+
+        return {
+          id: cleanEmail,
+          email: cleanEmail,
+          name: displayName,
+        };
+      },
+    }),
   ],
 
   callbacks: {
     /**
-     * Callback JWT : lors de la connexion Microsoft, upsert automatique dans MySQL 
+     * Callback JWT : lors de la connexion (SSO ou Credentials), upsert automatique dans MySQL 
      * et association avec le rôle / N+1 configuré par l'Admin.
      */
     async jwt({ token, account, profile, user }) {

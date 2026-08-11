@@ -1,7 +1,7 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════
-// Page Administration — Design Épuré, Intuitif & Professionnel
+// Page Administration — Gestion Utilisateurs & Configuration E-mails
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react';
@@ -16,13 +16,19 @@ import {
   RefreshCw,
   Mail,
   Trash2,
+  Send,
+  Sliders,
+  Users,
 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 import type { UserRoleRecord } from '@/lib/roles';
 
 export default function AdminRolesPage() {
-  const { isAdmin, setUserEmail, refreshPermissions } = useUser();
+  const { isAdmin, refreshPermissions } = useUser();
+  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
+
+  // ── État Utilisateurs & Rôles ──
   const [users, setUsers] = useState<UserRoleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -41,6 +47,18 @@ export default function AdminRolesPage() {
     isCom: false,
   });
 
+  // ── État Configuration E-mails & Notifications ──
+  const [settings, setSettings] = useState({
+    senderEmail: 'it.helpdesk@togosh.com',
+    rhEmail: 'rh@compel-toil.com',
+    enableEmailNotifications: true,
+  });
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [sendingTestMail, setSendingTestMail] = useState(false);
+  const [testMailResult, setTestMailResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -56,8 +74,28 @@ export default function AdminRolesPage() {
     }
   };
 
+  const loadSettings = async () => {
+    setLoadingSettings(true);
+    try {
+      const res = await fetch('/api/admin/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings({
+          senderEmail: data.senderEmail || 'it.helpdesk@togosh.com',
+          rhEmail: data.rhEmail || 'rh@compel-toil.com',
+          enableEmailNotifications: data.enableEmailNotifications !== undefined ? data.enableEmailNotifications : true,
+        });
+      }
+    } catch (err) {
+      console.error('Erreur chargement paramètres:', err);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadSettings();
   }, []);
 
   const handleUpdateUser = async (userToUpdate: UserRoleRecord) => {
@@ -152,6 +190,59 @@ export default function AdminRolesPage() {
     }
   };
 
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+
+      if (res.ok) {
+        setNotification({
+          message: 'Configuration des e-mails mise à jour avec succès.',
+          type: 'success',
+        });
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur d’enregistrement');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur sauvegarde paramètres';
+      setNotification({ message: msg, type: 'error' });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingTestMail(true);
+    setTestMailResult(null);
+    try {
+      const res = await fetch('/api/admin/settings/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: testRecipient }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestMailResult({ success: true, message: data.message });
+      } else {
+        setTestMailResult({ success: false, message: data.error || 'Échec d’envoi du mail de test' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur envoi de test';
+      setTestMailResult({ success: false, message: msg });
+    } finally {
+      setSendingTestMail(false);
+    }
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -168,8 +259,8 @@ export default function AdminRolesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Accès Réservé aux Administrateurs</h1>
           <p className="text-slate-500 text-sm mt-2">
-            Cette page d'administration nécessite d'être connecté avec un compte Administrateur (tel que{' '}
-            <strong className="text-slate-800">it.helpdesk@togosh.com</strong>).
+            Cette page d&apos;administration nécessite d&apos;être connecté avec un compte disposant du rôle{' '}
+            <strong className="text-slate-800">Administrateur</strong>.
           </p>
         </div>
 
@@ -181,22 +272,6 @@ export default function AdminRolesPage() {
             <Mail className="w-4 h-4" />
             <span>Connexion Microsoft 365 (Sélectionner un compte Admin)</span>
           </button>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink mx-3 text-slate-400 text-xs font-semibold">ou Mode Démo</span>
-            <div className="flex-grow border-t border-slate-200"></div>
-          </div>
-
-          <button
-            onClick={() => {
-              setUserEmail('it.helpdesk@togosh.com');
-              refreshPermissions();
-            }}
-            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2"
-          >
-            <span>Bascule rapide vers le compte Admin par défaut (it.helpdesk@togosh.com)</span>
-          </button>
         </div>
       </div>
     );
@@ -204,36 +279,58 @@ export default function AdminRolesPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      {/* Top Header : Simple & Professionnel */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-emerald-600" />
-            Gestion des Utilisateurs & Rôles
+            Panneau d&apos;Administration T-OIL
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Gérez les autorisations d'accès, les administrateurs, les accès RH, Com et les supérieurs N+1.
+            Gérez les autorisations des collaborateurs et la configuration des notifications e-mails.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
-            onClick={loadUsers}
+            onClick={() => {
+              loadUsers();
+              loadSettings();
+            }}
             className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium flex items-center gap-1.5"
             title="Rafraîchir les données"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading || loadingSettings ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Actualiser</span>
           </button>
-
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors flex items-center gap-2"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Ajouter un utilisateur</span>
-          </button>
         </div>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'users'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Utilisateurs & Rôles ({users.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'settings'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Configuration E-mails & System</span>
+        </button>
       </div>
 
       {/* Notification Toast */}
@@ -254,293 +351,405 @@ export default function AdminRolesPage() {
         </div>
       )}
 
-      {/* Barre de recherche épurée */}
-      <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Rechercher un collaborateur par nom, email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 bg-transparent text-sm focus:outline-none text-slate-800"
-          />
-        </div>
-        <div className="text-xs font-semibold text-slate-500 pr-2 hidden sm:block">
-          {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''}
-        </div>
-      </div>
-
-      {/* Tableau d'administration clean & sobre */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-        {loading ? (
-          <div className="py-12 text-center text-slate-500 flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-            <span className="text-xs font-medium">Chargement des données...</span>
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="py-10 text-center text-slate-500 text-sm">
-            Aucun utilisateur trouvé.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-5">Utilisateur</th>
-                  <th className="py-3 px-5">Rôle</th>
-                  <th className="py-3 px-5">Manager Direct (N+1)</th>
-                  <th className="py-3 px-3 text-center">Accès RH</th>
-                  <th className="py-3 px-3 text-center">Publi. Com</th>
-                  <th className="py-3 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
-                    {/* Collaborateur */}
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-semibold flex items-center justify-center text-xs border border-slate-200 shrink-0">
-                          {user.name ? user.name.slice(0, 2).toUpperCase() : 'U'}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900">{user.name}</div>
-                          <div className="text-xs text-slate-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" /> {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Sélection du rôle */}
-                    <td className="py-3.5 px-5">
-                      <select
-                        value={user.role}
-                        onChange={(e) => {
-                          const updatedRole = e.target.value as UserRoleRecord['role'];
-                          setUsers((prev) =>
-                            prev.map((u) => (u.id === user.id ? { ...u, role: updatedRole } : u))
-                          );
-                        }}
-                        className="py-1.5 px-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:bg-white transition-colors"
-                      >
-                        <option value="EMPLOYE">Employé</option>
-                        <option value="MANAGER">Manager (N+1)</option>
-                        <option value="RH">Ressources Humaines</option>
-                        <option value="ADMIN">Administrateur</option>
-                      </select>
-                    </td>
-
-                    {/* Manager N+1 */}
-                    <td className="py-3.5 px-5">
-                      <select
-                        value={user.managerEmail || ''}
-                        onChange={(e) => {
-                          const selectedManagerEmail = e.target.value;
-                          setUsers((prev) =>
-                            prev.map((u) =>
-                              u.id === user.id ? { ...u, managerEmail: selectedManagerEmail } : u
-                            )
-                          );
-                        }}
-                        className="w-full min-w-[180px] py-1.5 px-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:bg-white transition-colors"
-                      >
-                        <option value="">-- Aucun Manager --</option>
-                        {users
-                          .filter((candidate) => candidate.email !== user.email)
-                          .map((candidate) => (
-                            <option key={candidate.id} value={candidate.email}>
-                              {candidate.name} ({candidate.email})
-                            </option>
-                          ))}
-                      </select>
-                    </td>
-
-                    {/* Accès RH Toggle */}
-                    <td className="py-3.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={user.isRH}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setUsers((prev) =>
-                            prev.map((u) => (u.id === user.id ? { ...u, isRH: checked } : u))
-                          );
-                        }}
-                        className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                      />
-                    </td>
-
-                    {/* Accès Com (Publication) Toggle */}
-                    <td className="py-3.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={user.isCom}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setUsers((prev) =>
-                            prev.map((u) => (u.id === user.id ? { ...u, isCom: checked } : u))
-                          );
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-
-                    {/* Enregistrer & Supprimer */}
-                    <td className="py-3.5 px-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleUpdateUser(user)}
-                          disabled={savingId === user.id}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1 disabled:opacity-50"
-                        >
-                          {savingId === user.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Save className="w-3 h-3" />
-                          )}
-                          <span>Enregistrer</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteUser(user.email, user.name)}
-                          disabled={deletingEmail === user.email}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-slate-100 transition-colors"
-                          title="Supprimer"
-                        >
-                          {deletingEmail === user.email ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Modal d'ajout d'utilisateur épuré */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-lg border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-base font-bold text-slate-900">Ajouter un utilisateur</h2>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
-              >
-                ✕
-              </button>
+      {/* TAB 1: GESTION DES UTILISATEURS */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Rechercher un collaborateur par nom, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-transparent text-sm focus:outline-none text-slate-800"
+              />
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-3.5">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 flex-shrink-0"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Ajouter un utilisateur</span>
+            </button>
+          </div>
+
+          {/* Tableau des utilisateurs */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 space-y-2">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" />
+                <p className="text-xs">Chargement des autorisations...</p>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                Aucun utilisateur trouvé.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Utilisateur / Email</th>
+                      <th className="py-3 px-4">Rôle Système</th>
+                      <th className="py-3 px-4">Supérieur N+1 (Manager)</th>
+                      <th className="py-3 px-4 text-center">Accès RH</th>
+                      <th className="py-3 px-4 text-center">Accès Com</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-900">{user.name}</div>
+                          <div className="text-[11px] text-slate-400">{user.email}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <select
+                            value={user.role}
+                            onChange={(e) => {
+                              const updated = { ...user, role: e.target.value as UserRoleRecord['role'] };
+                              setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                            }}
+                            className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                          >
+                            <option value="EMPLOYE">EMPLOYE</option>
+                            <option value="MANAGER">MANAGER</option>
+                            <option value="RH">RH</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <select
+                            value={user.managerEmail || ''}
+                            onChange={(e) => {
+                              const updated = { ...user, managerEmail: e.target.value };
+                              setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                            }}
+                            className="w-full max-w-[200px] px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500/20 outline-none truncate"
+                          >
+                            <option value="">-- Aucun N+1 --</option>
+                            {users
+                              .filter((m) => m.email !== user.email)
+                              .map((m) => (
+                                <option key={m.id} value={m.email}>
+                                  {m.name} ({m.email})
+                                </option>
+                              ))}
+                          </select>
+                        </td>
+
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={user.isRH}
+                            onChange={(e) => {
+                              const updated = { ...user, isRH: e.target.checked };
+                              setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                            }}
+                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                          />
+                        </td>
+
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={user.isCom}
+                            onChange={(e) => {
+                              const updated = { ...user, isCom: e.target.checked };
+                              setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                            }}
+                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                          />
+                        </td>
+
+                        <td className="py-3 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => handleUpdateUser(user)}
+                            disabled={savingId === user.id}
+                            className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
+                          >
+                            {savingId === user.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Save className="w-3.5 h-3.5" />
+                            )}
+                            <span>Enregistrer</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteUser(user.email, user.name)}
+                            disabled={deletingEmail === user.email}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="Supprimer l'utilisateur"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: CONFIGURATION DES E-MAILS & NOTIFICATIONS */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {/* Card 1 : Formulaire de configuration des e-mails */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                <Mail className="w-5 h-5" />
+              </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nom et Prénom <span className="text-red-500">*</span>
+                <h2 className="text-base font-bold text-slate-900">Adresses E-mails système T-OIL</h2>
+                <p className="text-xs text-slate-500">
+                  Définissez la boîte expéditrice Microsoft 365 et l&apos;adresse de réception des alertes RH.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveSettings} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Expéditeur Microsoft 365 */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Email Expéditeur Microsoft 365 (Microsoft Graph) :
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.senderEmail}
+                    onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                    required
+                    placeholder="ex: it.helpdesk@togosh.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Cette boîte doit exister dans votre tenant Microsoft 365 et posséder la permission{' '}
+                    <strong className="text-slate-700">Mail.Send</strong> dans Azure AD.
+                  </p>
+                </div>
+
+                {/* Destinataire RH */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Email Destinataire des Notifications RH :
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.rhEmail}
+                    onChange={(e) => setSettings({ ...settings, rhEmail: e.target.value })}
+                    required
+                    placeholder="ex: rh@compel-toil.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Adresse qui recevra une alerte lorsqu&apos;un congé est approuvé par un supérieur N+1.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle activation */}
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="toggle-notifications"
+                  checked={settings.enableEmailNotifications}
+                  onChange={(e) => setSettings({ ...settings, enableEmailNotifications: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                />
+                <label htmlFor="toggle-notifications" className="text-xs font-bold text-slate-800 cursor-pointer">
+                  Activer les envois d&apos;e-mails automatiques (N+1, RH, Relances)
                 </label>
+              </div>
+
+              {/* Bouton de sauvegarde */}
+              <div className="pt-3 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2"
+                >
+                  {savingSettings ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>Enregistrer la Configuration</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Card 2 : Outil de Test d'Envoi d'E-mail Immédiat */}
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <Send className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Tester l&apos;envoi d&apos;un e-mail (Validation Graph API)</h2>
+                <p className="text-xs text-slate-400">
+                  Envoyez un message de test réel pour valider la communication entre Microsoft 365 et l&apos;intranet.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSendTestEmail} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <input
+                type="email"
+                placeholder="Adresse du destinataire (ex: votre.email@togosh.com)..."
+                value={testRecipient}
+                onChange={(e) => setTestRecipient(e.target.value)}
+                required
+                className="flex-1 px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={sendingTestMail || !testRecipient}
+                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 flex-shrink-0"
+              >
+                {sendingTestMail ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                <span>Envoyer le mail de test</span>
+              </button>
+            </form>
+
+            {/* Résultat du test */}
+            {testMailResult && (
+              <div
+                className={`p-4 rounded-xl text-xs leading-relaxed border ${
+                  testMailResult.success
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                    : 'bg-red-950/60 border-red-500/40 text-red-200'
+                }`}
+              >
+                <div className="font-bold flex items-center gap-2 mb-1">
+                  {testMailResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  )}
+                  <span>{testMailResult.success ? 'Succès Graph API !' : 'Erreur d’envoi'}</span>
+                </div>
+                <p>{testMailResult.message}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ajout Utilisateur */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-slate-200 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">Ajouter un utilisateur</h2>
+
+            <form onSubmit={handleCreateUser} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nom complet</label>
                 <input
                   type="text"
                   required
                   placeholder="ex: Jean Dupont"
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Adresse Email <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Adresse Email</label>
                 <input
                   type="email"
                   required
-                  placeholder="ex: j.dupont@compel-toil.com"
+                  placeholder="ex: j.dupont@togosh.com"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Rôle</label>
-                  <select
-                    value={newUser.role}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, role: e.target.value as UserRoleRecord['role'] })
-                    }
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800"
-                  >
-                    <option value="EMPLOYE">Employé</option>
-                    <option value="MANAGER">Manager (N+1)</option>
-                    <option value="RH">RH</option>
-                    <option value="ADMIN">Administrateur</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Autorisations</label>
-                  <div className="space-y-1.5 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={newUser.isRH}
-                        onChange={(e) => setNewUser({ ...newUser, isRH: e.target.checked })}
-                        className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 accent-emerald-600"
-                      />
-                      <span>Accès RH</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={newUser.isCom}
-                        onChange={(e) => setNewUser({ ...newUser, isCom: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 accent-blue-600"
-                      />
-                      <span>Publication Com</span>
-                    </label>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Rôle Principal</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, role: e.target.value as UserRoleRecord['role'] })
+                  }
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 outline-none"
+                >
+                  <option value="EMPLOYE">EMPLOYE</option>
+                  <option value="MANAGER">MANAGER</option>
+                  <option value="RH">RH</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Manager N+1</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Supérieur N+1</label>
                 <select
                   value={newUser.managerEmail}
                   onChange={(e) => setNewUser({ ...newUser, managerEmail: e.target.value })}
-                  className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 outline-none"
                 >
                   <option value="">-- Aucun --</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.email}>
-                      {u.name} ({u.email})
+                  {users.map((m) => (
+                    <option key={m.id} value={m.email}>
+                      {m.name} ({m.email})
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="flex items-center gap-4 pt-2">
+                <label className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={newUser.isRH}
+                    onChange={(e) => setNewUser({ ...newUser, isRH: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  Droits RH
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={newUser.isCom}
+                    onChange={(e) => setNewUser({ ...newUser, isCom: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  Droits Com
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={savingId === 'new'}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
                   {savingId === 'new' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Créer l'utilisateur
+                  <span>Créer l&apos;utilisateur</span>
                 </button>
               </div>
             </form>

@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { getOnboardingModules, getUserOnboardingProgress } from '@/lib/onboarding';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get('email') || 'lino@gmail.com';
-
+export async function GET() {
   try {
+    const session = await auth();
+    const email = session?.user?.email;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
     const [modules, progress] = await Promise.all([
       getOnboardingModules(),
       getUserOnboardingProgress(email),

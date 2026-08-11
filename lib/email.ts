@@ -1,5 +1,6 @@
 import 'server-only';
 import { getGraphClient } from './graph';
+import { getSystemSettings } from './settings';
 
 export async function sendLeaveNotificationEmail({
   to,
@@ -10,13 +11,19 @@ export async function sendLeaveNotificationEmail({
   subject: string;
   html: string;
 }): Promise<boolean> {
+  const settings = await getSystemSettings();
+  if (!settings.enableEmailNotifications) {
+    console.log('[Email] Notifications e-mail désactivées dans les paramètres Admin.');
+    return false;
+  }
+
   const graphClient = getGraphClient();
   if (!graphClient) {
     console.warn('[Email] Graph API non configuré. E-mail simulé pour:', to);
     return false;
   }
 
-  const senderEmail = process.env.NOTIFICATION_SENDER_EMAIL || 'intranet@compel-toil.com';
+  const senderEmail = settings.senderEmail || 'it.helpdesk@togosh.com';
 
   try {
     await graphClient.api(`/users/${senderEmail}/sendMail`).post({
@@ -37,10 +44,10 @@ export async function sendLeaveNotificationEmail({
       saveToSentItems: false,
     });
 
-    console.log(`[Email] Notification envoyée avec succès à ${to}`);
+    console.log(`[Email] Notification envoyée avec succès de ${senderEmail} à ${to}`);
     return true;
   } catch (error) {
-    console.warn(`[Email] Impossible d'envoyer l'e-mail via Graph à ${to}:`, error);
+    console.warn(`[Email] Impossible d'envoyer l'e-mail via Graph (Expéditeur: ${senderEmail}) à ${to}:`, error);
     return false;
   }
 }

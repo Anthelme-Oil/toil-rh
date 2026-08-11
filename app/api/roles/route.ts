@@ -1,8 +1,27 @@
 import { NextResponse } from 'next/server';
-import { getAllUserRoles, saveOrUpdateUserRole, seedDefaultRolesToDatabase, deleteUserRole } from '@/lib/roles';
+import { auth } from '@/lib/auth';
+import { getUserPermissionsByEmail, getAllUserRoles, saveOrUpdateUserRole, seedDefaultRolesToDatabase, deleteUserRole } from '@/lib/roles';
 
+/**
+ * GET /api/roles
+ * Liste tous les utilisateurs et leurs rôles.
+ * Protégé : uniquement accessible aux ADMIN.
+ */
 export async function GET() {
   try {
+    const session = await auth();
+    const email = session?.user?.email;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur connecté est ADMIN
+    const perms = await getUserPermissionsByEmail(email);
+    if (!perms.isAdmin) {
+      return NextResponse.json({ error: 'Accès refusé. Rôle ADMIN requis.' }, { status: 403 });
+    }
+
     const roles = await getAllUserRoles();
     return NextResponse.json({ roles });
   } catch (error: unknown) {
@@ -11,8 +30,25 @@ export async function GET() {
   }
 }
 
+/**
+ * POST /api/roles
+ * Crée ou met à jour un utilisateur.
+ * Protégé : uniquement accessible aux ADMIN.
+ */
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    const email = session?.user?.email;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const perms = await getUserPermissionsByEmail(email);
+    if (!perms.isAdmin) {
+      return NextResponse.json({ error: 'Accès refusé. Rôle ADMIN requis.' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     if (body.action === 'seed') {
@@ -28,12 +64,13 @@ export async function POST(request: Request) {
 
     const id = body.id;
     const name = (body.name || body.Title || body.Name || '').trim();
-    const email = (body.email || body.Email || body.EMail || '').trim();
+    const targetEmail = (body.email || body.Email || body.EMail || '').trim();
     const role = body.role || 'EMPLOYE';
     const managerEmail = body.managerEmail || body.ManagerEmail || '';
     const isRH = Boolean(body.isRH || body.IsRH);
+    const isCom = Boolean(body.isCom);
 
-    if (!email || !name) {
+    if (!targetEmail || !name) {
       return NextResponse.json(
         { error: 'Email et Nom requis.' },
         { status: 400 }
@@ -43,10 +80,11 @@ export async function POST(request: Request) {
     const result = await saveOrUpdateUserRole({
       id,
       name,
-      email,
+      email: targetEmail,
       role,
       managerEmail,
       isRH,
+      isCom,
     });
 
     if (!result.success) {
@@ -63,16 +101,33 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * DELETE /api/roles
+ * Supprime un utilisateur.
+ * Protégé : uniquement accessible aux ADMIN.
+ */
 export async function DELETE(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
+    const session = await auth();
+    const callerEmail = session?.user?.email;
 
-    if (!email) {
+    if (!callerEmail) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const perms = await getUserPermissionsByEmail(callerEmail);
+    if (!perms.isAdmin) {
+      return NextResponse.json({ error: 'Accès refusé. Rôle ADMIN requis.' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const targetEmail = searchParams.get('email');
+
+    if (!targetEmail) {
       return NextResponse.json({ error: 'Email requis' }, { status: 400 });
     }
 
-    const result = await deleteUserRole(email);
+    const result = await deleteUserRole(targetEmail);
     if (!result.success) {
       return NextResponse.json({ error: result.error || 'Échec de la suppression' }, { status: 500 });
     }

@@ -110,8 +110,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
 
   const cleanEmail = email.toLowerCase().trim();
 
-  // Le compte it.helpdesk@togosh.com est toujours ADMIN par défaut
-  if (cleanEmail === 'it.helpdesk@togosh.com') {
+  // Le compte admin par défaut (définissable via ADMIN_EMAIL_DEFAULT) est toujours ADMIN
+  const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesk@togosh.com').toLowerCase().trim();
+  if (cleanEmail === adminDefaultEmail) {
     return {
       role: 'ADMIN',
       isRH: true,
@@ -119,7 +120,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isAdmin: true,
       isCom: true,
       managerEmail: '',
-      name: 'IT Helpdesk (Admin)',
+      name: 'Administrateur Système',
     };
   }
 

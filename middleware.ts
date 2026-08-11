@@ -20,9 +20,8 @@ const PUBLIC_ROUTES = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Mode développement ou Authentification désactivée / Optionnelle ──
-  // Désactive le blocage strict si process.env.ENABLE_AUTH n'est pas "true"
-  if (process.env.NODE_ENV === 'development' || process.env.ENABLE_AUTH !== 'true') {
+  // ── Contournement explicite de l'authentification (si BYPASS_AUTH=true) ──
+  if (process.env.BYPASS_AUTH === 'true') {
     return NextResponse.next();
   }
 

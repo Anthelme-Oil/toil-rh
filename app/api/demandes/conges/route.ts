@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
-import { creerDemandeConge, getDemandesCongesUtilisateur, getDemandesCongesAValider } from '@/lib/demandes';
+import { auth } from '@/lib/auth';
 import { getUserPermissionsByEmail } from '@/lib/roles';
+import { creerDemandeConge, getDemandesCongesUtilisateur, getDemandesCongesAValider } from '@/lib/demandes';
 import { sendLeaveNotificationEmail, getEmailTemplateN1 } from '@/lib/email';
 
-// Force HMR reload for Prisma Client models update
-
-
+/**
+ * POST /api/demandes/conges
+ * Crée une nouvelle demande de congé.
+ * Protégé : l'email du demandeur est lu depuis la session.
+ */
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    const sessionEmail = session?.user?.email;
+
+    if (!sessionEmail) {
+      return NextResponse.json(
+        { error: 'Non authentifié. Connectez-vous via Microsoft 365.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       titre,
@@ -16,20 +29,20 @@ export async function POST(request: Request) {
       dateFin,
       nombreJours,
       motif,
-      demandeurNom,
-      demandeurEmail,
-      demandeurLookupId,
       managerEmail: initialManagerEmail,
-      supHierarchiqueLookupId,
       piecesJointes,
     } = body;
 
-    if (!titre || !dateDebut || !dateFin || !demandeurEmail) {
+    if (!titre || !dateDebut || !dateFin) {
       return NextResponse.json(
-        { error: 'Champs obligatoires manquants (titre, dates, email).' },
+        { error: 'Champs obligatoires manquants (titre, dates).' },
         { status: 400 }
       );
     }
+
+    // L'email du demandeur provient de la session serveur, pas du body
+    const demandeurEmail = sessionEmail;
+    const demandeurNom = session.user.name || sessionEmail.split('@')[0];
 
     // Résolution du Manager Email depuis le service de rôles si non spécifié
     let targetManagerEmail = initialManagerEmail;
@@ -45,11 +58,9 @@ export async function POST(request: Request) {
       dateFin,
       nombreJours: parseFloat(nombreJours) || 1,
       motif,
-      demandeurNom: demandeurNom || demandeurEmail.split('@')[0],
+      demandeurNom,
       demandeurEmail,
-      demandeurLookupId,
       managerEmail: targetManagerEmail,
-      supHierarchiqueLookupId,
       piecesJointes,
     });
 
@@ -57,9 +68,9 @@ export async function POST(request: Request) {
     if (targetManagerEmail) {
       sendLeaveNotificationEmail({
         to: targetManagerEmail,
-        subject: `[Validation Requis] Demande de congé de ${demandeurNom || demandeurEmail}`,
+        subject: `[Validation Requis] Demande de congé de ${demandeurNom}`,
         html: getEmailTemplateN1({
-          demandeurNom: demandeurNom || demandeurEmail,
+          demandeurNom,
           typeConge: typeConge || 'Congé Payé',
           dateDebut: new Date(dateDebut).toLocaleDateString('fr-FR'),
           dateFin: new Date(dateFin).toLocaleDateString('fr-FR'),
@@ -76,27 +87,44 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * GET /api/demandes/conges
+ * Récupère les demandes de congés (propres ou à valider).
+ * Protégé : l'email est lu depuis la session.
+ */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get('email');
-  const role = searchParams.get('role'); // 'n1' | 'rh'
-
-  if (!email) {
-    return NextResponse.json({ error: 'Email requis' }, { status: 400 });
-  }
-
-  // Headers de cache HTTP (60s stale-while-revalidate pour navigation rapide)
-  const cacheHeaders = {
-    'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
-  };
-
   try {
+    const session = await auth();
+    const sessionEmail = session?.user?.email;
+
+    if (!sessionEmail) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const role = searchParams.get('role'); // 'n1' | 'rh'
+
+    // Headers de cache HTTP (60s stale-while-revalidate pour navigation rapide)
+    const cacheHeaders = {
+      'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+    };
+
     if (role === 'n1' || role === 'rh') {
-      const demandes = await getDemandesCongesAValider(email, role === 'n1' ? 'N1' : 'RH');
+      // Vérifier que l'utilisateur a bien le rôle pour voir les validations
+      const perms = await getUserPermissionsByEmail(sessionEmail);
+      if (role === 'rh' && !perms.isRH && !perms.isAdmin) {
+        return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+      }
+      if (role === 'n1' && !perms.isManager && !perms.isAdmin) {
+        return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+      }
+
+      const demandes = await getDemandesCongesAValider(sessionEmail, role === 'n1' ? 'N1' : 'RH');
       return NextResponse.json({ demandes }, { headers: cacheHeaders });
     }
 
-    const demandes = await getDemandesCongesUtilisateur(email);
+    // Par défaut : les propres demandes de l'utilisateur
+    const demandes = await getDemandesCongesUtilisateur(sessionEmail);
     return NextResponse.json({ demandes }, { headers: cacheHeaders });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';

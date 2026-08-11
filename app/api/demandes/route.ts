@@ -43,7 +43,11 @@ const PRIORITES_VALIDES: PrioriteDemande[] = ['basse', 'normale', 'haute', 'urge
  */
 export async function GET() {
   const session = await auth();
-  const email = session?.user?.email || 'employe@compel-toil.com';
+  const email = session?.user?.email;
+
+  if (!email) {
+    return Response.json({ error: 'Non authentifié' }, { status: 401 });
+  }
 
   try {
     const demandes = await getDemandesUtilisateur(email);
@@ -68,8 +72,13 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   const session = await auth();
-  const email = session?.user?.email || 'employe@compel-toil.com';
-  const name = session?.user?.name || 'Collaborateur T-OIL';
+  const email = session?.user?.email;
+
+  if (!email) {
+    return Response.json({ error: 'Non authentifié' }, { status: 401 });
+  }
+
+  const name = session.user.name || email.split('@')[0];
 
   try {
     const body = await request.json();
@@ -115,13 +124,8 @@ export async function POST(request: NextRequest) {
       demandeurNom: name,
     };
 
-    // ── Insertion dans Microsoft List (ou fallback mock en dev) ──
-    let id = `DEM-${Date.now()}`;
-    try {
-      id = await creerDemande(demande);
-    } catch (err) {
-      console.warn('[API Demandes] SharePoint indisponible, création locale simulée:', err);
-    }
+    // ── Insertion dans MySQL ──
+    const id = await creerDemande(demande);
 
     return Response.json(
       {
