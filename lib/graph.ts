@@ -34,6 +34,8 @@ export const LIST_ROLES_ID = process.env.LIST_ROLES_ID || 'Autorisation par util
 // ── Bibliothèques documentaires ──
 export const DRIVE_PROCEDURES_IT = process.env.DRIVE_PROCEDURES_IT || 'Procedures_IT';
 export const DRIVE_PROCEDURES_RH = process.env.DRIVE_PROCEDURES_RH || 'Procedures_RH';
+// Bibliothèque pour les images de couverture des articles de blog (ex: "T-oil Intranet Files")
+export const DRIVE_BLOG_IMAGES = process.env.DRIVE_BLOG_IMAGES || process.env.DRIVE_PROCEDURES_IT || 'Procedures_IT';
 
 /**
  * Vérifie si les identifiants Azure AD et SharePoint sont configurés.

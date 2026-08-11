@@ -15,6 +15,7 @@ import {
   LIST_ANNONCES_ID,
   DRIVE_PROCEDURES_IT,
   DRIVE_PROCEDURES_RH,
+  DRIVE_BLOG_IMAGES,
 } from './graph';
 import type { Actualite, DocumentSP, Evenement, Annonce } from '@/types';
 
@@ -26,11 +27,13 @@ const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoi
 
 function formatSharePointUrl(rawUrl: string): string {
   if (!rawUrl) return '';
-  let url = rawUrl.trim();
+  const url = rawUrl.trim();
+  // URLs locales (uploads locaux ou data URLs) → servies directement sans proxy
   if (url.startsWith('data:') || url.startsWith('/')) {
     return url;
   }
-  if (url.includes('sharepoint.com')) {
+  // URLs SharePoint → passées par le proxy pour l'authentification OAuth
+  if (url.includes('sharepoint.com') || url.includes('graph.microsoft.com') || url.includes('1drv.ms')) {
     return `/api/images/proxy?url=${encodeURIComponent(url)}`;
   }
   return url;
@@ -195,18 +198,17 @@ export async function uploadBlogImage(buffer: Buffer, fileName: string): Promise
   const filePath = `Blogs/${timestamp}_${cleanFileName}`;
 
   try {
-    // Upload du fichier dans le Drive SharePoint
+    // Upload du fichier dans la bibliothèque d'images de blog
     const uploadResponse = await graphClient
-      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/root:/${filePath}:/content`)
+      .api(`${siteBase}/drives/${DRIVE_BLOG_IMAGES}/root:/${filePath}:/content`)
       .put(buffer);
 
     const itemId = uploadResponse.id as string;
 
-    // Récupérer les métadonnées de l'item avec l'URL de téléchargement direct
-    // @microsoft.graph.downloadUrl est une URL pré-authentifiée valide 1h
-    // On utilise webUrl à la place car downloadUrl expire — on passera par le proxy
+    // Récupérer les métadonnées — webUrl est l'URL permanente de la page SharePoint
+    // On retourne webUrl et le proxy s'occupe de l'authentification lors de l'affichage
     const itemMeta = await graphClient
-      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/items/${itemId}`)
+      .api(`${siteBase}/drives/${DRIVE_BLOG_IMAGES}/items/${itemId}`)
       .select('id,webUrl,@microsoft.graph.downloadUrl')
       .get();
 
