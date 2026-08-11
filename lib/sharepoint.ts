@@ -190,16 +190,37 @@ export async function uploadBlogImage(buffer: Buffer, fileName: string): Promise
   }
   const siteBase = getSiteApiBase();
 
-  try {
-    const timestamp = Date.now();
-    const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const path = `Blogs/${timestamp}_${cleanFileName}`;
+  const timestamp = Date.now();
+  const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const filePath = `Blogs/${timestamp}_${cleanFileName}`;
 
-    const response = await graphClient
-      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/root:/${path}:/content`)
+  try {
+    // Upload du fichier dans le Drive SharePoint
+    const uploadResponse = await graphClient
+      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/root:/${filePath}:/content`)
       .put(buffer);
 
-    return response.webUrl as string;
+    const itemId = uploadResponse.id as string;
+
+    // Récupérer les métadonnées de l'item avec l'URL de téléchargement direct
+    // @microsoft.graph.downloadUrl est une URL pré-authentifiée valide 1h
+    // On utilise webUrl à la place car downloadUrl expire — on passera par le proxy
+    const itemMeta = await graphClient
+      .api(`${siteBase}/drives/${DRIVE_PROCEDURES_IT}/items/${itemId}`)
+      .select('id,webUrl,@microsoft.graph.downloadUrl')
+      .get();
+
+    // Préférer l'URL de téléchargement directe si disponible (expire après ~1h, non adaptée au stockage long terme)
+    // On stocke webUrl et on passe par le proxy /api/images/proxy?url= pour l'authentification
+    const sharePointUrl = (itemMeta['@microsoft.graph.downloadUrl'] as string) || (itemMeta.webUrl as string);
+
+    if (!sharePointUrl) {
+      throw new Error('URL de l\'image non retournée par SharePoint.');
+    }
+
+    console.log('[SharePoint] Image uploadée avec succès. URL:', sharePointUrl);
+    // Retourner l'URL directe — elle sera déjà passée par extractImageUrl qui ajoutera le proxy
+    return sharePointUrl;
   } catch (error) {
     console.error('[SharePoint] Erreur upload image blog:', error);
     throw new Error('Échec de l\'upload de l\'image de couverture.');

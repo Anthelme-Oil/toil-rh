@@ -33,33 +33,35 @@ export async function POST(request: Request) {
 
     let imageUrl: string | undefined = undefined;
 
-    // 1. Sauvegarde du fichier image sur disque & service via /api/uploads/blogs/[filename]
     if (imageFile && imageFile.size > 0) {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const timestamp = Date.now();
+      const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `${timestamp}_${cleanFileName}`;
+
+      // 1. PRIORITÉ : Upload sur SharePoint Drive → URL publique permanente
       try {
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'blogs');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        const timestamp = Date.now();
-        const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filename = `${timestamp}_${cleanFileName}`;
-        const filePath = path.join(uploadDir, filename);
+        const spUrl = await uploadBlogImage(buffer, imageFile.name);
+        imageUrl = spUrl;
+        console.log('[API Actualités] Image uploadée sur SharePoint Drive:', spUrl);
+      } catch (spErr) {
+        console.warn('[SharePoint Drive] Upload impossible, fallback disque local:', spErr);
 
-        const bytes = await imageFile.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        fs.writeFileSync(filePath, buffer);
-
-        // URL servie dynamiquement par l'API uploads
-        imageUrl = `/api/uploads/blogs/${filename}`;
-
-        // Sauvegarde parallèle sur SharePoint Drive si configuré
+        // 2. FALLBACK : Sauvegarde locale si SharePoint non configuré ou en erreur
         try {
-          await uploadBlogImage(buffer, imageFile.name);
-        } catch (spErr) {
-          console.warn('[SharePoint Drive] Upload parallèle ignoré:', spErr);
+          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'blogs');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          const filePath = path.join(uploadDir, filename);
+          fs.writeFileSync(filePath, buffer);
+          // ⚠️ Cette URL locale ne fonctionnera PAS depuis SharePoint — usage temporaire seulement
+          imageUrl = `/api/uploads/blogs/${filename}`;
+          console.warn('[API Actualités] Image sauvegardée localement (invisible depuis SharePoint):', imageUrl);
+        } catch (fsErr) {
+          console.error('[API Actualités] Erreur écriture fichier image locale:', fsErr);
         }
-      } catch (err) {
-        console.error('[API Actualités] Erreur écriture fichier image:', err);
       }
     }
 

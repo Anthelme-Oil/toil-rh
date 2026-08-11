@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getGraphClient } from '@/lib/graph';
+import { ClientSecretCredential } from '@azure/identity';
 
 // Image SVG de fallback propre si l'image SharePoint est bloquée par l'authentification
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
@@ -17,14 +17,41 @@ const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height
   </g>
 </svg>`;
 
+function fallback(cache = 3600) {
+  return new NextResponse(FALLBACK_SVG, {
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': `public, max-age=${cache}`,
+    },
+  });
+}
+
+/**
+ * Obtient un token d'accès Microsoft Graph via Client Credentials (app-only).
+ */
+async function getGraphAccessToken(): Promise<string | null> {
+  const tenantId = process.env.AZURE_AD_TENANT_ID;
+  const clientId = process.env.AZURE_AD_CLIENT_ID;
+  const clientSecret = process.env.AZURE_AD_CLIENT_SECRET;
+
+  if (!tenantId || !clientId || !clientSecret) return null;
+
+  try {
+    const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+    const tokenResponse = await credential.getToken('https://graph.microsoft.com/.default');
+    return tokenResponse?.token ?? null;
+  } catch (err) {
+    console.error('[Proxy Image] Impossible d\'obtenir un token Graph:', err);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const imageUrl = searchParams.get('url');
 
   if (!imageUrl) {
-    return new NextResponse(FALLBACK_SVG, {
-      headers: { 'Content-Type': 'image/svg+xml' },
-    });
+    return fallback();
   }
 
   // Redirection immédiate si c'est un chemin local relatif ou data URL
@@ -33,18 +60,20 @@ export async function GET(request: Request) {
   }
 
   try {
-    const graphClient = getGraphClient();
+    // 1. Si URL SharePoint, utiliser un vrai token OAuth pour l'accès
+    if (imageUrl.includes('sharepoint.com') || imageUrl.includes('graph.microsoft.com')) {
+      const accessToken = await getGraphAccessToken();
 
-    // 1. Si URL SharePoint et Graph disponible, tentative de récupération via Graph API
-    if (graphClient && imageUrl.includes('sharepoint.com')) {
-      try {
+      if (accessToken) {
         const res = await fetch(imageUrl, {
           headers: {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Authorization: `Bearer ${(graphClient as any).config?.authProvider?.getAccessToken?.() || ''}`,
+            Authorization: `Bearer ${accessToken}`,
           },
+          // Pas de cache ici — on laisse Next.js gérer via les headers de réponse
         });
+
         const contentType = res.headers.get('content-type') || '';
+
         if (res.ok && contentType.startsWith('image/')) {
           const arrayBuffer = await res.arrayBuffer();
           return new NextResponse(arrayBuffer, {
@@ -54,12 +83,14 @@ export async function GET(request: Request) {
             },
           });
         }
-      } catch {
-        // Ignorer et passer au fetch classique
+
+        console.warn('[Proxy Image] Réponse SharePoint non-image:', res.status, contentType, imageUrl.substring(0, 100));
+      } else {
+        console.warn('[Proxy Image] Pas de token Graph disponible, tentative d\'accès direct.');
       }
     }
 
-    // 2. Fetch direct de l'URL
+    // 2. Fetch direct (pour URLs publiques ou CDN)
     const response = await fetch(imageUrl);
     const contentType = response.headers.get('content-type') || '';
 
@@ -73,19 +104,11 @@ export async function GET(request: Request) {
       });
     }
 
-    // Si la réponse n'est pas une image valide (ex: 401/403/page HTML de login SharePoint), retourner le SVG de fallback
-    return new NextResponse(FALLBACK_SVG, {
-      headers: {
-        'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
+    // Réponse non-image (401, 403, page HTML login SharePoint) → fallback SVG
+    console.warn('[Proxy Image] URL inaccessible:', response.status, imageUrl.substring(0, 100));
+    return fallback();
   } catch (error) {
-    console.error('[Proxy Image] Erreur:', error);
-    return new NextResponse(FALLBACK_SVG, {
-      headers: {
-        'Content-Type': 'image/svg+xml',
-      },
-    });
+    console.error('[Proxy Image] Erreur réseau:', error);
+    return fallback();
   }
 }
