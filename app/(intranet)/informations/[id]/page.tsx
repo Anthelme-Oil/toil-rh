@@ -15,7 +15,6 @@ import {
   BookOpen,
 } from 'lucide-react';
 import ArticleActions from '@/components/articles/ArticleActions';
-import { mockActualites } from '@/lib/mock-data';
 import { getActualiteById, getActualites } from '@/lib/sharepoint';
 
 export const dynamic = 'force-dynamic';
@@ -27,8 +26,7 @@ interface ArticlePageProps {
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { id } = await params;
-  const spArticle = await getActualiteById(id);
-  const article = spArticle || mockActualites.find((item) => item.id === id);
+  const article = await getActualiteById(id);
 
   if (!article) {
     return {
@@ -66,14 +64,13 @@ function getCatStyle(cat?: string) {
 
 export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const { id } = await params;
-  const spArticle = await getActualiteById(id);
-  const article = spArticle || mockActualites.find((item) => item.id === id);
+  const article = await getActualiteById(id);
 
   if (!article) {
     notFound();
   }
 
-  const allArticles = (await getActualites(10)) || mockActualites;
+  const allArticles = await getActualites(10);
   const autresArticles = allArticles.filter((item) => item.id !== id);
 
 

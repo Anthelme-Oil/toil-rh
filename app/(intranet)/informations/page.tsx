@@ -1,11 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// Page Informations / Actualités
+// Page Informations / Actualités — 100% Données Réelles SharePoint
 // ═══════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Newspaper, ArrowLeft } from 'lucide-react';
-import { mockActualites } from '@/lib/mock-data';
 import { getActualites } from '@/lib/sharepoint';
 import ActualitesListClient from '@/components/actualites/ActualitesListClient';
 
@@ -18,10 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default async function InformationsPage() {
-  const spActualites = await getActualites(100);
-  const actualites = spActualites.length > 0 ? spActualites : [...mockActualites];
+  // Récupération directe et exclusive des actualités réelles publiées dans SharePoint
+  const actualites = await getActualites(100);
 
-  // Tri garanti du plus récent au plus ancien
+  // Tri du plus récent au plus ancien
   actualites.sort((a, b) => {
     const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;
     const dateB = b.datePublication ? new Date(b.datePublication).getTime() : 0;
@@ -54,7 +53,7 @@ export default async function InformationsPage() {
         </div>
       </div>
 
-      {/* ── Composant Interactif (Liste déroulante, recherche et filtre par catégorie) ── */}
+      {/* ── Composant Client (Actualités SharePoint réelles) ── */}
       <ActualitesListClient initialActualites={actualites} />
     </div>
   );
