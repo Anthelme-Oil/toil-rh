@@ -25,7 +25,11 @@ const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoi
 // ═══════════════════════════════════════════════════════════════
 
 function formatSharePointUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
   let url = rawUrl.trim();
+  if (url.startsWith('data:') || url.startsWith('/')) {
+    return url;
+  }
   if (url.includes('sharepoint.com') && !url.includes('download=1')) {
     url += url.includes('?') ? '&download=1' : '?download=1';
   }

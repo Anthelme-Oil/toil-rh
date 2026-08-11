@@ -18,6 +18,9 @@ import ArticleActions from '@/components/articles/ArticleActions';
 import { mockActualites } from '@/lib/mock-data';
 import { getActualiteById, getActualites } from '@/lib/sharepoint';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface ArticlePageProps {
   params: Promise<{ id: string }>;
 }

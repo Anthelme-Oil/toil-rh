@@ -9,6 +9,9 @@ import { mockActualites } from '@/lib/mock-data';
 import { getActualites } from '@/lib/sharepoint';
 import ActualitesListClient from '@/components/actualites/ActualitesListClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'Actualités & Informations',
   description: 'Retrouvez toutes les actualités et informations de COMPEL STSL T-OIL.',
