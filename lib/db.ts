@@ -9,6 +9,7 @@ const globalForDb = globalThis as unknown as {
 export function getDbPool(): mysql.Pool {
   if (!globalForDb.dbPool) {
     const rawUrl = process.env.DATABASE_URL || 'mysql://root@127.0.0.1:3306/toil_db';
+    const isTiDB = rawUrl.includes('tidbcloud.com');
     globalForDb.dbPool = mysql.createPool({
       uri: rawUrl,
       waitForConnections: true,
@@ -16,6 +17,7 @@ export function getDbPool(): mysql.Pool {
       queueLimit: 0,
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
+      ...(isTiDB ? { ssl: { rejectUnauthorized: true } } : {}),
     });
   }
   return globalForDb.dbPool;
