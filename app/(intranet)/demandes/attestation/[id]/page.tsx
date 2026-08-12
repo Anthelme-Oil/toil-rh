@@ -132,33 +132,32 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* ── CONTENU DU TITRE DE CONGÉ ── */}
+      {/* ── CONTENU DE L'ATTESTATION ── */}
       <div className="max-w-[800px] mx-auto my-8 print:my-0 p-8 sm:p-12 bg-white border border-slate-200 print:border-0 rounded-3xl print:rounded-none shadow-xl print:shadow-none space-y-8 relative overflow-hidden">
-        {/* Filigrane d'approbation */}
-        <div className="absolute right-[-30px] top-[40px] rotate-45 border-4 border-emerald-500/30 text-emerald-500/30 text-xs font-black uppercase tracking-widest px-8 py-2 rounded shrink-0 pointer-events-none select-none print:border-emerald-500/40 print:text-emerald-500/40">
-          Document Approuvé
-        </div>
-
-        {/* En-tête de l'entreprise */}
-        <div className="flex justify-between items-start border-b-2 border-slate-100 pb-6">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-              <span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center font-bold text-base shadow-sm">T</span>
-              T-OIL TOGO
-            </h2>
-            <p className="text-[10px] text-slate-400 font-bold tracking-wide uppercase">
-              Société Nationale de Distribution de Produits Pétroliers
-            </p>
-            <p className="text-[9px] text-slate-400">
-              Lomé, Togo • Tél: +228 22 23 45 67 • info@togosh.com
-            </p>
-          </div>
-          <div className="text-right space-y-1">
-            <div className="inline-block px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[10px] font-black text-emerald-800 uppercase tracking-wider">
-              Accord Définitif
+        
+        {/* En-tête de l'entreprise avec le Logo Officiel */}
+        <div className="flex justify-between items-start border-b-2 border-slate-200 pb-6">
+          <div className="flex items-start gap-4">
+            <img
+              src="/images/image.png"
+              alt="Logo T-OIL"
+              className="w-16 h-16 object-contain"
+            />
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                T-OIL TOGO
+              </h2>
+              <p className="text-[10px] text-slate-500 font-bold tracking-wide uppercase">
+                Société Nationale de Distribution de Produits Pétroliers
+              </p>
+              <p className="text-[9px] text-slate-400">
+                Lomé, Togo • Tél: +228 22 23 45 67 • info@togosh.com
+              </p>
             </div>
+          </div>
+          <div className="text-right space-y-1 text-xs">
             <p className="text-[10px] text-slate-400">
-              Réf : <span className="font-mono font-bold text-slate-700">{details.id}</span>
+              Réf : <span className="font-mono font-bold text-slate-800">{details.id}</span>
             </p>
             <p className="text-[10px] text-slate-400">
               Date : {new Date(details.dateCreation).toLocaleDateString('fr-FR')}
@@ -168,19 +167,19 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
 
         {/* Titre du document */}
         <div className="text-center space-y-2">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-            Titre Officiel de Congé
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight uppercase">
+            ATTESTATION D&apos;AUTORISATION DE CONGÉ
           </h1>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Document justificatif d&apos;autorisation d&apos;absence validé par le circuit hiérarchique T-OIL.
+            Document officiel justifiant la validation du circuit d&apos;autorisation d&apos;absence au sein de T-OIL.
           </p>
         </div>
 
         {/* Section 1 : Informations Collaborateur */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
-            <User className="w-4 h-4 text-emerald-600" />
-            1. Informations Bénéficiaire
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+            <User className="w-4 h-4 text-slate-600" />
+            1. Informations du Collaborateur
           </h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
             <div>
@@ -204,14 +203,14 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
 
         {/* Section 2 : Détails du Congé */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-emerald-600" />
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-slate-600" />
             2. Période & Type de Congé
           </h3>
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 print:bg-white print:border-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
             <div className="space-y-0.5">
               <span className="text-slate-400 block">Type d&apos;absence :</span>
-              <span className="font-bold text-emerald-800 text-sm">
+              <span className="font-bold text-slate-950 text-sm">
                 {getFriendlyTypeConge(details.typeConge)}
               </span>
             </div>
@@ -242,8 +241,8 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
 
         {/* Section 3 : Historique d'Approbation */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-slate-600" />
             3. Circuit de Validation Électronique
           </h3>
           <div className="space-y-4">
@@ -260,22 +259,17 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
 
             {/* Étape 2 : Manager N+1 */}
             <div className="relative pl-6 border-l-2 border-slate-200 pb-1 flex gap-3 items-start">
-              <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ${
-                details.statutN1 === 'APPROUVE' ? 'bg-emerald-500' : 'bg-red-500'
-              }`}></div>
+              <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500`}></div>
               <div className="text-xs space-y-0.5">
                 <p className="font-bold text-slate-900 flex items-center gap-1.5">
                   Approbation du Supérieur Hiérarchique N+1
-                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold">
-                    {details.statutN1}
-                  </span>
                 </p>
                 <p className="text-slate-500">
                   Par <span className="font-semibold text-slate-700">{details.managerNom}</span> ({details.managerPoste}) 
                   {details.dateValidationN1 && ` le ${new Date(details.dateValidationN1).toLocaleDateString('fr-FR')} à ${new Date(details.dateValidationN1).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
                 </p>
                 {details.commentaireN1 && (
-                  <p className="text-slate-600 bg-slate-50 p-2 rounded-lg italic mt-1 max-w-lg">
+                  <p className="text-slate-650 bg-slate-50 p-2 rounded-lg italic mt-1 max-w-lg">
                     &ldquo;{details.commentaireN1}&rdquo;
                   </p>
                 )}
@@ -284,22 +278,17 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
 
             {/* Étape 3 : RH / DRH */}
             <div className="relative pl-6 flex gap-3 items-start">
-              <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ${
-                details.statutRH === 'APPROUVE' ? 'bg-emerald-500' : 'bg-red-500'
-              }`}></div>
+              <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500`}></div>
               <div className="text-xs space-y-0.5">
                 <p className="font-bold text-slate-900 flex items-center gap-1.5">
                   Approbation Finale Direction Ressources Humaines (DRH)
-                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold">
-                    {details.statutRH}
-                  </span>
                 </p>
                 <p className="text-slate-500">
                   Par la <span className="font-semibold text-slate-700">Direction RH T-OIL</span> 
                   {details.dateValidationRH && ` le ${new Date(details.dateValidationRH).toLocaleDateString('fr-FR')} à ${new Date(details.dateValidationRH).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
                 </p>
                 {details.commentaireRH && (
-                  <p className="text-slate-600 bg-slate-50 p-2 rounded-lg italic mt-1 max-w-lg">
+                  <p className="text-slate-650 bg-slate-50 p-2 rounded-lg italic mt-1 max-w-lg">
                     &ldquo;{details.commentaireRH}&rdquo;
                   </p>
                 )}
@@ -309,34 +298,30 @@ export default function AttestationPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Section signatures et bas de page */}
-        <div className="border-t border-slate-100 pt-8 grid grid-cols-2 gap-8 text-center text-xs">
+        <div className="border-t border-slate-200 pt-8 grid grid-cols-2 gap-8 text-center text-xs">
           <div className="space-y-12">
             <div>
               <p className="text-slate-400">Signature du Bénéficiaire</p>
-              <p className="text-[10px] text-slate-300 italic mt-1">Signé électroniquement</p>
+              <p className="text-[10px] text-slate-350 italic mt-1">Signature numérique intégrée</p>
             </div>
-            <p className="font-bold text-slate-700">{details.demandeurNom}</p>
+            <p className="font-bold text-slate-800">{details.demandeurNom}</p>
           </div>
           <div className="space-y-12">
             <div>
               <p className="text-slate-400">Pour la Direction des Ressources Humaines</p>
-              <p className="text-[10px] text-slate-300 italic mt-1">Visa & Cachet électronique</p>
+              <p className="text-[10px] text-slate-350 italic mt-1">Visa électronique</p>
             </div>
-            <div className="font-bold text-slate-800 relative inline-block">
-              <span className="block border-2 border-emerald-500/20 text-emerald-600/40 text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded rotate-[-5deg] mx-auto w-32 select-none">
-                T-OIL DRH OK
-              </span>
-            </div>
+            <p className="font-bold text-slate-800">Le Service RH T-OIL</p>
           </div>
         </div>
 
         {/* Mention légale de sécurité */}
         <div className="text-center text-[9px] text-slate-400 pt-8 border-t border-slate-100 space-y-1">
           <p>
-            Ce titre de congé est généré automatiquement par l&apos;intranet national de T-OIL.
+            Ce document est généré de manière sécurisée par l&apos;intranet national de T-OIL.
           </p>
           <p className="font-mono">
-            ID Validation Unique : {details.id} • Conforme aux règlements de gestion des congés de l&apos;entreprise.
+            Identifiant unique de validation : {details.id}
           </p>
         </div>
       </div>
