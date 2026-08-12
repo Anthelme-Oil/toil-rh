@@ -453,7 +453,7 @@ export async function uploadVideoToSharePoint(
           'Content-Length': chunk.length.toString(),
           'Content-Range': contentRange,
         },
-        body: chunk,
+        body: new Uint8Array(chunk),
       });
 
       if (res.ok) {
