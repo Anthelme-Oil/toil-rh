@@ -20,9 +20,9 @@ export const mockOnboardingModules: OnboardingModule[] = [
     titre: 'Bienvenue chez COMPEL STSL T-OIL',
     description: 'Mot de bienvenue de la Direction Générale, vision stratégique et présentation du groupe pétrolier.',
     categorie: 'culture',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
-    dureeMinutes: 3,
+    videoUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4',
+    thumbnailUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4#t=2',
+    dureeMinutes: 8,
     ordre: 1,
     estObligatoire: true,
     documentsAssocies: [

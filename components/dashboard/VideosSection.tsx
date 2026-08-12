@@ -20,31 +20,11 @@ const DASHBOARD_VIDEOS: VideoItem[] = [
     id: 'v-1',
     titre: 'Mot de la Direction Générale — Vision 2026',
     categorie: 'Institutionnel',
-    duree: '3 min',
+    duree: '8 min 03 s',
     date: '10 Août 2026',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4#t=2',
+    videoUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4',
     description: 'Message de bienvenue et cap stratégique pour le groupe COMPEL STSL T-OIL.',
-  },
-  {
-    id: 'v-2',
-    titre: 'Les 10 Règles d\'Or HSE sur les Dépôts Pétroliers',
-    categorie: 'Sécurité HSE',
-    duree: '5 min',
-    date: '04 Août 2026',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    description: 'Directives sécurité essentielles et tolérance zéro en zone de stockage pétrolier.',
-  },
-  {
-    id: 'v-3',
-    titre: 'T-OIL Digital — Prise en main rapide des outils M365',
-    categorie: 'Tutoriel IT',
-    duree: '4 min',
-    date: '28 Juil 2026',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-    description: 'Guide d\'utilisation de Teams, Outlook et la soumission des congés sur l\'intranet.',
   },
 ];
 
@@ -90,11 +70,21 @@ export default function VideosSection() {
           >
             {/* Thumbnail avec overlay play */}
             <div className="relative h-40 w-full overflow-hidden bg-slate-900">
-              <img
-                src={vid.thumbnailUrl}
-                alt={vid.titre}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-              />
+              {vid.videoUrl.endsWith('.mp4') || vid.thumbnailUrl.includes('.mp4') ? (
+                <video
+                  src={`${vid.videoUrl}#t=2`}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+                />
+              ) : (
+                <img
+                  src={vid.thumbnailUrl}
+                  alt={vid.titre}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
               {/* Bouton Play */}
