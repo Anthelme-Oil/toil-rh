@@ -69,9 +69,17 @@ async function resolveSharePointUrl(shareUrl: string, token: string): Promise<{ 
 
   // 1. Essayer le Share ID (pour les liens de partage SharePoint / OneDrive)
   const urlsToTry = [shareUrl];
+  if (shareUrl.includes('?')) {
+    urlsToTry.push(shareUrl.split('?')[0]);
+  }
   try {
     const decoded = decodeURIComponent(shareUrl);
-    if (decoded !== shareUrl) urlsToTry.push(decoded);
+    if (decoded !== shareUrl) {
+      urlsToTry.push(decoded);
+      if (decoded.includes('?')) {
+        urlsToTry.push(decoded.split('?')[0]);
+      }
+    }
   } catch {}
 
   for (const targetUrl of urlsToTry) {

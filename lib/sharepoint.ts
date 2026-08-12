@@ -42,21 +42,29 @@ function formatSharePointUrl(rawUrl: string): string {
 }
 
 function extractImageUrl(fields: Record<string, string>, itemId: string): string | undefined {
+  let rawUrl: string | undefined = undefined;
+
   if (fields.ImageUrl) {
-    return formatSharePointUrl(fields.ImageUrl);
-  }
-  if (fields.Image) {
+    rawUrl = fields.ImageUrl;
+  } else if (fields.Image) {
     try {
-      const imgObj = typeof fields.Image === 'string' ? JSON.parse(fields.Image) : fields.Image;
-      if (imgObj.serverRelativeUrl) {
-        return `https://${SHAREPOINT_HOSTNAME}${imgObj.serverRelativeUrl}`;
-      }
-      if (imgObj.fileName) {
-        return `https://${SHAREPOINT_HOSTNAME}/sites/NotrePortail/Lists/Actualites/Attachments/${itemId}/${encodeURIComponent(imgObj.fileName)}`;
+      const imgObj = typeof fields.Image === 'string' ? JSON.parse(fields.Image) : (fields.Image as Record<string, unknown>);
+      if (imgObj?.serverRelativeUrl) {
+        rawUrl = `https://${SHAREPOINT_HOSTNAME}${imgObj.serverRelativeUrl}`;
+      } else if (imgObj?.fileName) {
+        rawUrl = `https://${SHAREPOINT_HOSTNAME}/sites/NotrePortail/Lists/Actualites/Attachments/${itemId}/${encodeURIComponent(String(imgObj.fileName))}`;
+      } else if (typeof fields.Image === 'string' && fields.Image.startsWith('http')) {
+        rawUrl = fields.Image;
       }
     } catch {
-      // Ignorer l'erreur de parsing JSON
+      if (typeof fields.Image === 'string' && fields.Image.startsWith('http')) {
+        rawUrl = fields.Image;
+      }
     }
+  }
+
+  if (rawUrl) {
+    return formatSharePointUrl(rawUrl);
   }
   return undefined;
 }
