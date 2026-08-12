@@ -2,6 +2,28 @@ import 'server-only';
 import { getGraphClient } from './graph';
 import { getSystemSettings } from './settings';
 
+function getAppBaseUrl(): string {
+  // 1. Variable explicitement configurée dans l'environnement
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+  if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes('localhost')) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  }
+  // 2. Domaine Vercel de production injecté automatiquement
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+  }
+  // 3. Domaine Vercel de production par défaut
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://toil-project.vercel.app';
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://toil-project.vercel.app';
+}
+
 function formatTypeConge(type: string): string {
   const map: Record<string, string> = {
     conge_paye: 'Congé Payé',
@@ -108,7 +130,7 @@ export function getEmailTemplateN1({
         </div>
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder à mon Espace Manager pour Valider</a>
+          <a href="${getAppBaseUrl()}/demandes/validation" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder à mon Espace Manager pour Valider</a>
         </p>
       </div>
 
@@ -154,7 +176,7 @@ export function getEmailTemplateRH({
         </div>
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Finaliser le Dossier RH</a>
+          <a href="${getAppBaseUrl()}/demandes/validation" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Finaliser le Dossier RH</a>
         </p>
       </div>
     </div>
@@ -199,7 +221,7 @@ export function getEmailTemplateRappel({
         </div>
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: ${color}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Traiter la Demande en 1 clic</a>
+          <a href="${getAppBaseUrl()}/demandes/validation" style="background-color: ${color}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Traiter la Demande en 1 clic</a>
         </p>
       </div>
 
@@ -251,7 +273,7 @@ export function getEmailTemplateDecision({
         }
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes" style="background-color: #334155; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Consulter mes demandes</a>
+          <a href="${getAppBaseUrl()}/demandes" style="background-color: #334155; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Consulter mes demandes</a>
         </p>
       </div>
     </div>
@@ -295,7 +317,7 @@ export function getEmailTemplatePrint({
         </div>
 
         <p style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: #7c3aed; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder pour Télécharger / Imprimer</a>
+          <a href="${getAppBaseUrl()}/demandes/validation" style="background-color: #7c3aed; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder pour Télécharger / Imprimer</a>
         </p>
       </div>
 
