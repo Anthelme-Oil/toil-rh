@@ -29,6 +29,7 @@ import type { DemandeConge } from '@/types';
 export default function ValidationDemandesPage() {
   const { userEmail, isManager, isRH, isDRH, isRHPrint, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState<'n1' | 'rh'>('n1');
+  const [filterStatus, setFilterStatus] = useState<'pending' | 'all'>('pending');
 
   const [demandesN1, setDemandesN1] = useState<DemandeConge[]>([]);
   const [demandesRH, setDemandesRH] = useState<DemandeConge[]>([]);
@@ -166,14 +167,23 @@ export default function ValidationDemandesPage() {
     );
   };
 
+  const pendingN1Count = demandesN1.filter((d) => d.statut === 'En attente de validation').length;
+  const pendingRHCount = demandesRH.filter((d) => d.statut === 'EN_ATTENTE_RH').length;
+
   const currentDemandes = activeTab === 'n1' ? demandesN1 : demandesRH;
-  const filteredDemandes = currentDemandes.filter(
-    (d) =>
-      d.demandeurNom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.demandeurEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.titre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.motif?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDemandes = currentDemandes.filter((d) => {
+    if (filterStatus === 'pending') {
+      if (activeTab === 'n1' && d.statut !== 'En attente de validation') return false;
+      if (activeTab === 'rh' && d.statut !== 'EN_ATTENTE_RH') return false;
+    }
+    const q = searchQuery.toLowerCase();
+    return (
+      d.demandeurNom?.toLowerCase().includes(q) ||
+      d.demandeurEmail?.toLowerCase().includes(q) ||
+      d.titre?.toLowerCase().includes(q) ||
+      d.motif?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -218,49 +228,79 @@ export default function ValidationDemandesPage() {
         </div>
       )}
 
-      {/* Onglets de Rôle (N+1 vs DRH/RH) */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        {(isManager || isAdmin) && (
-          <button
-            onClick={() => setActiveTab('n1')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'n1'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Demandes de mes équipes (N+1)</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                activeTab === 'n1' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+      {/* Onglets de Rôle (N+1 vs DRH/RH) & Sous-Filtres */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2">
+          {(isManager || isAdmin) && (
+            <button
+              onClick={() => setActiveTab('n1')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'n1'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {demandesN1.length}
-            </span>
-          </button>
-        )}
+              <User className="w-4 h-4" />
+              <span>Équipes N+1</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === 'n1'
+                    ? pendingN1Count > 0 ? 'bg-amber-400 text-amber-950' : 'bg-white/20 text-white'
+                    : pendingN1Count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {pendingN1Count > 0 ? `${pendingN1Count} à traiter` : demandesN1.length}
+              </span>
+            </button>
+          )}
 
-        {(isDRH || isRH || isRHPrint || isAdmin) && (
-          <button
-            onClick={() => setActiveTab('rh')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'rh'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Validation DRH & Impressions</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                activeTab === 'rh' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+          {(isDRH || isRH || isRHPrint || isAdmin) && (
+            <button
+              onClick={() => setActiveTab('rh')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'rh'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {demandesRH.length}
-            </span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>Espace DRH</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === 'rh'
+                    ? pendingRHCount > 0 ? 'bg-amber-400 text-amber-950' : 'bg-white/20 text-white'
+                    : pendingRHCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {pendingRHCount > 0 ? `${pendingRHCount} à traiter` : demandesRH.length}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* Sous-Filtres: À traiter vs Toutes */}
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+          <button
+            onClick={() => setFilterStatus('pending')}
+            className={`px-3 py-1.5 rounded-lg transition-all ${
+              filterStatus === 'pending'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            ⚡ À traiter ({activeTab === 'n1' ? pendingN1Count : pendingRHCount})
           </button>
-        )}
+          <button
+            onClick={() => setFilterStatus('all')}
+            className={`px-3 py-1.5 rounded-lg transition-all ${
+              filterStatus === 'all'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            📋 Toutes ({activeTab === 'n1' ? demandesN1.length : demandesRH.length})
+          </button>
+        </div>
       </div>
 
       {/* Barre de Recherche */}
@@ -386,20 +426,27 @@ export default function ValidationDemandesPage() {
                 {/* Actions Approbation / Refus ou Impression */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
                   {demande.statut === 'Accordée' || demande.statut === 'Refusée' ? (
-                    <button
-                      onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
-                      className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                    >
-                      <Printer className="w-4 h-4 text-purple-600" />
-                      <span>Imprimer l&apos;Attestation</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {demande.statut === 'Accordée' && (
+                        <button
+                          onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
+                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <Printer className="w-4 h-4 text-purple-600" />
+                          <span>Imprimer l&apos;Attestation</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : activeTab === 'n1' && demande.statut === 'EN_ATTENTE_RH' ? (
+                    <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      Validée par vous — Transmise à la DRH
+                    </span>
                   ) : activeTab === 'rh' && demande.statut === 'En attente de validation' ? (
-                    // DRH tab but still waiting N+1 validation
                     <span className="text-xs text-slate-500 italic font-medium">
                       En attente de la validation préalable du supérieur hiérarchique N+1
                     </span>
                   ) : activeTab === 'rh' && !isDRH && !isAdmin && !isRH ? (
-                    // User is RHPrint only and request is pending
                     <span className="text-xs text-slate-500 italic font-medium">
                       En attente de validation par la DRH
                     </span>
@@ -426,7 +473,7 @@ export default function ValidationDemandesPage() {
                         ) : (
                           <Check className="w-4 h-4" />
                         )}
-                        <span>Approuver la demande</span>
+                        <span>{activeTab === 'n1' ? 'Approuver (N+1)' : 'Approuver (DRH)'}</span>
                       </button>
                     </>
                   )}

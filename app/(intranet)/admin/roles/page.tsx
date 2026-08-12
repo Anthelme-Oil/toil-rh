@@ -57,7 +57,7 @@ export default function AdminRolesPage() {
 
   // ── État Configuration E-mails & Notifications ──
   const [settings, setSettings] = useState({
-    senderEmail: 'it.helpdesk@togosh.com',
+    senderEmail: 'it.helpdesktogo@togosh.com',
     rhEmail: 'rh@compel-toil.com',
     rhPrintEmail: 'rh.attestation@compel-toil.com',
     drhEmail: 'drh@compel-toil.com',

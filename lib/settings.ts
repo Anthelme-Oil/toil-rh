@@ -43,7 +43,7 @@ export async function getSystemSettings(): Promise<SystemSettings> {
       senderEmail:
         settingsMap.get('NOTIFICATION_SENDER_EMAIL') ||
         process.env.NOTIFICATION_SENDER_EMAIL ||
-        'it.helpdesk@togosh.com',
+        'it.helpdesktogo@togosh.com',
       rhEmail:
         settingsMap.get('RH_NOTIFICATION_EMAIL') ||
         process.env.RH_NOTIFICATION_EMAIL ||

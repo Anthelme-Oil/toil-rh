@@ -149,7 +149,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
   const cleanEmail = email.toLowerCase().trim();
 
   // Le compte admin par défaut (définissable via ADMIN_EMAIL_DEFAULT) est toujours ADMIN
-  const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesk@togosh.com').toLowerCase().trim();
+  const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesktogo@togosh.com').toLowerCase().trim();
   if (cleanEmail === adminDefaultEmail || cleanEmail === 'it.helpdesktogo@togosh.com') {
     return {
       role: 'ADMIN',

@@ -62,7 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         
         // 2. Si l'utilisateur n'existe pas, on refuse la connexion
         // (Sauf si c'est l'email admin par défaut, pour permettre la première connexion et le seed)
-        const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesk@togosh.com').toLowerCase().trim();
+        const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesktogo@togosh.com').toLowerCase().trim();
         const isDefaultAdmin = cleanEmail === adminDefaultEmail;
 
         if (rows.length === 0 && !isDefaultAdmin) {

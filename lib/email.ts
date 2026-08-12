@@ -35,7 +35,7 @@ export async function sendLeaveNotificationEmail({
     return false;
   }
 
-  const senderEmail = settings.senderEmail || 'it.helpdesk@togosh.com';
+  const senderEmail = settings.senderEmail || 'it.helpdesktogo@togosh.com';
 
   try {
     await graphClient.api(`/users/${senderEmail}/sendMail`).post({

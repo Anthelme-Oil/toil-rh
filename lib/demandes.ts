@@ -173,10 +173,10 @@ export function mapRowToDemandeConge(row: any): DemandeConge {
   let statutFormatted: StatutConge = 'En attente de validation';
   if (row.statut === 'APPROUVE' || row.statut_rh === 'APPROUVE') {
     statutFormatted = 'Accordée';
-  } else if (row.statut_n1 === 'APPROUVE' && row.statut_rh === 'EN_ATTENTE') {
-    statutFormatted = 'EN_ATTENTE_RH';
   } else if (row.statut === 'REFUSE' || row.statut_n1 === 'REFUSE' || row.statut_rh === 'REFUSE') {
     statutFormatted = 'Refusée';
+  } else if (row.statut_n1 === 'APPROUVE' && (row.statut_rh === 'EN_ATTENTE' || !row.statut_rh || row.statut_rh === '')) {
+    statutFormatted = 'EN_ATTENTE_RH';
   }
 
   let extra: Record<string, any> = {};
