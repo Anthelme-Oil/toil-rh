@@ -112,7 +112,7 @@ export async function GET(request: Request) {
     if (role === 'n1' || role === 'rh') {
       // Vérifier que l'utilisateur a bien le rôle pour voir les validations
       const perms = await getUserPermissionsByEmail(sessionEmail);
-      if (role === 'rh' && !perms.isRH && !perms.isAdmin) {
+      if (role === 'rh' && !perms.isDRH && !perms.isRH && !perms.isAdmin) {
         return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
       }
       if (role === 'n1' && !perms.isManager && !perms.isAdmin) {

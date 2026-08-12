@@ -69,6 +69,9 @@ export async function POST(request: Request) {
     const managerEmail = body.managerEmail || body.ManagerEmail || '';
     const isRH = Boolean(body.isRH || body.IsRH);
     const isCom = Boolean(body.isCom);
+    const isDRH = Boolean(body.isDRH);
+    const isRHPrint = Boolean(body.isRHPrint);
+    const isRoomManager = Boolean(body.isRoomManager);
 
     if (!targetEmail || !name) {
       return NextResponse.json(
@@ -85,6 +88,9 @@ export async function POST(request: Request) {
       managerEmail,
       isRH,
       isCom,
+      isDRH,
+      isRHPrint,
+      isRoomManager,
     });
 
     if (!result.success) {

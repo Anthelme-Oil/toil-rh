@@ -5,6 +5,9 @@ export interface SystemSettings {
   senderEmail: string;
   rhEmail: string;
   rhPrintEmail: string;
+  drhEmail: string;
+  itRespEmail: string;
+  itSupportEmail: string;
   enableEmailNotifications: boolean;
 }
 
@@ -49,6 +52,18 @@ export async function getSystemSettings(): Promise<SystemSettings> {
         settingsMap.get('RH_PRINT_EMAIL') ||
         process.env.RH_PRINT_EMAIL ||
         'rh.attestation@compel-toil.com',
+      drhEmail:
+        settingsMap.get('DRH_EMAIL') ||
+        process.env.DRH_EMAIL ||
+        'drh@compel-toil.com',
+      itRespEmail:
+        settingsMap.get('IT_RESP_EMAIL') ||
+        process.env.IT_RESP_EMAIL ||
+        'it.responsable@togosh.com',
+      itSupportEmail:
+        settingsMap.get('IT_SUPPORT_EMAIL') ||
+        process.env.IT_SUPPORT_EMAIL ||
+        'it.support@togosh.com',
       enableEmailNotifications:
         settingsMap.has('ENABLE_EMAIL_NOTIFICATIONS')
           ? settingsMap.get('ENABLE_EMAIL_NOTIFICATIONS') === 'true'
@@ -60,6 +75,9 @@ export async function getSystemSettings(): Promise<SystemSettings> {
       senderEmail: process.env.NOTIFICATION_SENDER_EMAIL || 'it.helpdesk@togosh.com',
       rhEmail: process.env.RH_NOTIFICATION_EMAIL || 'rh@compel-toil.com',
       rhPrintEmail: process.env.RH_PRINT_EMAIL || 'rh.attestation@compel-toil.com',
+      drhEmail: process.env.DRH_EMAIL || 'drh@compel-toil.com',
+      itRespEmail: process.env.IT_RESP_EMAIL || 'it.responsable@togosh.com',
+      itSupportEmail: process.env.IT_SUPPORT_EMAIL || 'it.support@togosh.com',
       enableEmailNotifications: true,
     };
   }
@@ -80,6 +98,15 @@ export async function saveSystemSettings(settings: Partial<SystemSettings>): Pro
     }
     if (settings.rhPrintEmail !== undefined) {
       entries.push(['RH_PRINT_EMAIL', settings.rhPrintEmail.trim()]);
+    }
+    if (settings.drhEmail !== undefined) {
+      entries.push(['DRH_EMAIL', settings.drhEmail.trim()]);
+    }
+    if (settings.itRespEmail !== undefined) {
+      entries.push(['IT_RESP_EMAIL', settings.itRespEmail.trim()]);
+    }
+    if (settings.itSupportEmail !== undefined) {
+      entries.push(['IT_SUPPORT_EMAIL', settings.itSupportEmail.trim()]);
     }
     if (settings.enableEmailNotifications !== undefined) {
       entries.push(['ENABLE_EMAIL_NOTIFICATIONS', String(settings.enableEmailNotifications)]);

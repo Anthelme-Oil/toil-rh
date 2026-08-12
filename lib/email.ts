@@ -2,6 +2,18 @@ import 'server-only';
 import { getGraphClient } from './graph';
 import { getSystemSettings } from './settings';
 
+function formatTypeConge(type: string): string {
+  const map: Record<string, string> = {
+    conge_paye: 'Congé Payé',
+    maladie: 'Arrêt Maladie',
+    maternite_paternite: 'Maternité / Paternité',
+    evenement_familial: 'Événement Familial',
+    sans_solde: 'Congé Sans Solde',
+    autre: 'Autre',
+  };
+  return map[type?.toLowerCase()] || type;
+}
+
 export async function sendLeaveNotificationEmail({
   to,
   subject,
@@ -46,8 +58,13 @@ export async function sendLeaveNotificationEmail({
 
     console.log(`[Email] Notification envoyée avec succès de ${senderEmail} à ${to}`);
     return true;
-  } catch (error) {
-    console.warn(`[Email] Impossible d'envoyer l'e-mail via Graph (Expéditeur: ${senderEmail}) à ${to}:`, error);
+  } catch (error: any) {
+    console.error(`[Email] ÉCHEC envoi mail Graph API de ${senderEmail} à ${to}:`, {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      body: error.body || null,
+    });
     return false;
   }
 }
@@ -83,7 +100,7 @@ export function getEmailTemplateN1({
         <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr><td style="padding: 6px 0; color: #64748b;">Demandeur :</td><td style="font-weight: bold; color: #0f172a;">${demandeurNom}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Type de congé :</td><td style="font-weight: bold; color: #059669;">${typeConge}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Type de congé :</td><td style="font-weight: bold; color: #059669;">${formatTypeConge(typeConge)}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;">Période :</td><td style="font-weight: bold; color: #0f172a;">du ${dateDebut} au ${dateFin}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;">Durée :</td><td style="font-weight: bold; color: #0f172a;">${nombreJours} jour(s)</td></tr>
             ${motif ? `<tr><td style="padding: 6px 0; color: #64748b;">Motif :</td><td style="color: #334155;">${motif}</td></tr>` : ''}
@@ -131,6 +148,7 @@ export function getEmailTemplateRH({
 
         <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
           <p style="margin: 4px 0; font-size: 14px;"><strong>Employé :</strong> ${demandeurNom}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Type de congé :</strong> ${formatTypeConge(typeConge)}</p>
           <p style="margin: 4px 0; font-size: 14px;"><strong>Période :</strong> du ${dateDebut} au ${dateFin} (${nombreJours} jours)</p>
           <p style="margin: 4px 0; font-size: 14px;"><strong>Statut actuel :</strong> Approuvée par N+1</p>
         </div>
@@ -176,7 +194,7 @@ export function getEmailTemplateRappel({
 
         <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #fcd34d; margin: 16px 0;">
           <p style="margin: 4px 0; font-size: 14px;"><strong>Demandeur :</strong> ${demandeurNom}</p>
-          <p style="margin: 4px 0; font-size: 14px;"><strong>Type :</strong> ${typeConge}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Type :</strong> ${formatTypeConge(typeConge)}</p>
           <p style="margin: 4px 0; font-size: 14px;"><strong>Période :</strong> du ${dateDebut} au ${dateFin} (${nombreJours} jour(s))</p>
         </div>
 
@@ -220,7 +238,7 @@ export function getEmailTemplateDecision({
 
       <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
         <p>Bonjour <strong>${demandeurNom}</strong>,</p>
-        <p>Votre demande de <strong>${typeConge}</strong> a été <strong>${isApprouve ? 'approuvée' : 'refusée'}</strong> par ${valideurRole}.</p>
+        <p>Votre demande de <strong>${formatTypeConge(typeConge)}</strong> a été <strong>${isApprouve ? 'approuvée' : 'refusée'}</strong> par ${valideurRole}.</p>
 
         ${
           !isApprouve && motifRefus
@@ -270,7 +288,7 @@ export function getEmailTemplatePrint({
         <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr><td style="padding: 6px 0; color: #64748b;">Collaborateur :</td><td style="font-weight: bold; color: #0f172a;">${demandeurNom}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Type de congé :</td><td style="font-weight: bold; color: #7c3aed;">${typeConge}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Type de congé :</td><td style="font-weight: bold; color: #7c3aed;">${formatTypeConge(typeConge)}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;">Période :</td><td style="font-weight: bold; color: #0f172a;">du ${dateDebut} au ${dateFin}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;">Durée :</td><td style="font-weight: bold; color: #0f172a;">${nombreJours} jour(s)</td></tr>
           </table>

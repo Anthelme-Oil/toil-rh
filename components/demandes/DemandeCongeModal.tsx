@@ -129,6 +129,11 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
       return;
     }
 
+    if (!managerEmail || !managerEmail.includes('@')) {
+      setError('Veuillez sélectionner un supérieur hiérarchique valide avec une adresse e-mail dans la liste suggérée.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 

@@ -1,7 +1,7 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════
-// Espace Validation Manager (N+1) & RH — T-OIL Intranet
+// Espace Validation Manager (N+1) & DRH — T-OIL Intranet
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,17 +20,14 @@ import {
   AlertCircle,
   Check,
   X,
-  MessageSquare,
   Search,
-  ChevronRight,
-  Filter,
   Printer,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
-import type { DemandeConge, PieceJointe } from '@/types';
+import type { DemandeConge } from '@/types';
 
 export default function ValidationDemandesPage() {
-  const { userEmail, isManager, isRH, isAdmin } = useUser();
+  const { userEmail, isManager, isRH, isDRH, isRHPrint, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState<'n1' | 'rh'>('n1');
 
   const [demandesN1, setDemandesN1] = useState<DemandeConge[]>([]);
@@ -55,8 +52,8 @@ export default function ValidationDemandesPage() {
         setDemandesN1(dataN1.demandes || []);
       }
 
-      // 2. Demandes à valider en tant que RH
-      if (isRH || isAdmin) {
+      // 2. Demandes à valider en tant que RH (DRH)
+      if (isDRH || isRH || isRHPrint || isAdmin) {
         const resRH = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=rh`);
         if (resRH.ok) {
           const dataRH = await resRH.json();
@@ -68,18 +65,24 @@ export default function ValidationDemandesPage() {
     } finally {
       setLoading(false);
     }
-  }, [userEmail, isRH, isAdmin]);
+  }, [userEmail, isDRH, isRH, isRHPrint, isAdmin]);
 
   useEffect(() => {
     fetchDemandes();
   }, [fetchDemandes]);
 
-  // Si l'utilisateur n'est pas RH mais est Manager, forcer l'onglet N1
+  // Définir l'onglet par défaut et sécurité d'accès
   useEffect(() => {
-    if (!isRH && !isAdmin && activeTab === 'rh') {
+    if (!isManager && (isDRH || isRH || isRHPrint || isAdmin)) {
+      setActiveTab('rh');
+    }
+  }, [isManager, isDRH, isRH, isRHPrint, isAdmin]);
+
+  useEffect(() => {
+    if (!isDRH && !isRH && !isRHPrint && !isAdmin && activeTab === 'rh') {
       setActiveTab('n1');
     }
-  }, [isRH, isAdmin, activeTab]);
+  }, [isDRH, isRH, isRHPrint, isAdmin, activeTab]);
 
   const handleTraiter = async (
     demandeId: string,
@@ -106,7 +109,7 @@ export default function ValidationDemandesPage() {
         setNotification({
           message: action === 'APPROUVER' ? 'Demande approuvée avec succès.' : 'Demande refusée.',
           type: 'success',
-        });
+          });
         setRefusingDemande(null);
         setMotifRefus('');
         await fetchDemandes();
@@ -120,6 +123,47 @@ export default function ValidationDemandesPage() {
     } finally {
       setActionId(null);
     }
+  };
+
+  const getStatusBadge = (statut: string) => {
+    if (statut === 'EN_ATTENTE_RH') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5 text-blue-600" />
+          En attente de validation DRH
+        </span>
+      );
+    }
+    if (statut === 'En attente de validation') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          En attente de validation N+1
+        </span>
+      );
+    }
+    if (statut === 'Accordée') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          Accordée
+        </span>
+      );
+    }
+    if (statut === 'Refusée') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-800 border border-red-200 flex items-center gap-1">
+          <XCircle className="w-3.5 h-3.5 text-red-600" />
+          Refusée
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-800 border border-slate-200 flex items-center gap-1">
+        <Clock className="w-3.5 h-3.5 text-slate-600" />
+        {statut}
+      </span>
+    );
   };
 
   const currentDemandes = activeTab === 'n1' ? demandesN1 : demandesRH;
@@ -138,7 +182,7 @@ export default function ValidationDemandesPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5">
             <ClipboardCheck className="w-7 h-7 text-emerald-600" />
-            Espace Validation Manager & RH
+            Espace Validation Manager & DRH
           </h1>
           <p className="text-slate-500 text-sm mt-1">
             Gérez les approbations de demandes de congés et d'absences attribuées à votre responsabilité.
@@ -174,28 +218,30 @@ export default function ValidationDemandesPage() {
         </div>
       )}
 
-      {/* Onglets de Rôle (N+1 vs RH) */}
+      {/* Onglets de Rôle (N+1 vs DRH/RH) */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          onClick={() => setActiveTab('n1')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-            activeTab === 'n1'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Demandes de mes équipes (N+1)</span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              activeTab === 'n1' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+        {(isManager || isAdmin) && (
+          <button
+            onClick={() => setActiveTab('n1')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'n1'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {demandesN1.length}
-          </span>
-        </button>
+            <User className="w-4 h-4" />
+            <span>Demandes de mes équipes (N+1)</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                activeTab === 'n1' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {demandesN1.length}
+            </span>
+          </button>
+        )}
 
-        {(isRH || isAdmin) && (
+        {(isDRH || isRH || isRHPrint || isAdmin) && (
           <button
             onClick={() => setActiveTab('rh')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
@@ -205,7 +251,7 @@ export default function ValidationDemandesPage() {
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Validation Finale RH</span>
+            <span>Validation DRH & Impressions</span>
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                 activeTab === 'rh' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
@@ -251,7 +297,6 @@ export default function ValidationDemandesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredDemandes.map((demande) => {
-            const hasAttachments = demande.piecesJointes && demande.piecesJointes.length > 0;
             const mainAttachment = demande.piecesJointes?.[0] || (demande.pieceJointeUrl ? { name: 'Pièce jointe', url: demande.pieceJointeUrl } : null);
 
             return (
@@ -275,10 +320,7 @@ export default function ValidationDemandesPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-600" />
-                      {demande.statut}
-                    </span>
+                    {getStatusBadge(demande.statut)}
                   </div>
                 </div>
 
@@ -351,6 +393,16 @@ export default function ValidationDemandesPage() {
                       <Printer className="w-4 h-4 text-purple-600" />
                       <span>Imprimer l&apos;Attestation</span>
                     </button>
+                  ) : activeTab === 'rh' && demande.statut === 'En attente de validation' ? (
+                    // DRH tab but still waiting N+1 validation
+                    <span className="text-xs text-slate-500 italic font-medium">
+                      En attente de la validation préalable du supérieur hiérarchique N+1
+                    </span>
+                  ) : activeTab === 'rh' && !isDRH && !isAdmin && !isRH ? (
+                    // User is RHPrint only and request is pending
+                    <span className="text-xs text-slate-500 italic font-medium">
+                      En attente de validation par la DRH
+                    </span>
                   ) : (
                     <>
                       <button
@@ -409,10 +461,11 @@ export default function ValidationDemandesPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Motif du refus (optionnel) :
+                Motif du refus (obligatoire) :
               </label>
               <textarea
                 rows={3}
+                required
                 placeholder="ex: Dates incompatibles avec le planning d'équipe..."
                 value={motifRefus}
                 onChange={(e) => setMotifRefus(e.target.value)}
@@ -430,7 +483,7 @@ export default function ValidationDemandesPage() {
               </button>
               <button
                 type="button"
-                disabled={actionId === refusingDemande.id}
+                disabled={!motifRefus.trim() || actionId === refusingDemande.id}
                 onClick={() =>
                   handleTraiter(
                     refusingDemande.id!,

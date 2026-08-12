@@ -4,11 +4,12 @@ import { getUserPermissionsByEmail } from '@/lib/roles';
 import { traiterDemandeConge } from '@/lib/demandes';
 import { sendLeaveNotificationEmail, getEmailTemplateRH, getEmailTemplateDecision, getEmailTemplatePrint } from '@/lib/email';
 import { getSystemSettings } from '@/lib/settings';
+import { query } from '@/lib/db';
 
 /**
  * POST /api/demandes/conges/traiter
  * Traite (Approuve/Refuse) une demande de congé.
- * Protégé : vérifie que l'appelant a le rôle requis (MANAGER/RH/ADMIN).
+ * Protégé : vérifie que l'appelant a le rôle requis (MANAGER/RH/DRH/ADMIN).
  */
 export async function POST(request: Request) {
   try {
@@ -25,15 +26,15 @@ export async function POST(request: Request) {
 
     // ── Vérification des permissions ──
     const callerPerms = await getUserPermissionsByEmail(callerEmail);
-    if (!callerPerms.isManager && !callerPerms.isRH && !callerPerms.isAdmin) {
+    if (!callerPerms.isManager && !callerPerms.isRH && !callerPerms.isDRH && !callerPerms.isAdmin) {
       return NextResponse.json(
-        { error: 'Accès refusé. Vous devez être Manager, RH ou Admin pour traiter des demandes.' },
+        { error: 'Accès refusé. Privilèges insuffisants pour traiter des demandes.' },
         { status: 403 }
       );
     }
 
     const body = await request.json();
-    const { id, action, role, motifRefus, demandeurNom, demandeurEmail, typeConge, dateDebut, dateFin, nombreJours } = body;
+    const { id, action, role, motifRefus } = body;
 
     if (!id || !action || !role) {
       return NextResponse.json(
@@ -43,9 +44,9 @@ export async function POST(request: Request) {
     }
 
     // Vérification fine du rôle demandé vs permissions réelles
-    if (role === 'RH' && !callerPerms.isRH && !callerPerms.isAdmin) {
+    if (role === 'RH' && !callerPerms.isDRH && !callerPerms.isRH && !callerPerms.isAdmin) {
       return NextResponse.json(
-        { error: 'Seuls les RH et Admin peuvent effectuer une validation RH.' },
+        { error: 'Seuls la DRH et les Administrateurs peuvent effectuer la validation finale.' },
         { status: 403 }
       );
     }
@@ -57,29 +58,46 @@ export async function POST(request: Request) {
       );
     }
 
+    // Récupérer la demande en base de données pour avoir des infos fiables pour les e-mails
+    const rows = await query<any>('SELECT * FROM demandes WHERE id = ?', [id]);
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ error: 'Demande introuvable.' }, { status: 404 });
+    }
+    const dbDemande = rows[0];
+
+    const demandeurNom = dbDemande.nom_demandeur || dbDemande.email_demandeur.split('@')[0];
+    const demandeurEmail = dbDemande.email_demandeur;
+    const typeConge = dbDemande.type_conge || 'conge_paye';
+    const dateDebut = dbDemande.date_debut ? new Date(dbDemande.date_debut).toLocaleDateString('fr-FR') : '';
+    const dateFin = dbDemande.date_fin ? new Date(dbDemande.date_fin).toLocaleDateString('fr-FR') : '';
+    const nombreJours = dbDemande.nombre_jours || 1;
+
+    // Effectuer la modification en base de données
     const success = await traiterDemandeConge(id, action, role, motifRefus);
     if (!success) {
       return NextResponse.json({ error: 'Échec du traitement de la demande' }, { status: 500 });
     }
 
+    const settings = await getSystemSettings();
+
     // ⚡ Notifications E-mail
     if (action === 'APPROUVER' && role === 'N1') {
-      // Le N+1 a approuvé ➔ Notifier la RH
-      const rhEmail = process.env.RH_NOTIFICATION_EMAIL || 'rh@compel-toil.com';
+      // Le N+1 a approuvé ➔ Notifier la DRH via l'e-mail configuré
+      const drhEmail = settings.drhEmail || 'drh@compel-toil.com';
       sendLeaveNotificationEmail({
-        to: rhEmail,
-        subject: `[Traitement RH] Congé validé par N+1 pour ${demandeurNom || 'un collaborateur'}`,
+        to: drhEmail,
+        subject: `[Traitement DRH] Congé validé par N+1 pour ${demandeurNom}`,
         html: getEmailTemplateRH({
-          demandeurNom: demandeurNom || 'Collaborateur T-OIL',
-          typeConge: typeConge || 'Congé',
-          dateDebut: dateDebut || 'ND',
-          dateFin: dateFin || 'ND',
-          nombreJours: nombreJours || 1,
+          demandeurNom: demandeurNom,
+          typeConge: typeConge,
+          dateDebut: dateDebut,
+          dateFin: dateFin,
+          nombreJours: nombreJours,
         }),
-      }).catch((e) => console.warn('Échec envoi mail RH:', e));
+      }).catch((e) => console.warn('Échec envoi mail DRH:', e));
     }
 
-    // Notifier l'employé demandeur du résultat (RH finale ou refus N+1)
+    // Notifier l'employé demandeur du résultat (DRH finale ou refus N+1)
     if (demandeurEmail) {
       const isFinalDecision = role === 'RH' || action === 'REFUSER';
       if (isFinalDecision) {
@@ -87,31 +105,29 @@ export async function POST(request: Request) {
           to: demandeurEmail,
           subject: action === 'APPROUVER' ? `[Accordé] Votre demande de congé a été validée` : `[Refusé] Votre demande de congé`,
           html: getEmailTemplateDecision({
-            demandeurNom: demandeurNom || demandeurEmail,
-            typeConge: typeConge || 'Congé Payé',
+            demandeurNom: demandeurNom,
+            typeConge: typeConge,
             statut: action === 'APPROUVER' ? 'APPROUVE' : 'REFUSE',
             motifRefus,
-            valideurRole: role === 'N1' ? 'votre Supérieur N+1' : 'la Direction RH',
+            valideurRole: role === 'N1' ? 'votre Supérieur N+1' : 'la Direction DRH',
           }),
         }).catch((e) => console.warn('Échec envoi mail réponse à l\'employé:', e));
 
-        // Si c'est approuvé par la RH (décision finale d'acceptation)
+        // Si c'est approuvé par la DRH (décision finale d'acceptation)
         if (action === 'APPROUVER' && role === 'RH') {
-          // Notifier également le responsable de l'impression
-          getSystemSettings().then((settings) => {
-            const printEmail = settings.rhPrintEmail || 'rh.attestation@compel-toil.com';
-            sendLeaveNotificationEmail({
-              to: printEmail,
-              subject: `[Impression Requis] Attestation de congé prête pour ${demandeurNom || 'un collaborateur'}`,
-              html: getEmailTemplatePrint({
-                demandeurNom: demandeurNom || 'Collaborateur T-OIL',
-                typeConge: typeConge || 'Congé Payé',
-                dateDebut: dateDebut || 'ND',
-                dateFin: dateFin || 'ND',
-                nombreJours: parseFloat(nombreJours) || 1,
-              }),
-            }).catch((e) => console.warn('Échec envoi mail RH Impression:', e));
-          }).catch((e) => console.warn('Échec lecture paramètres pour RH Impression:', e));
+          // Notifier également le responsable de l'impression d'attestation
+          const printEmail = settings.rhPrintEmail || 'rh.attestation@compel-toil.com';
+          sendLeaveNotificationEmail({
+            to: printEmail,
+            subject: `[Impression Requis] Attestation de congé prête pour ${demandeurNom}`,
+            html: getEmailTemplatePrint({
+              demandeurNom: demandeurNom,
+              typeConge: typeConge,
+              dateDebut: dateDebut,
+              dateFin: dateFin,
+              nombreJours: nombreJours,
+            }),
+          }).catch((e) => console.warn('Échec envoi mail RH Impression:', e));
         }
       }
     }

@@ -9,6 +9,9 @@ export interface UserRoleRecord {
   managerEmail: string;
   isRH: boolean;
   isCom: boolean;
+  isDRH: boolean;
+  isRHPrint: boolean;
+  isRoomManager: boolean;
 }
 
 const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
@@ -19,6 +22,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: '',
     isRH: true,
     isCom: true,
+    isDRH: true,
+    isRHPrint: true,
+    isRoomManager: true,
   },
   {
     name: 'IT Helpdesk TogoSH',
@@ -27,6 +33,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: '',
     isRH: true,
     isCom: true,
+    isDRH: true,
+    isRHPrint: true,
+    isRoomManager: true,
   },
   {
     name: 'Lino Lino',
@@ -35,6 +44,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: '',
     isRH: true,
     isCom: true,
+    isDRH: true,
+    isRHPrint: true,
+    isRoomManager: true,
   },
   {
     name: 'IT Helpdesk',
@@ -43,6 +55,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: 'it.helpdesk@togosh.com',
     isRH: false,
     isCom: false,
+    isDRH: false,
+    isRHPrint: false,
+    isRoomManager: false,
   },
   {
     name: 'Responsable RH',
@@ -51,6 +66,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: 'it.helpdesk@togosh.com',
     isRH: true,
     isCom: true,
+    isDRH: true,
+    isRHPrint: true,
+    isRoomManager: false,
   },
   {
     name: 'Portail Test',
@@ -59,6 +77,9 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
     managerEmail: 'it.helpdesk@togosh.com',
     isRH: false,
     isCom: false,
+    isDRH: false,
+    isRHPrint: false,
+    isRoomManager: false,
   },
 ];
 
@@ -68,7 +89,7 @@ const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
 export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
   try {
     const dbUsers = await query<any>(
-      'SELECT id, nom, email, role, email_manager, est_rh, est_com FROM utilisateurs ORDER BY nom ASC'
+      'SELECT id, nom, email, role, email_manager, est_rh, est_com, est_drh, est_rh_print, est_gestionnaire_salle FROM utilisateurs ORDER BY nom ASC'
     );
 
     if (dbUsers.length === 0) {
@@ -85,6 +106,9 @@ export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
       managerEmail: u.email_manager || '',
       isRH: Boolean(u.est_rh),
       isCom: Boolean(u.est_com),
+      isDRH: Boolean(u.est_drh),
+      isRHPrint: Boolean(u.est_rh_print),
+      isRoomManager: Boolean(u.est_gestionnaire_salle),
     }));
   } catch (error) {
     console.error('[Roles] Erreur lecture MySQL via mysql2:', error);
@@ -101,6 +125,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
   isManager: boolean;
   isAdmin: boolean;
   isCom: boolean;
+  isDRH: boolean;
+  isRHPrint: boolean;
+  isRoomManager: boolean;
   managerEmail: string;
   name: string;
 }> {
@@ -111,6 +138,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isManager: false,
       isAdmin: false,
       isCom: false,
+      isDRH: false,
+      isRHPrint: false,
+      isRoomManager: false,
       managerEmail: '',
       name: '',
     };
@@ -127,6 +157,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isManager: true,
       isAdmin: true,
       isCom: true,
+      isDRH: true,
+      isRHPrint: true,
+      isRoomManager: true,
       managerEmail: '',
       name: 'Administrateur Système',
     };
@@ -142,6 +175,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
       isManager: false,
       isAdmin: false,
       isCom: false,
+      isDRH: false,
+      isRHPrint: false,
+      isRoomManager: false,
       managerEmail: '',
       name: '',
     };
@@ -154,6 +190,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
   const isRH = user.isRH || user.role === 'RH' || user.role === 'ADMIN';
   const isAdmin = user.role === 'ADMIN';
   const isCom = user.isCom || isRH || isAdmin;
+  const isDRH = user.isDRH || isAdmin;
+  const isRHPrint = user.isRHPrint || isAdmin;
+  const isRoomManager = user.isRoomManager || isAdmin;
 
   return {
     role: user.role,
@@ -161,6 +200,9 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
     isManager,
     isAdmin,
     isCom,
+    isDRH,
+    isRHPrint,
+    isRoomManager,
     managerEmail: user.managerEmail,
     name: user.name,
   };
@@ -177,6 +219,9 @@ export async function saveOrUpdateUserRole(data: {
   managerEmail?: string;
   isRH?: boolean;
   isCom?: boolean;
+  isDRH?: boolean;
+  isRHPrint?: boolean;
+  isRoomManager?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const cleanEmail = data.email.toLowerCase().trim();
@@ -184,17 +229,23 @@ export async function saveOrUpdateUserRole(data: {
     const nameTrimmed = data.name.trim();
     const isRHNum = data.isRH ? 1 : 0;
     const isComNum = data.isCom ? 1 : 0;
+    const isDRHNum = data.isDRH ? 1 : 0;
+    const isRHPrintNum = data.isRHPrint ? 1 : 0;
+    const isRoomManagerNum = data.isRoomManager ? 1 : 0;
     const now = new Date();
 
     const sql = `
-      INSERT INTO utilisateurs (id, nom, email, role, email_manager, est_rh, est_com, cree_le, mis_a_jour_le)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO utilisateurs (id, nom, email, role, email_manager, est_rh, est_com, est_drh, est_rh_print, est_gestionnaire_salle, cree_le, mis_a_jour_le)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         nom = VALUES(nom),
         role = VALUES(role),
         email_manager = VALUES(email_manager),
         est_rh = VALUES(est_rh),
         est_com = VALUES(est_com),
+        est_drh = VALUES(est_drh),
+        est_rh_print = VALUES(est_rh_print),
+        est_gestionnaire_salle = VALUES(est_gestionnaire_salle),
         mis_a_jour_le = VALUES(mis_a_jour_le)
     `;
 
@@ -206,6 +257,9 @@ export async function saveOrUpdateUserRole(data: {
       cleanManagerEmail,
       isRHNum,
       isComNum,
+      isDRHNum,
+      isRHPrintNum,
+      isRoomManagerNum,
       now,
       now,
     ]);
@@ -246,6 +300,9 @@ export async function seedDefaultRolesToDatabase(): Promise<{ success: boolean; 
         managerEmail: u.managerEmail,
         isRH: u.isRH,
         isCom: u.isCom,
+        isDRH: u.isDRH,
+        isRHPrint: u.isRHPrint,
+        isRoomManager: u.isRoomManager,
       });
       count++;
     }

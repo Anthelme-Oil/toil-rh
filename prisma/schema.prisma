@@ -18,6 +18,9 @@ model Utilisateur {
   emailManager   String?   @default("") @map("email_manager") // Email du supérieur hiérarchique N+1
   estRH          Boolean   @default(false) @map("est_rh")
   estCom         Boolean   @default(false) @map("est_com") // Autorisation publication actualités SharePoint
+  estDRH         Boolean   @default(false) @map("est_drh")
+  estRHPrint     Boolean   @default(false) @map("est_rh_print")
+  estGestionnaireSalle Boolean @default(false) @map("est_gestionnaire_salle")
   departement    String?   @map("departement")
   poste          String?   @map("poste")
   creeLe         DateTime  @default(now()) @map("cree_le")

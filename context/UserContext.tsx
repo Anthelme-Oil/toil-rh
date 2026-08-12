@@ -23,6 +23,9 @@ interface UserContextType {
   isManager: boolean;
   isAdmin: boolean;
   isCom: boolean;
+  isDRH: boolean;
+  isRHPrint: boolean;
+  isRoomManager: boolean;
   /** L'utilisateur est-il authentifié via SSO ? */
   isAuthenticated: boolean;
   /** Chargement en cours des permissions ? */
@@ -39,6 +42,9 @@ const UserContext = createContext<UserContextType>({
   isManager: false,
   isAdmin: false,
   isCom: false,
+  isDRH: false,
+  isRHPrint: false,
+  isRoomManager: false,
   isAuthenticated: false,
   isLoading: true,
   refreshPermissions: () => {},
@@ -55,6 +61,9 @@ interface CachedPermissions {
   isManager: boolean;
   isAdmin: boolean;
   isCom: boolean;
+  isDRH: boolean;
+  isRHPrint: boolean;
+  isRoomManager: boolean;
   name: string;
   cachedAt: number;
 }
@@ -77,7 +86,7 @@ function getCachedPermissions(email: string): CachedPermissions | null {
 
 function setCachedPermissions(
   email: string,
-  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean; name: string }
+  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean; isDRH: boolean; isRHPrint: boolean; isRoomManager: boolean; name: string }
 ) {
   if (typeof window === 'undefined') return;
   try {
@@ -100,6 +109,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     isManager: false,
     isAdmin: false,
     isCom: false,
+    isDRH: false,
+    isRHPrint: false,
+    isRoomManager: false,
     name: '',
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -114,7 +126,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPermissions = useCallback(async (email: string, forceRefresh = false) => {
     if (!email) {
-      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, name: '' });
+      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
       setIsLoading(false);
       return;
     }
@@ -129,6 +141,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           isManager: cached.isManager,
           isAdmin: cached.isAdmin,
           isCom: cached.isCom,
+          isDRH: cached.isDRH,
+          isRHPrint: cached.isRHPrint,
+          isRoomManager: cached.isRoomManager,
           name: cached.name,
         });
         setIsLoading(false);
@@ -151,6 +166,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           isManager: data.isManager || false,
           isAdmin: data.isAdmin || false,
           isCom: data.isCom || false,
+          isDRH: data.isDRH || false,
+          isRHPrint: data.isRHPrint || false,
+          isRoomManager: data.isRoomManager || false,
           name: data.name || '',
         };
         setPermissions(perms);
@@ -170,7 +188,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (userEmail) {
       fetchPermissions(userEmail);
     } else {
-      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, name: '' });
+      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
       setIsLoading(false);
     }
   }, [userEmail, status, fetchPermissions]);
@@ -188,6 +206,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isManager: permissions.isManager,
         isAdmin: permissions.isAdmin,
         isCom: permissions.isCom,
+        isDRH: permissions.isDRH,
+        isRHPrint: permissions.isRHPrint,
+        isRoomManager: permissions.isRoomManager,
         isAuthenticated,
         isLoading,
         refreshPermissions: () => fetchPermissions(userEmail, true),

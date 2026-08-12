@@ -145,7 +145,7 @@ const prioriteOptions: { value: PrioriteDemande; label: string; color: string }[
 import { useUser } from '@/context/UserContext';
 
 export default function DemandesPage() {
-  const { userEmail, isRH, isManager, isAdmin, userRole } = useUser();
+  const { userEmail, isRH, isDRH, isRHPrint, isManager, isAdmin, userRole } = useUser();
   const [selectedDemande, setSelectedDemande] = useState<{ id: TypeDemande; label: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'catalogue' | 'historique' | 'validations_n1' | 'validations_rh'>('catalogue');
   const [isCongeModalOpen, setIsCongeModalOpen] = useState(false);
@@ -390,7 +390,7 @@ export default function DemandesPage() {
             </button>
           )}
 
-          {(isRH || isAdmin) && (
+          {(isDRH || isRH || isRHPrint || isAdmin) && (
             <button
               onClick={() => setActiveTab('validations_rh')}
               className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
@@ -400,7 +400,7 @@ export default function DemandesPage() {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              Validation RH (Finale) ({congesRhList.length})
+              Validation DRH & Impressions ({congesRhList.length})
             </button>
           )}
         </div>
@@ -519,10 +519,10 @@ export default function DemandesPage() {
         <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-sm space-y-6 animate-fade-in">
           <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            Demandes de congé à valider (Service RH)
+            Demandes de congé à valider (Direction DRH)
           </h2>
           <p className="text-sm text-text-secondary">
-            Toutes les demandes enregistrées dans le système SharePoint.
+            Suivi des validations des congés et impression des attestations.
           </p>
 
           {isLoadingConges ? (
@@ -537,37 +537,64 @@ export default function DemandesPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {congesRhList.map((item) => (
-                <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        {item.typeConge}
-                      </span>
-                      <span className="text-xs text-text-muted">
-                        du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
-                    <p className="text-xs text-text-secondary">Statut : <span className="font-semibold text-emerald-700">{item.statut}</span></p>
-                  </div>
+              {congesRhList.map((item) => {
+                const formattedStatut =
+                  item.statut === 'EN_ATTENTE_RH'
+                    ? 'En attente de validation DRH'
+                    : item.statut === 'En attente de validation'
+                    ? 'En attente de validation N+1'
+                    : item.statut;
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleTraiterConge(item.id, 'APPROUVER', 'RH')}
-                      className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-                    >
-                      Approuver RH
-                    </button>
-                    <button
-                      onClick={() => handleTraiterConge(item.id, 'REFUSER', 'RH')}
-                      className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
-                    >
-                      Refuser
-                    </button>
+                return (
+                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {item.typeConge}
+                        </span>
+                        <span className="text-xs text-text-muted">
+                          du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
+                      <p className="text-xs text-text-secondary">
+                        Statut : <span className="font-semibold text-emerald-700">{formattedStatut}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {item.statut === 'Accordée' || item.statut === 'Refusée' ? (
+                        <button
+                          onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Imprimer</span>
+                        </button>
+                      ) : item.statut === 'En attente de validation' ? (
+                        <span className="text-xs text-slate-500 italic">En attente de validation N+1</span>
+                      ) : !isDRH && !isAdmin && !isRH ? (
+                        <span className="text-xs text-slate-500 italic">En attente de validation DRH</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleTraiterConge(item.id, 'APPROUVER', 'RH', undefined, item)}
+                            className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                          >
+                            Valider DRH
+                          </button>
+                          <button
+                            onClick={() => handleTraiterConge(item.id, 'REFUSER', 'RH', undefined, item)}
+                            className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                          >
+                            Refuser
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
