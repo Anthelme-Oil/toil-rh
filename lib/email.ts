@@ -239,3 +239,52 @@ export function getEmailTemplateDecision({
     </div>
   `;
 }
+
+/**
+ * Modèle E-mail HTML pour la RH responsable de l'impression (Attestation Prête)
+ */
+export function getEmailTemplatePrint({
+  demandeurNom,
+  typeConge,
+  dateDebut,
+  dateFin,
+  nombreJours,
+}: {
+  demandeurNom: string;
+  typeConge: string;
+  dateDebut: string;
+  dateFin: string;
+  nombreJours: number;
+}): string {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #7c3aed;">
+        <h2 style="color: #4c1d95; margin: 0;">🖨️ Impression Attestation de Congé</h2>
+      </div>
+
+      <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
+        <p>Bonjour,</p>
+        <p>Une demande de congé a été entièrement validée (Manager N+1 et Direction RH) pour le collaborateur <strong>${demandeurNom}</strong>.</p>
+        <p>Vous pouvez à présent vous connecter à l'intranet pour télécharger l'historique complet des validations et imprimer l'attestation de congé correspondante.</p>
+
+        <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 6px 0; color: #64748b;">Collaborateur :</td><td style="font-weight: bold; color: #0f172a;">${demandeurNom}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Type de congé :</td><td style="font-weight: bold; color: #7c3aed;">${typeConge}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Période :</td><td style="font-weight: bold; color: #0f172a;">du ${dateDebut} au ${dateFin}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Durée :</td><td style="font-weight: bold; color: #0f172a;">${nombreJours} jour(s)</td></tr>
+          </table>
+        </div>
+
+        <p style="text-align: center; margin-top: 24px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/demandes/validation" style="background-color: #7c3aed; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accéder pour Télécharger / Imprimer</a>
+        </p>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+        Intranet T-OIL — Service d'édition des attestations
+      </div>
+    </div>
+  `;
+}
+

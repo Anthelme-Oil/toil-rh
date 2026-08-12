@@ -51,6 +51,7 @@ export default function AdminRolesPage() {
   const [settings, setSettings] = useState({
     senderEmail: 'it.helpdesk@togosh.com',
     rhEmail: 'rh@compel-toil.com',
+    rhPrintEmail: 'rh.attestation@compel-toil.com',
     enableEmailNotifications: true,
   });
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -83,6 +84,7 @@ export default function AdminRolesPage() {
         setSettings({
           senderEmail: data.senderEmail || 'it.helpdesk@togosh.com',
           rhEmail: data.rhEmail || 'rh@compel-toil.com',
+          rhPrintEmail: data.rhPrintEmail || 'rh.attestation@compel-toil.com',
           enableEmailNotifications: data.enableEmailNotifications !== undefined ? data.enableEmailNotifications : true,
         });
       }
@@ -518,7 +520,7 @@ export default function AdminRolesPage() {
             </div>
 
             <form onSubmit={handleSaveSettings} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Expéditeur Microsoft 365 */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-800">
@@ -553,6 +555,24 @@ export default function AdminRolesPage() {
                   />
                   <p className="text-[11px] text-slate-500 leading-relaxed">
                     Adresse qui recevra une alerte lorsqu&apos;un congé est approuvé par un supérieur N+1.
+                  </p>
+                </div>
+
+                {/* Destinataire RH Impression Attestation */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Email RH Impression Attestations :
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.rhPrintEmail || ''}
+                    onChange={(e) => setSettings({ ...settings, rhPrintEmail: e.target.value })}
+                    required
+                    placeholder="ex: rh.attestation@compel-toil.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Adresse qui recevra l&apos;attestation finale et l&apos;historique de validation pour impression.
                   </p>
                 </div>
               </div>

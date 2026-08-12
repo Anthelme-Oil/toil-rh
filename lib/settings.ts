@@ -4,6 +4,7 @@ import { query, execute } from './db';
 export interface SystemSettings {
   senderEmail: string;
   rhEmail: string;
+  rhPrintEmail: string;
   enableEmailNotifications: boolean;
 }
 
@@ -44,6 +45,10 @@ export async function getSystemSettings(): Promise<SystemSettings> {
         settingsMap.get('RH_NOTIFICATION_EMAIL') ||
         process.env.RH_NOTIFICATION_EMAIL ||
         'rh@compel-toil.com',
+      rhPrintEmail:
+        settingsMap.get('RH_PRINT_EMAIL') ||
+        process.env.RH_PRINT_EMAIL ||
+        'rh.attestation@compel-toil.com',
       enableEmailNotifications:
         settingsMap.has('ENABLE_EMAIL_NOTIFICATIONS')
           ? settingsMap.get('ENABLE_EMAIL_NOTIFICATIONS') === 'true'
@@ -54,6 +59,7 @@ export async function getSystemSettings(): Promise<SystemSettings> {
     return {
       senderEmail: process.env.NOTIFICATION_SENDER_EMAIL || 'it.helpdesk@togosh.com',
       rhEmail: process.env.RH_NOTIFICATION_EMAIL || 'rh@compel-toil.com',
+      rhPrintEmail: process.env.RH_PRINT_EMAIL || 'rh.attestation@compel-toil.com',
       enableEmailNotifications: true,
     };
   }
@@ -71,6 +77,9 @@ export async function saveSystemSettings(settings: Partial<SystemSettings>): Pro
     }
     if (settings.rhEmail !== undefined) {
       entries.push(['RH_NOTIFICATION_EMAIL', settings.rhEmail.trim()]);
+    }
+    if (settings.rhPrintEmail !== undefined) {
+      entries.push(['RH_PRINT_EMAIL', settings.rhPrintEmail.trim()]);
     }
     if (settings.enableEmailNotifications !== undefined) {
       entries.push(['ENABLE_EMAIL_NOTIFICATIONS', String(settings.enableEmailNotifications)]);

@@ -13,6 +13,14 @@ export interface UserRoleRecord {
 
 const DEFAULT_USERS: Omit<UserRoleRecord, 'id'>[] = [
   {
+    name: 'IT Helpdesk TogoSH GO',
+    email: 'it.helpdesktogo@togosh.com',
+    role: 'ADMIN',
+    managerEmail: '',
+    isRH: true,
+    isCom: true,
+  },
+  {
     name: 'IT Helpdesk TogoSH',
     email: 'it.helpdesk@togosh.com',
     role: 'ADMIN',
@@ -112,7 +120,7 @@ export async function getUserPermissionsByEmail(email?: string | null): Promise<
 
   // Le compte admin par défaut (définissable via ADMIN_EMAIL_DEFAULT) est toujours ADMIN
   const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesk@togosh.com').toLowerCase().trim();
-  if (cleanEmail === adminDefaultEmail) {
+  if (cleanEmail === adminDefaultEmail || cleanEmail === 'it.helpdesktogo@togosh.com') {
     return {
       role: 'ADMIN',
       isRH: true,

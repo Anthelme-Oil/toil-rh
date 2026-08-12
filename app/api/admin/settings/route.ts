@@ -48,11 +48,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { senderEmail, rhEmail, enableEmailNotifications } = body;
+    const { senderEmail, rhEmail, rhPrintEmail, enableEmailNotifications } = body;
 
     const ok = await saveSystemSettings({
       senderEmail,
       rhEmail,
+      rhPrintEmail,
       enableEmailNotifications,
     });
 

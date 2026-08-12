@@ -24,6 +24,7 @@ import {
   Search,
   ChevronRight,
   Filter,
+  Printer,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import type { DemandeConge, PieceJointe } from '@/types';
@@ -340,31 +341,43 @@ export default function ValidationDemandesPage() {
                   </div>
                 )}
 
-                {/* Actions Approbation / Refus */}
+                {/* Actions Approbation / Refus ou Impression */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setRefusingDemande(demande)}
-                    disabled={actionId === demande.id}
-                    className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <X className="w-4 h-4 text-red-600" />
-                    <span>Refuser</span>
-                  </button>
+                  {demande.statut === 'Accordée' || demande.statut === 'Refusée' ? (
+                    <button
+                      onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
+                      className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <Printer className="w-4 h-4 text-purple-600" />
+                      <span>Imprimer l&apos;Attestation</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setRefusingDemande(demande)}
+                        disabled={actionId === demande.id}
+                        className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <X className="w-4 h-4 text-red-600" />
+                        <span>Refuser</span>
+                      </button>
 
-                  <button
-                    onClick={() =>
-                      handleTraiter(demande.id!, 'APPROUVER', activeTab === 'n1' ? 'N1' : 'RH')
-                    }
-                    disabled={actionId === demande.id}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {actionId === demande.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    <span>Approuver la demande</span>
-                  </button>
+                      <button
+                        onClick={() =>
+                          handleTraiter(demande.id!, 'APPROUVER', activeTab === 'n1' ? 'N1' : 'RH')
+                        }
+                        disabled={actionId === demande.id}
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {actionId === demande.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                        <span>Approuver la demande</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

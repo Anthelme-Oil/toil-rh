@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserPermissionsByEmail } from '@/lib/roles';
 import { traiterDemandeConge } from '@/lib/demandes';
-import { sendLeaveNotificationEmail, getEmailTemplateRH, getEmailTemplateDecision } from '@/lib/email';
+import { sendLeaveNotificationEmail, getEmailTemplateRH, getEmailTemplateDecision, getEmailTemplatePrint } from '@/lib/email';
+import { getSystemSettings } from '@/lib/settings';
 
 /**
  * POST /api/demandes/conges/traiter
@@ -93,6 +94,25 @@ export async function POST(request: Request) {
             valideurRole: role === 'N1' ? 'votre Supérieur N+1' : 'la Direction RH',
           }),
         }).catch((e) => console.warn('Échec envoi mail réponse à l\'employé:', e));
+
+        // Si c'est approuvé par la RH (décision finale d'acceptation)
+        if (action === 'APPROUVER' && role === 'RH') {
+          // Notifier également le responsable de l'impression
+          getSystemSettings().then((settings) => {
+            const printEmail = settings.rhPrintEmail || 'rh.attestation@compel-toil.com';
+            sendLeaveNotificationEmail({
+              to: printEmail,
+              subject: `[Impression Requis] Attestation de congé prête pour ${demandeurNom || 'un collaborateur'}`,
+              html: getEmailTemplatePrint({
+                demandeurNom: demandeurNom || 'Collaborateur T-OIL',
+                typeConge: typeConge || 'Congé Payé',
+                dateDebut: dateDebut || 'ND',
+                dateFin: dateFin || 'ND',
+                nombreJours: parseFloat(nombreJours) || 1,
+              }),
+            }).catch((e) => console.warn('Échec envoi mail RH Impression:', e));
+          }).catch((e) => console.warn('Échec lecture paramètres pour RH Impression:', e));
+        }
       }
     }
 

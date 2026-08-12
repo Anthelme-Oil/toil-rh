@@ -26,9 +26,10 @@ import {
   AlertCircle,
   Plus,
   Clock,
-  Sparkles,
-  ChevronRight,
   Filter,
+  Printer,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import type { TypeDemande, PrioriteDemande, DemandeConge } from '@/types';
 import { DemandeCongeModal } from '@/components/demandes/DemandeCongeModal';
@@ -621,6 +622,17 @@ export default function DemandesPage() {
                     }`}>
                       {item.statut || 'En attente'}
                     </span>
+
+                    {(item.statut?.toLowerCase().includes('accord') || item.statut?.toLowerCase().includes('approuv')) && (
+                      <button
+                        onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                        title="Imprimer le justificatif"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Imprimer</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
