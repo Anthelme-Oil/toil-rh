@@ -206,7 +206,7 @@ export async function uploadBlogImage(buffer: Buffer, fileName: string): Promise
 
   const timestamp = Date.now();
   const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const filePath = `Blogs/${timestamp}_${cleanFileName}`;
+  const filePath = `T-oil Intranet Files/${timestamp}_${cleanFileName}`;
 
   try {
     // Upload du fichier dans la bibliothèque d'images de blog
