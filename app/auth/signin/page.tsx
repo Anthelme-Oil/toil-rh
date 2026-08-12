@@ -64,6 +64,8 @@ function SignInForm() {
             <span className="font-bold">Échec de la connexion :</span>{' '}
             {error === 'CredentialsSignin' 
               ? "Cette adresse email n'est pas reconnue dans l'annuaire de l'entreprise. Veuillez contacter un administrateur."
+              : error === 'AccessDenied' || error === 'OAuthAccessDenied'
+              ? "Accès refusé. Votre compte Microsoft ne fait pas partie de l'annuaire de l'entreprise (Tenant Entra ID non autorisé)."
               : "Une erreur est survenue lors de la connexion. Veuillez réessayer."}
           </div>
         </div>

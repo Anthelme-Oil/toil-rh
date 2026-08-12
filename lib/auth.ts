@@ -108,6 +108,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     /**
+     * Callback signIn : Refuse l'accès si le compte Microsoft (SSO) ne fait pas partie
+     * du Tenant Azure AD de l'entreprise ou d'un domaine / compte utilisateur autorisé.
+     */
+    async signIn({ user, account, profile }) {
+      const email = user?.email?.toLowerCase().trim();
+      if (!email) {
+        console.warn('[Auth Reject] Tentative de connexion sans e-mail.');
+        return false;
+      }
+
+      // Est-ce l'email admin par défaut ?
+      const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesktogo@togosh.com').toLowerCase().trim();
+      if (email === adminDefaultEmail) {
+        return true;
+      }
+
+      // Si connexion via Microsoft Entra ID (SSO)
+      if (account?.provider === 'azure-ad') {
+        const expectedTenantId = process.env.AZURE_AD_TENANT_ID;
+        const userTenantId = (profile as any)?.tid || (profile as any)?.tenantId;
+
+        // 1. Si le Tenant ID renvoyé par Microsoft ne correspond pas à celui de l'organisation
+        if (expectedTenantId && userTenantId && userTenantId !== expectedTenantId) {
+          console.warn(`[Auth Reject] Connexion refusée pour ${email} : Tenant ID non autorisé (${userTenantId} !== ${expectedTenantId})`);
+          return false;
+        }
+
+        // 2. Vérification de l'annuaire MySQL ou des domaines autorisés
+        try {
+          const rows = await query<any>('SELECT id FROM utilisateurs WHERE email = ?', [email]);
+          const existsInDb = rows.length > 0;
+
+          const allowedDomains = ['togosh.com', 'togooil.com', 't-oil.tg'];
+          const domain = email.split('@')[1];
+          const isAllowedDomain = allowedDomains.includes(domain);
+
+          if (!existsInDb && !isAllowedDomain) {
+            console.warn(`[Auth Reject] Connexion refusée pour ${email} : Compte hors annuaire entreprise.`);
+            return false;
+          }
+        } catch (err) {
+          console.error('[Auth Reject] Erreur lors de la vérification de l\'annuaire:', err);
+        }
+      }
+
+      return true;
+    },
+    /**
      * Callback JWT : lors de la connexion (SSO ou Credentials), upsert automatique dans MySQL 
      * et association avec le rôle / N+1 configuré par l'Admin.
      */
