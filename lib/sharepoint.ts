@@ -28,13 +28,14 @@ const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoi
 function formatSharePointUrl(rawUrl: string): string {
   if (!rawUrl) return '';
   const url = rawUrl.trim();
-  // URLs locales (uploads locaux ou data URLs) → servies directement sans proxy
-  if (url.startsWith('data:') || url.startsWith('/')) {
-    return url;
-  }
-  // URLs SharePoint → passées par le proxy pour l'authentification OAuth
+  // URLs locales ou data URLs → servies directement sans proxy
+  if (url.startsWith('data:') || url.startsWith('/')) return url;
+  // URLs SharePoint / Graph → proxy avec token OAuth
   if (url.includes('sharepoint.com') || url.includes('graph.microsoft.com') || url.includes('1drv.ms')) {
-    return `/api/images/proxy?url=${encodeURIComponent(url)}`;
+    // Décoder d'abord pour éviter le double-encodage (%20 → %2520)
+    let decoded = url;
+    try { decoded = decodeURIComponent(url); } catch { decoded = url; }
+    return `/api/images/proxy?url=${encodeURIComponent(decoded)}`;
   }
   return url;
 }

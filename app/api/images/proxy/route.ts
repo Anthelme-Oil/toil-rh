@@ -32,7 +32,6 @@ async function getAccessToken(): Promise<string | null> {
   const clientSecret = process.env.AZURE_AD_CLIENT_SECRET;
   if (!tenantId || !clientId || !clientSecret) return null;
 
-  // Réutiliser le token s'il est encore valide (marge de 5 minutes)
   if (cachedToken && cachedToken.expiresAt > Date.now() + 5 * 60 * 1000) {
     return cachedToken.value;
   }
@@ -44,7 +43,6 @@ async function getAccessToken(): Promise<string | null> {
 
     cachedToken = {
       value: tokenResponse.token,
-      // expires_in est généralement 3600s (1h)
       expiresAt: Date.now() + (tokenResponse.expiresOnTimestamp - Date.now()),
     };
     return cachedToken.value;
@@ -54,72 +52,50 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * Convertit un lien de partage SharePoint (/:i:/ ou /:f:/) en URL de contenu
- * via l'API Graph shares endpoint.
- *
- * SharePoint génère des liens du type :
- *   https://tenant.sharepoint.com/:i:/s/SiteName/ENCODED_ID?e=TOKEN
- *
- * L'API Graph peut déréférencer ces liens via :
- *   GET /shares/{shareId}/driveItem/content
- *
- * Le shareId est calculé comme : u! + base64url(url)
- */
-async function resolveSharePointShareLink(shareUrl: string, token: string): Promise<ArrayBuffer | null> {
-  try {
-    // Encoder l'URL en base64url pour l'API Graph Shares
-    const encoded = Buffer.from(shareUrl).toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    const shareId = `u!${encoded}`;
-
-    const res = await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem/content`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      const ct = res.headers.get('content-type') || '';
-      if (ct.startsWith('image/')) {
-        return res.arrayBuffer();
-      }
-    }
-
-    console.warn('[Proxy] Share link résolution échouée:', res.status, shareUrl.substring(0, 80));
-    return null;
-  } catch (err) {
-    console.error('[Proxy] Erreur résolution share link:', err);
-    return null;
-  }
+function toShareId(urlStr: string): string {
+  const encoded = Buffer.from(urlStr).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `u!${encoded}`;
 }
 
 /**
- * Tente de récupérer l'image via l'URL directe avec le token Bearer.
+ * Tente de déréférencer une URL SharePoint (share link OU webUrl) via Graph Shares API
  */
-async function fetchWithToken(imageUrl: string, token: string): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
+async function resolveSharePointUrl(shareUrl: string, token: string): Promise<ArrayBuffer | null> {
+  // Tester l'URL exacte puis l'URL décodée (%20 → espace)
+  const urlsToTry = [shareUrl];
   try {
-    const res = await fetch(imageUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.startsWith('image/')) {
-      return { buffer: await res.arrayBuffer(), contentType };
-    }
-    return null;
-  } catch {
-    return null;
+    const decoded = decodeURIComponent(shareUrl);
+    if (decoded !== shareUrl) urlsToTry.push(decoded);
+  } catch {}
+
+  for (const targetUrl of urlsToTry) {
+    try {
+      const shareId = toShareId(targetUrl);
+      const res = await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem/content`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.startsWith('image/') || res.status === 200) {
+          const buffer = await res.arrayBuffer();
+          if (buffer.byteLength > 0) return buffer;
+        }
+      }
+    } catch {}
   }
+  return null;
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const imageUrl = searchParams.get('url');
 
-  // Pas d'URL → fallback
   if (!imageUrl) return fallback();
 
-  // URL locale ou data URL → redirection directe
   if (imageUrl.startsWith('/') || imageUrl.startsWith('data:')) {
     return NextResponse.redirect(new URL(imageUrl, request.url));
   }
@@ -131,42 +107,39 @@ export async function GET(request: Request) {
       const token = await getAccessToken();
 
       if (token) {
-        // ── Stratégie 1 : Lien de partage SharePoint (/:i:/ /:f:/ etc.) ──
-        const isShareLink = /\/:(?:i|f|b|u|w|e|v|p):\//i.test(imageUrl);
-        if (isShareLink) {
-          const buffer = await resolveSharePointShareLink(imageUrl, token);
-          if (buffer) {
-            // Détecter le type depuis les premiers octets
-            const bytes = new Uint8Array(buffer.slice(0, 4));
-            let contentType = 'image/jpeg';
-            if (bytes[0] === 0x89 && bytes[1] === 0x50) contentType = 'image/png';
-            else if (bytes[0] === 0x47 && bytes[1] === 0x49) contentType = 'image/gif';
-            else if (bytes[0] === 0x52 && bytes[1] === 0x49) contentType = 'image/webp';
+        // Résolution via Graph API Shares endpoint (pour tout lien SharePoint)
+        const buffer = await resolveSharePointUrl(imageUrl, token);
+        if (buffer) {
+          const bytes = new Uint8Array(buffer.slice(0, 4));
+          let contentType = 'image/jpeg';
+          if (bytes[0] === 0x89 && bytes[1] === 0x50) contentType = 'image/png';
+          else if (bytes[0] === 0x47 && bytes[1] === 0x49) contentType = 'image/gif';
+          else if (bytes[0] === 0x52 && bytes[1] === 0x49) contentType = 'image/webp';
 
-            return new NextResponse(buffer, {
-              headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=86400, s-maxage=86400',
-              },
-            });
-          }
-        }
-
-        // ── Stratégie 2 : URL directe avec token Bearer ──
-        const result = await fetchWithToken(imageUrl, token);
-        if (result) {
-          return new NextResponse(result.buffer, {
+          return new NextResponse(buffer, {
             headers: {
-              'Content-Type': result.contentType,
+              'Content-Type': contentType,
               'Cache-Control': 'public, max-age=86400, s-maxage=86400',
             },
           });
         }
 
-        console.warn('[Proxy] Toutes les stratégies SharePoint ont échoué pour:', imageUrl.substring(0, 100));
+        // Second fallback: fetch direct si l'URL est une API Graph ou URL directe
+        try {
+          const directRes = await fetch(imageUrl, { headers: { Authorization: `Bearer ${token}` } });
+          if (directRes.ok) {
+            const ct = directRes.headers.get('content-type') || '';
+            if (ct.startsWith('image/')) {
+              return new NextResponse(await directRes.arrayBuffer(), {
+                headers: { 'Content-Type': ct, 'Cache-Control': 'public, max-age=86400' },
+              });
+            }
+          }
+        } catch {}
+
+        console.warn('[Proxy] Échec résolution SharePoint:', imageUrl.substring(0, 100));
       }
     } else {
-      // ── URL publique non-SharePoint : fetch direct ──
       const res = await fetch(imageUrl);
       const contentType = res.headers.get('content-type') || '';
       if (res.ok && contentType.startsWith('image/')) {

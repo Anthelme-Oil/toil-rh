@@ -1,44 +1,41 @@
 // ═══════════════════════════════════════════════════════════════
-// Middleware — Protection des routes (NextAuth.js)
-// ═══════════════════════════════════════════════════════════════
-//
-// Ce middleware redirige les utilisateurs non authentifiés
-// vers la page de connexion. En développement, la protection
-// est désactivée pour faciliter le travail.
+// Next.js 16 Proxy (remplace middleware.ts)
 // ═══════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Routes publiques qui ne nécessitent pas d'authentification
+// Routes publiques (pages et API publiques)
 const PUBLIC_ROUTES = [
   '/auth/signin',
   '/auth/error',
   '/api/auth',
-  '/api/images',    // Proxy images SharePoint — chargé directement par le navigateur (src img)
-  '/api/uploads',   // Fichiers uploadés localement — servis publiquement
+  '/api/images',    // Proxy images SharePoint
+  '/api/uploads',   // Fichiers uploadés localement
+  '/api/actualites',// Consultation et publication d'actualités
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Contournement explicite de l'authentification (si BYPASS_AUTH=true) ──
+  // ── Contournement explicite (BYPASS_AUTH=true) ──
   if (process.env.BYPASS_AUTH === 'true') {
+    return NextResponse.next();
+  }
+
+  // ── Exclure les fichiers statiques (_next, favicon, etc.) ──
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/icons') ||
+    pathname.startsWith('/images') ||
+    pathname === '/favicon.ico' ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next();
   }
 
   // ── Routes publiques : accès libre ──
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // ── Fichiers statiques : accès libre ──
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/icons') ||
-    pathname.startsWith('/images') ||
-    pathname.includes('.')
-  ) {
     return NextResponse.next();
   }
 
@@ -48,6 +45,11 @@ export function middleware(request: NextRequest) {
     request.cookies.get('next-auth.session-token')?.value;
 
   if (!sessionToken) {
+    // Si c'est une requête d'API, retourner JSON 401 au lieu d'une redirection HTML
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Non autorisé. Veuillez vous connecter.' }, { status: 401 });
+    }
+
     const signInUrl = new URL('/auth/signin', request.url);
     signInUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(signInUrl);
@@ -55,15 +57,3 @@ export function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
-};
