@@ -56,11 +56,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!rawEmail) return null;
 
         const cleanEmail = rawEmail.toLowerCase().trim();
-        const perms = await getUserPermissionsByEmail(cleanEmail);
+        
+        // 1. Récupérer l'utilisateur depuis la base de données
+        const rows = await query<any>('SELECT * FROM utilisateurs WHERE email = ?', [cleanEmail]);
+        
+        // 2. Si l'utilisateur n'existe pas, on refuse la connexion
+        // (Sauf si c'est l'email admin par défaut, pour permettre la première connexion et le seed)
+        const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesk@togosh.com').toLowerCase().trim();
+        const isDefaultAdmin = cleanEmail === adminDefaultEmail;
 
-        // Si l'utilisateur n'existe pas encore en BD, on l'upsert
+        if (rows.length === 0 && !isDefaultAdmin) {
+          console.warn(`[Auth] Tentative de connexion avec un e-mail non enregistré : ${cleanEmail}`);
+          return null; // Retourner null indique un échec à NextAuth
+        }
+
+        const dbUser = rows[0];
+        const perms = await getUserPermissionsByEmail(cleanEmail);
+        const displayName = dbUser?.nom || perms.name || cleanEmail.split('@')[0];
         const now = new Date();
-        const displayName = perms.name || cleanEmail.split('@')[0];
+
         try {
           const sql = `
             INSERT INTO utilisateurs (id, nom, email, role, est_rh, est_com, cree_le, mis_a_jour_le)
@@ -70,13 +84,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               mis_a_jour_le = VALUES(mis_a_jour_le)
           `;
           await execute(sql, [
-            generateId(),
+            dbUser?.id || generateId(),
             displayName,
             cleanEmail,
             perms.role,
             perms.isRH ? 1 : 0,
             perms.isCom ? 1 : 0,
-            now,
+            dbUser?.cree_le || now,
             now,
           ]);
         } catch (e) {
@@ -84,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         return {
-          id: cleanEmail,
+          id: dbUser?.id || cleanEmail,
           email: cleanEmail,
           name: displayName,
         };
