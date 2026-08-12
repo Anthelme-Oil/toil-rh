@@ -47,7 +47,7 @@ export default function ValidationDemandesPage() {
     setLoading(true);
     try {
       // 1. Demandes à valider en tant que N+1
-      const resN1 = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=n1`);
+      const resN1 = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=n1&_t=${Date.now()}`);
       if (resN1.ok) {
         const dataN1 = await resN1.json();
         setDemandesN1(dataN1.demandes || []);
@@ -55,7 +55,7 @@ export default function ValidationDemandesPage() {
 
       // 2. Demandes à valider en tant que RH (DRH)
       if (isDRH || isRH || isRHPrint || isAdmin) {
-        const resRH = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=rh`);
+        const resRH = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=rh&_t=${Date.now()}`);
         if (resRH.ok) {
           const dataRH = await resRH.json();
           setDemandesRH(dataRH.demandes || []);

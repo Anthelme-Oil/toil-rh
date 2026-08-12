@@ -66,18 +66,22 @@ export async function POST(request: Request) {
 
     // Envoi de la notification e-mail au N+1 s'il est identifié
     if (targetManagerEmail) {
-      sendLeaveNotificationEmail({
-        to: targetManagerEmail,
-        subject: `[Validation Requis] Demande de congé de ${demandeurNom}`,
-        html: getEmailTemplateN1({
-          demandeurNom,
-          typeConge: typeConge || 'Congé Payé',
-          dateDebut: new Date(dateDebut).toLocaleDateString('fr-FR'),
-          dateFin: new Date(dateFin).toLocaleDateString('fr-FR'),
-          nombreJours: parseFloat(nombreJours) || 1,
-          motif,
-        }),
-      }).catch((e) => console.warn('Échec envoi mail asynchrone N+1:', e));
+      try {
+        await sendLeaveNotificationEmail({
+          to: targetManagerEmail,
+          subject: `[Validation Requis] Demande de congé de ${demandeurNom}`,
+          html: getEmailTemplateN1({
+            demandeurNom,
+            typeConge: typeConge || 'Congé Payé',
+            dateDebut: new Date(dateDebut).toLocaleDateString('fr-FR'),
+            dateFin: new Date(dateFin).toLocaleDateString('fr-FR'),
+            nombreJours: parseFloat(nombreJours) || 1,
+            motif,
+          }),
+        });
+      } catch (e) {
+        console.warn('Échec envoi mail N+1:', e);
+      }
     }
 
     return NextResponse.json({ success: true, id });
@@ -104,9 +108,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role'); // 'n1' | 'rh'
 
-    // Headers de cache HTTP (60s stale-while-revalidate pour navigation rapide)
+    // Invalidation du cache HTTP pour mise à jour instantanée lors des validations
     const cacheHeaders = {
-      'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     };
 
     if (role === 'n1' || role === 'rh') {

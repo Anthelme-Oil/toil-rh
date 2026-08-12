@@ -84,50 +84,62 @@ export async function POST(request: Request) {
     if (action === 'APPROUVER' && role === 'N1') {
       // Le N+1 a approuvé ➔ Notifier la DRH via l'e-mail configuré
       const drhEmail = settings.drhEmail || 'drh@compel-toil.com';
-      sendLeaveNotificationEmail({
-        to: drhEmail,
-        subject: `[Traitement DRH] Congé validé par N+1 pour ${demandeurNom}`,
-        html: getEmailTemplateRH({
-          demandeurNom: demandeurNom,
-          typeConge: typeConge,
-          dateDebut: dateDebut,
-          dateFin: dateFin,
-          nombreJours: nombreJours,
-        }),
-      }).catch((e) => console.warn('Échec envoi mail DRH:', e));
+      try {
+        await sendLeaveNotificationEmail({
+          to: drhEmail,
+          subject: `[Traitement DRH] Congé validé par N+1 pour ${demandeurNom}`,
+          html: getEmailTemplateRH({
+            demandeurNom: demandeurNom,
+            typeConge: typeConge,
+            dateDebut: dateDebut,
+            dateFin: dateFin,
+            nombreJours: nombreJours,
+          }),
+        });
+      } catch (e) {
+        console.warn('Échec envoi mail DRH:', e);
+      }
     }
 
     // Notifier l'employé demandeur du résultat (DRH finale ou refus N+1)
     if (demandeurEmail) {
       const isFinalDecision = role === 'RH' || action === 'REFUSER';
       if (isFinalDecision) {
-        sendLeaveNotificationEmail({
-          to: demandeurEmail,
-          subject: action === 'APPROUVER' ? `[Accordé] Votre demande de congé a été validée` : `[Refusé] Votre demande de congé`,
-          html: getEmailTemplateDecision({
-            demandeurNom: demandeurNom,
-            typeConge: typeConge,
-            statut: action === 'APPROUVER' ? 'APPROUVE' : 'REFUSE',
-            motifRefus,
-            valideurRole: role === 'N1' ? 'votre Supérieur N+1' : 'la Direction DRH',
-          }),
-        }).catch((e) => console.warn('Échec envoi mail réponse à l\'employé:', e));
+        try {
+          await sendLeaveNotificationEmail({
+            to: demandeurEmail,
+            subject: action === 'APPROUVER' ? `[Accordé] Votre demande de congé a été validée` : `[Refusé] Votre demande de congé`,
+            html: getEmailTemplateDecision({
+              demandeurNom: demandeurNom,
+              typeConge: typeConge,
+              statut: action === 'APPROUVER' ? 'APPROUVE' : 'REFUSE',
+              motifRefus,
+              valideurRole: role === 'N1' ? 'votre Supérieur N+1' : 'la Direction DRH',
+            }),
+          });
+        } catch (e) {
+          console.warn('Échec envoi mail réponse à l\'employé:', e);
+        }
 
         // Si c'est approuvé par la DRH (décision finale d'acceptation)
         if (action === 'APPROUVER' && role === 'RH') {
           // Notifier également le responsable de l'impression d'attestation
           const printEmail = settings.rhPrintEmail || 'rh.attestation@compel-toil.com';
-          sendLeaveNotificationEmail({
-            to: printEmail,
-            subject: `[Impression Requis] Attestation de congé prête pour ${demandeurNom}`,
-            html: getEmailTemplatePrint({
-              demandeurNom: demandeurNom,
-              typeConge: typeConge,
-              dateDebut: dateDebut,
-              dateFin: dateFin,
-              nombreJours: nombreJours,
-            }),
-          }).catch((e) => console.warn('Échec envoi mail RH Impression:', e));
+          try {
+            await sendLeaveNotificationEmail({
+              to: printEmail,
+              subject: `[Impression Requis] Attestation de congé prête pour ${demandeurNom}`,
+              html: getEmailTemplatePrint({
+                demandeurNom: demandeurNom,
+                typeConge: typeConge,
+                dateDebut: dateDebut,
+                dateFin: dateFin,
+                nombreJours: nombreJours,
+              }),
+            });
+          } catch (e) {
+            console.warn('Échec envoi mail RH Impression:', e);
+          }
         }
       }
     }

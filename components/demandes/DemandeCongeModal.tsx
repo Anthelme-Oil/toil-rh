@@ -41,6 +41,20 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
+  // Pré-remplissage automatique du Supérieur N+1 défini par l'administrateur
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/roles/me')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.managerEmail) {
+            setManagerEmail(data.managerEmail);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
   // Calcul automatique du nombre de jours (hors week-ends)
   useEffect(() => {
     if (dateDebut && dateFin) {
