@@ -53,7 +53,7 @@ const UserContext = createContext<UserContextType>({
 // ── Cache sessionStorage (évite les requêtes en doublon lors de la navigation) ──
 
 const CACHE_KEY_PREFIX = 'toil_permissions_';
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 15 * 1000; // 15 secondes pour réactivité immédiate
 
 interface CachedPermissions {
   role: string;
@@ -132,7 +132,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 1. Cache sessionStorage (instantané, 0 requête)
-    if (!forceRefresh) {
+    if (forceRefresh && typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(CACHE_KEY_PREFIX + email.toLowerCase());
+      } catch {}
+    } else {
       const cached = getCachedPermissions(email);
       if (cached) {
         setPermissions({
@@ -157,7 +161,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // L'API /api/roles/me lit l'email depuis la session serveur (auth())
-      const res = await fetch('/api/roles/me');
+      const res = await fetch('/api/roles/me', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const perms = {

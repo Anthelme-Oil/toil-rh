@@ -73,3 +73,21 @@ model Demande {
 
   @@map("demandes")
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 3. Table des Vidéos & Formations Intranet (Indépendante des Actualités)
+// ═══════════════════════════════════════════════════════════════
+model VideoIntranet {
+  id           String   @id @default(cuid())
+  titre        String   @map("titre")
+  categorie    String   @default("Institutionnel") @map("categorie")
+  duree        String?  @default("5 min 00 s") @map("duree")
+  description  String?  @db.Text @map("description")
+  videoUrl     String   @map("video_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  creeLe       DateTime @default(now()) @map("cree_le")
+  misAJourLe   DateTime @updatedAt @map("mis_a_jour_le")
+
+  @@map("videos_intranet")
+}
+

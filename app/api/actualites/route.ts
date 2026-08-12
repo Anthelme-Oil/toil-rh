@@ -2,14 +2,31 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import fs from 'fs';
 import path from 'path';
-import { creerActualite, getActualites, uploadBlogImage } from '@/lib/sharepoint';
+import {
+  creerActualite,
+  getActualites,
+  uploadBlogImage,
+  uploadVideoToSharePoint,
+  creerVideo,
+  getVideosFromSharePoint,
+} from '@/lib/sharepoint';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
-    const actualites = await getActualites(100);
-    return NextResponse.json({ actualites });
+    const [actualites, videos] = await Promise.all([
+      getActualites(100),
+      getVideosFromSharePoint(),
+    ]);
+
+    return NextResponse.json(
+      { actualites, videos },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Erreur récupération actualités.';
+    const msg = error instanceof Error ? error.message : 'Erreur récupération actualités & vidéos.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -18,11 +35,12 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
 
+    const type = (formData.get('type') as string) || 'article';
     const titre = formData.get('titre') as string;
     const description = formData.get('description') as string;
     const contenu = formData.get('contenu') as string;
     const categorie = formData.get('categorie') as string;
-    const imageFile = formData.get('image') as File | null;
+    const duree = (formData.get('duree') as string) || '5 min';
 
     if (!titre || !description) {
       return NextResponse.json(
@@ -31,6 +49,75 @@ export async function POST(request: Request) {
       );
     }
 
+    // 🎥 PUBLICATION DE VIDÉO / FORMATION
+    if (type === 'video') {
+      const videoFile = formData.get('video') as File | null;
+      let videoUrlInput = (formData.get('videoUrl') as string) || '';
+
+      if (!videoFile && !videoUrlInput) {
+        return NextResponse.json(
+          { error: 'Un fichier vidéo (.mp4) ou un lien SharePoint vers la vidéo est requis.' },
+          { status: 400 }
+        );
+      }
+
+      let finalVideoUrl = videoUrlInput;
+
+      if (videoFile && videoFile.size > 0) {
+        const bytes = await videoFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        try {
+          // Upload direct sur SharePoint Drive dans "T-oil Intranet Files"
+          const spUrl = await uploadVideoToSharePoint(buffer, videoFile.name);
+          finalVideoUrl = spUrl;
+          console.log('[API Vidéos] Vidéo uploadée avec succès sur SharePoint:', spUrl);
+        } catch (spErr) {
+          console.warn('[SharePoint Video Upload] Fallback sauvegarde locale:', spErr);
+
+          try {
+            const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'videos');
+            if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            const cleanName = `${Date.now()}_${videoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const filePath = path.join(uploadDir, cleanName);
+            fs.writeFileSync(filePath, buffer);
+            finalVideoUrl = `/uploads/videos/${cleanName}`;
+          } catch (fsErr) {
+            console.error('[API Vidéos] Échec écriture vidéo locale:', fsErr);
+            throw new Error('Impossible de sauvegarder le fichier vidéo.');
+          }
+        }
+      }
+
+      // Enregistrement de la vidéo dans SharePoint
+      const id = await creerVideo({
+        titre,
+        description,
+        duree,
+        categorie,
+        videoUrl: finalVideoUrl,
+      });
+
+      // Purge du cache
+      revalidatePath('/informations');
+      revalidatePath('/onboarding');
+      revalidatePath('/');
+
+      return NextResponse.json(
+        {
+          success: true,
+          id,
+          videoUrl: finalVideoUrl,
+          message: 'Vidéo & Formation publiée avec succès sur SharePoint Online !',
+        },
+        { status: 201 }
+      );
+    }
+
+    // 📰 PUBLICATION D'ARTICLE (EXISTANT)
+    const imageFile = formData.get('image') as File | null;
     let imageUrl: string | undefined = undefined;
 
     if (imageFile && imageFile.size > 0) {
@@ -40,7 +127,6 @@ export async function POST(request: Request) {
       const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filename = `${timestamp}_${cleanFileName}`;
 
-      // 1. PRIORITÉ : Upload sur SharePoint Drive → URL publique permanente
       try {
         const spUrl = await uploadBlogImage(buffer, imageFile.name);
         imageUrl = spUrl;
@@ -48,7 +134,6 @@ export async function POST(request: Request) {
       } catch (spErr) {
         console.warn('[SharePoint Drive] Upload impossible, fallback disque local:', spErr);
 
-        // 2. FALLBACK : Sauvegarde locale si SharePoint non configuré ou en erreur
         try {
           const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'blogs');
           if (!fs.existsSync(uploadDir)) {
@@ -56,16 +141,13 @@ export async function POST(request: Request) {
           }
           const filePath = path.join(uploadDir, filename);
           fs.writeFileSync(filePath, buffer);
-          // ⚠️ Cette URL locale ne fonctionnera PAS depuis SharePoint — usage temporaire seulement
           imageUrl = `/api/uploads/blogs/${filename}`;
-          console.warn('[API Actualités] Image sauvegardée localement (invisible depuis SharePoint):', imageUrl);
         } catch (fsErr) {
           console.error('[API Actualités] Erreur écriture fichier image locale:', fsErr);
         }
       }
     }
 
-    // 2. Création de l'élément dans SharePoint
     const id = await creerActualite({
       titre,
       description,
@@ -74,7 +156,6 @@ export async function POST(request: Request) {
       imageUrl,
     });
 
-    // 3. Purge du cache Next.js
     revalidatePath('/informations');
     revalidatePath('/');
 
@@ -84,7 +165,8 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     console.error('[API Actualités] Erreur:', error);
-    const msg = error instanceof Error ? error.message : 'Une erreur est survenue lors de la création du blog.';
+    const msg = error instanceof Error ? error.message : 'Une erreur est survenue lors de la publication.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+

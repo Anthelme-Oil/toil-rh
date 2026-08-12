@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserPermissionsByEmail, getAllUserRoles, saveOrUpdateUserRole, seedDefaultRolesToDatabase, deleteUserRole } from '@/lib/roles';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/roles
  * Liste tous les utilisateurs et leurs rôles.
@@ -23,7 +25,16 @@ export async function GET() {
     }
 
     const roles = await getAllUserRoles();
-    return NextResponse.json({ roles });
+    return NextResponse.json(
+      { roles },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return NextResponse.json({ error: message }, { status: 500 });

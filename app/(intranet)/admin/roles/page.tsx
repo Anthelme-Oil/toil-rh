@@ -74,7 +74,7 @@ export default function AdminRolesPage() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/roles');
+      const res = await fetch(`/api/roles?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setUsers(data.roles || []);
@@ -455,6 +455,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, role: e.target.value as UserRoleRecord['role'] };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none"
                           >
@@ -471,6 +472,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, managerEmail: e.target.value };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-full max-w-[180px] px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none truncate"
                           >
@@ -493,6 +495,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, isRH: e.target.checked };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
                           />
@@ -506,6 +509,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, isCom: e.target.checked };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
                           />
@@ -519,6 +523,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, isDRH: e.target.checked };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
                           />
@@ -532,6 +537,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, isRHPrint: e.target.checked };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
                           />
@@ -545,6 +551,7 @@ export default function AdminRolesPage() {
                             onChange={(e) => {
                               const updated = { ...user, isRoomManager: e.target.checked };
                               setUsers(users.map((u) => (u.id === user.id ? updated : u)));
+                              handleUpdateUser(updated);
                             }}
                             className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
                           />

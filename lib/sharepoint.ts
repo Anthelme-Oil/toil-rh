@@ -17,6 +17,7 @@ import {
   DRIVE_PROCEDURES_RH,
   DRIVE_BLOG_IMAGES,
 } from './graph';
+import { prisma, withRetry } from '@/lib/prisma';
 import type { Actualite, DocumentSP, Evenement, Annonce } from '@/types';
 
 const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoint.com';
@@ -79,21 +80,30 @@ export async function getActualites(top: number = 5): Promise<Actualite[]> {
       .top(100)
       .get();
 
-    const items: Actualite[] = (response.value || []).map((item: Record<string, unknown>) => {
-      const fields = item.fields as Record<string, string>;
-      const id = item.id as string;
-      return {
-        id,
-        titre: fields.Title || '',
-        description: fields.Description || '',
-        contenu: fields.Contenu || '',
-        datePublication: fields.DatePublication || (item.createdDateTime as string) || '',
-        imageUrl: extractImageUrl(fields, id),
-        categorie: fields.Categorie || undefined,
-        auteur: fields.Auteur || undefined,
-        lienVersPage: fields.LienVersPage || undefined,
-      };
-    });
+    const rawItems = response.value || [];
+    const items: Actualite[] = rawItems
+      .filter((item: Record<string, unknown>) => {
+        const fields = (item.fields || {}) as Record<string, string>;
+        const cat = fields.Categorie || '';
+        const img = fields.ImageUrl || '';
+        // Filtrer pour ne garder QUE les articles réels, pas les vidéos
+        return !cat.toLowerCase().startsWith('vidéo') && !img.toLowerCase().includes('.mp4');
+      })
+      .map((item: Record<string, unknown>) => {
+        const fields = item.fields as Record<string, string>;
+        const id = item.id as string;
+        return {
+          id,
+          titre: fields.Title || '',
+          description: fields.Description || '',
+          contenu: fields.Contenu || '',
+          datePublication: fields.DatePublication || (item.createdDateTime as string) || '',
+          imageUrl: extractImageUrl(fields, id),
+          categorie: fields.Categorie || undefined,
+          auteur: fields.Auteur || undefined,
+          lienVersPage: fields.LienVersPage || undefined,
+        };
+      });
 
     // Tri par date de publication DÉCROISSANTE (du plus récent au plus ancien)
     items.sort((a, b) => {
@@ -382,3 +392,211 @@ export async function getAnnonces(): Promise<Annonce[]> {
     return [];
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// VIDÉOS & FORMATIONS SHAREPOINT
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Uploade un fichier vidéo MP4 vers SharePoint Online (dossier T-oil Intranet Files).
+ * Utilise une session d'upload (UploadSession) pour supporter les gros fichiers sans timeout.
+ */
+export async function uploadVideoToSharePoint(
+  buffer: Buffer,
+  fileName: string
+): Promise<string> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    throw new Error('SharePoint n\'est pas encore configuré.');
+  }
+  const siteBase = getSiteApiBase();
+  const driveId = DRIVE_BLOG_IMAGES || DRIVE_PROCEDURES_IT;
+
+  const timestamp = Date.now();
+  const cleanFileName = `${timestamp}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const filePath = `T-oil Intranet Files/${cleanFileName}`;
+
+  try {
+    // Si la vidéo fait moins de 4 Mo, simple PUT
+    if (buffer.length < 4 * 1024 * 1024) {
+      const response = await graphClient
+        .api(`${siteBase}/drives/${driveId}/root:/${filePath}:/content`)
+        .put(buffer);
+
+      const spUrl = (response.webUrl as string) || `https://${SHAREPOINT_HOSTNAME}/sites/NotrePortail/Documents%20partages/T-oil%20Intranet%20Files/${encodeURIComponent(cleanFileName)}`;
+      return spUrl;
+    }
+
+    // Si > 4 Mo, Session d'upload Graph API
+    const uploadSession = await graphClient
+      .api(`${siteBase}/drives/${driveId}/root:/${filePath}:/createUploadSession`)
+      .post({
+        item: {
+          '@microsoft.graph.conflictBehavior': 'replace',
+          name: cleanFileName,
+        },
+      });
+
+    const uploadUrl = uploadSession.uploadUrl;
+    const chunkSize = 3276800; // Chunk de 3.2 Mo
+    let start = 0;
+    let finalWebUrl = '';
+
+    while (start < buffer.length) {
+      const end = Math.min(start + chunkSize, buffer.length);
+      const chunk = buffer.subarray(start, end);
+      const contentRange = `bytes ${start}-${end - 1}/${buffer.length}`;
+
+      const res = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Length': chunk.length.toString(),
+          'Content-Range': contentRange,
+        },
+        body: chunk,
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.webUrl) finalWebUrl = json.webUrl;
+      } else {
+        const errText = await res.text();
+        console.error('[SharePoint Video Chunk] Erreur chunk:', errText);
+        throw new Error('Échec du transfert du segment vidéo.');
+      }
+      start = end;
+    }
+
+    const videoSharePointUrl = finalWebUrl || `https://${SHAREPOINT_HOSTNAME}/sites/NotrePortail/Documents%20partages/T-oil%20Intranet%20Files/${encodeURIComponent(cleanFileName)}`;
+    return videoSharePointUrl;
+  } catch (error) {
+    console.error('[SharePoint Video Upload] Erreur:', error);
+    throw new Error('Échec de l\'upload vidéo vers SharePoint.');
+  }
+}
+
+/**
+ * Enregistre une vidéo dans la base de données vidéo dédiée (séparée des Actualités).
+ */
+export async function creerVideo(video: {
+  titre: string;
+  description: string;
+  duree?: string;
+  categorie?: string;
+  videoUrl: string;
+}): Promise<string> {
+  try {
+    let formattedVideoUrl = video.videoUrl;
+    if (formattedVideoUrl.includes('sharepoint.com') || formattedVideoUrl.includes('graph.microsoft.com')) {
+      formattedVideoUrl = `/api/images/proxy?url=${encodeURIComponent(formattedVideoUrl)}`;
+    }
+
+    const res = await withRetry(() =>
+      prisma.videoIntranet.create({
+        data: {
+          titre: video.titre,
+          description: video.description,
+          duree: video.duree || '5 min 00 s',
+          categorie: video.categorie || 'Institutionnel',
+          videoUrl: formattedVideoUrl,
+          thumbnailUrl: `${formattedVideoUrl}#t=2`,
+        },
+      })
+    );
+
+    return res.id;
+  } catch (error) {
+    console.error('[Vidéo Storage] Erreur création vidéo:', error);
+    throw new Error('Impossible d\'enregistrer la vidéo.');
+  }
+}
+
+/**
+ * Récupère toutes les vidéos publiées (Base de données dédiée + SharePoint Drive T-oil Intranet Files).
+ */
+export async function getVideosFromSharePoint(): Promise<Array<{
+  id: string;
+  titre: string;
+  categorie: string;
+  duree: string;
+  date: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  description: string;
+}>> {
+  const videos: Array<{
+    id: string;
+    titre: string;
+    categorie: string;
+    duree: string;
+    date: string;
+    thumbnailUrl: string;
+    videoUrl: string;
+    description: string;
+  }> = [];
+
+  // 1. Charger depuis la table dédiée VideoIntranet dans MySQL
+  try {
+    const dbVideos = await withRetry(() =>
+      prisma.videoIntranet.findMany({
+        orderBy: { creeLe: 'desc' },
+      })
+    );
+
+    for (const v of dbVideos) {
+      videos.push({
+        id: v.id,
+        titre: v.titre,
+        categorie: v.categorie,
+        duree: v.duree || '5 min 00 s',
+        date: v.creeLe ? new Date(v.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
+        thumbnailUrl: v.thumbnailUrl || `${v.videoUrl}#t=2`,
+        videoUrl: v.videoUrl,
+        description: v.description || '',
+      });
+    }
+  } catch (err) {
+    console.warn('[Vidéo Storage] Erreur lecture DB vidéo:', err);
+  }
+
+  // 2. Analyser le dossier SharePoint Drive "T-oil Intranet Files" pour les vidéos téléversées
+  const graphClient = getGraphClient();
+  if (graphClient) {
+    try {
+      const siteBase = getSiteApiBase();
+      const driveId = DRIVE_BLOG_IMAGES || DRIVE_PROCEDURES_IT;
+      const folderRes = await graphClient
+        .api(`${siteBase}/drives/${driveId}/root:/T-oil Intranet Files:/children`)
+        .get();
+
+      const files = folderRes.value || [];
+      for (const file of files) {
+        const name = file.name as string;
+        if (name && (name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov'))) {
+          const rawUrl = file.webUrl || file['@microsoft.graph.downloadUrl'] || '';
+          const formattedUrl = `/api/images/proxy?url=${encodeURIComponent(rawUrl)}`;
+          
+          // Éviter les doublons déjà présents en BDD
+          const exists = videos.some((v) => v.videoUrl.includes(encodeURIComponent(rawUrl)) || v.titre === name);
+          if (!exists) {
+            videos.push({
+              id: file.id || name,
+              titre: name.replace(/^[0-9]+_/, '').replace(/\.[^/.]+$/, ''),
+              categorie: 'Formation',
+              duree: '5 min 00 s',
+              date: file.createdDateTime ? new Date(file.createdDateTime).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
+              thumbnailUrl: `${formattedUrl}#t=2`,
+              videoUrl: formattedUrl,
+              description: 'Vidéo téléversée sur SharePoint Drive (T-oil Intranet Files).',
+            });
+          }
+        }
+      }
+    } catch (driveErr) {
+      console.warn('[SharePoint Drive] Erreur lecture dossiers vidéos:', driveErr);
+    }
+  }
+
+  return videos;
+}
+

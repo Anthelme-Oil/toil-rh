@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserPermissionsByEmail } from '@/lib/roles';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/roles/me
  * Retourne les permissions de l'utilisateur connecté.
@@ -20,7 +22,13 @@ export async function GET() {
     }
 
     const permissions = await getUserPermissionsByEmail(email);
-    return NextResponse.json(permissions);
+    return NextResponse.json(permissions, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return NextResponse.json({ error: message }, { status: 500 });

@@ -15,6 +15,9 @@ interface VideoItem {
   description: string;
 }
 
+const SHAREPOINT_VIDEO_URL = 'https://togooil.sharepoint.com/sites/NotrePortail/Documents%20partages/T-oil%20Intranet%20Files/VIDEO-2026-06-04-13-54-29.mp4';
+const PROXIED_VIDEO_URL = `/api/images/proxy?url=${encodeURIComponent(SHAREPOINT_VIDEO_URL)}`;
+
 const DASHBOARD_VIDEOS: VideoItem[] = [
   {
     id: 'v-1',
@@ -22,14 +25,39 @@ const DASHBOARD_VIDEOS: VideoItem[] = [
     categorie: 'Institutionnel',
     duree: '8 min 03 s',
     date: '10 Août 2026',
-    thumbnailUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4#t=2',
-    videoUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4',
+    thumbnailUrl: `${PROXIED_VIDEO_URL}#t=2`,
+    videoUrl: PROXIED_VIDEO_URL,
     description: 'Message de bienvenue et cap stratégique pour le groupe COMPEL STSL T-OIL.',
   },
 ];
 
 export default function VideosSection() {
+  const [videos, setVideos] = useState<VideoItem[]>(DASHBOARD_VIDEOS);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
+
+  useEffect(() => {
+    async function loadVideos() {
+      try {
+        const res = await fetch('/api/actualites');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.videos && Array.isArray(data.videos) && data.videos.length > 0) {
+            // Combiner les nouvelles vidéos SharePoint avec les vidéos par défaut (sans doublons de titre/url)
+            const map = new Map<string, VideoItem>();
+            [...data.videos, ...DASHBOARD_VIDEOS].forEach((v) => {
+              if (!map.has(v.id) && !map.has(v.titre)) {
+                map.set(v.id, v);
+              }
+            });
+            setVideos(Array.from(map.values()));
+          }
+        }
+      } catch (err) {
+        console.error('Erreur chargement vidéos SharePoint:', err);
+      }
+    }
+    loadVideos();
+  }, []);
 
   return (
     <div className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-6">
@@ -62,7 +90,7 @@ export default function VideosSection() {
 
       {/* Grille de Vidéos */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {DASHBOARD_VIDEOS.map((vid) => (
+        {videos.map((vid) => (
           <div
             key={vid.id}
             onClick={() => setSelectedVideo(vid)}

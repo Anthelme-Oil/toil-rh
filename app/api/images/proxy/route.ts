@@ -63,7 +63,7 @@ function toShareId(urlStr: string): string {
 /**
  * Tente de déréférencer une URL SharePoint (share link OU webUrl) via Graph Shares API
  */
-async function resolveSharePointUrl(shareUrl: string, token: string): Promise<ArrayBuffer | null> {
+async function resolveSharePointUrl(shareUrl: string, token: string): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
   // Tester l'URL exacte puis l'URL décodée (%20 → espace)
   const urlsToTry = [shareUrl];
   try {
@@ -80,13 +80,32 @@ async function resolveSharePointUrl(shareUrl: string, token: string): Promise<Ar
 
       if (res.ok) {
         const ct = res.headers.get('content-type') || '';
-        if (ct.startsWith('image/') || res.status === 200) {
+        const buffer = await res.arrayBuffer();
+        if (buffer.byteLength > 0) return { buffer, contentType: ct };
+      }
+    } catch {}
+  }
+
+  // Fallback: accès direct via chemin dossier SharePoint
+  const siteId = process.env.SHAREPOINT_SITE_ID;
+  const driveId = process.env.DRIVE_PROCEDURES_IT || process.env.DRIVE_BLOG_IMAGES;
+  if (siteId && driveId && (shareUrl.includes('T-oil%20Intranet%20Files') || shareUrl.includes('T-oil Intranet Files'))) {
+    try {
+      const fileName = shareUrl.split('/').pop()?.split('?')[0];
+      if (fileName) {
+        const decodedName = decodeURIComponent(fileName);
+        const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root:/T-oil Intranet Files/${encodeURIComponent(decodedName)}:/content`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const ct = res.headers.get('content-type') || '';
           const buffer = await res.arrayBuffer();
-          if (buffer.byteLength > 0) return buffer;
+          if (buffer.byteLength > 0) return { buffer, contentType: ct };
         }
       }
     } catch {}
   }
+
   return null;
 }
 
@@ -101,37 +120,57 @@ export async function GET(request: Request) {
   }
 
   try {
-    const isSharePoint = imageUrl.includes('sharepoint.com') || imageUrl.includes('graph.microsoft.com');
+    const isSharePoint = imageUrl.includes('sharepoint.com') || imageUrl.includes('graph.microsoft.com') || imageUrl.includes('1drv.ms');
 
     if (isSharePoint) {
       const token = await getAccessToken();
 
       if (token) {
-        // Résolution via Graph API Shares endpoint (pour tout lien SharePoint)
-        const buffer = await resolveSharePointUrl(imageUrl, token);
-        if (buffer) {
-          const bytes = new Uint8Array(buffer.slice(0, 4));
-          let contentType = 'image/jpeg';
-          if (bytes[0] === 0x89 && bytes[1] === 0x50) contentType = 'image/png';
-          else if (bytes[0] === 0x47 && bytes[1] === 0x49) contentType = 'image/gif';
-          else if (bytes[0] === 0x52 && bytes[1] === 0x49) contentType = 'image/webp';
+        // Résolution via Graph API Shares endpoint ou Drive direct
+        const resolved = await resolveSharePointUrl(imageUrl, token);
+        if (resolved) {
+          const { buffer, contentType: rawCt } = resolved;
+          let contentType = rawCt;
+
+          if (!contentType || contentType === 'application/octet-stream') {
+            const bytes = new Uint8Array(buffer.slice(0, 8));
+            if (bytes[0] === 0x89 && bytes[1] === 0x50) contentType = 'image/png';
+            else if (bytes[0] === 0x47 && bytes[1] === 0x49) contentType = 'image/gif';
+            else if (bytes[0] === 0x52 && bytes[1] === 0x49) contentType = 'image/webp';
+            else if (bytes[0] === 0xff && bytes[1] === 0xd8) contentType = 'image/jpeg';
+            else if (imageUrl.toLowerCase().includes('.mp4') || (bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79)) contentType = 'video/mp4';
+            else contentType = 'image/jpeg';
+          }
+
+          if (imageUrl.toLowerCase().includes('.mp4')) {
+            contentType = 'video/mp4';
+          }
 
           return new NextResponse(buffer, {
             headers: {
               'Content-Type': contentType,
               'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+              'Accept-Ranges': 'bytes',
+              'Content-Length': buffer.byteLength.toString(),
             },
           });
         }
 
-        // Second fallback: fetch direct si l'URL est une API Graph ou URL directe
+        // Second fallback: fetch direct avec token
         try {
           const directRes = await fetch(imageUrl, { headers: { Authorization: `Bearer ${token}` } });
           if (directRes.ok) {
             const ct = directRes.headers.get('content-type') || '';
-            if (ct.startsWith('image/')) {
-              return new NextResponse(await directRes.arrayBuffer(), {
-                headers: { 'Content-Type': ct, 'Cache-Control': 'public, max-age=86400' },
+            const isMedia = ct.startsWith('image/') || ct.startsWith('video/');
+            if (isMedia) {
+              const buffer = await directRes.arrayBuffer();
+              return new NextResponse(buffer, {
+                headers: {
+                  'Content-Type': ct,
+                  'Cache-Control': 'public, max-age=86400',
+                  'Accept-Ranges': 'bytes',
+                  'Content-Length': buffer.byteLength.toString(),
+                },
               });
             }
           }
@@ -142,11 +181,14 @@ export async function GET(request: Request) {
     } else {
       const res = await fetch(imageUrl);
       const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.startsWith('image/')) {
-        return new NextResponse(await res.arrayBuffer(), {
+      if (res.ok && (contentType.startsWith('image/') || contentType.startsWith('video/'))) {
+        const buffer = await res.arrayBuffer();
+        return new NextResponse(buffer, {
           headers: {
             'Content-Type': contentType,
             'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'Accept-Ranges': 'bytes',
+            'Content-Length': buffer.byteLength.toString(),
           },
         });
       }

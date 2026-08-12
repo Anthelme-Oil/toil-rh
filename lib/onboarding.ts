@@ -20,8 +20,8 @@ export const mockOnboardingModules: OnboardingModule[] = [
     titre: 'Bienvenue chez COMPEL STSL T-OIL',
     description: 'Mot de bienvenue de la Direction Générale, vision stratégique et présentation du groupe pétrolier.',
     categorie: 'culture',
-    videoUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4',
-    thumbnailUrl: '/video/VIDEO-2026-06-04-13-54-29.mp4#t=2',
+    videoUrl: '/api/images/proxy?url=' + encodeURIComponent('https://togooil.sharepoint.com/sites/NotrePortail/Documents%20partages/T-oil%20Intranet%20Files/VIDEO-2026-06-04-13-54-29.mp4'),
+    thumbnailUrl: '/api/images/proxy?url=' + encodeURIComponent('https://togooil.sharepoint.com/sites/NotrePortail/Documents%20partages/T-oil%20Intranet%20Files/VIDEO-2026-06-04-13-54-29.mp4') + '#t=2',
     dureeMinutes: 8,
     ordre: 1,
     estObligatoire: true,
@@ -176,36 +176,73 @@ export async function getOnboardingModules(): Promise<OnboardingModule[]> {
     'onboarding:modules',
     async () => {
       const graphClient = getGraphClient();
-      if (!graphClient) return mockOnboardingModules;
-      const siteBase = getSiteApiBase();
+      let modules = [...mockOnboardingModules];
 
-      try {
-        const response = await graphClient
-          .api(`${siteBase}/lists/Onboarding_Modules/items?expand=fields`)
-          .get();
+      if (graphClient) {
+        const siteBase = getSiteApiBase();
+        try {
+          const response = await graphClient
+            .api(`${siteBase}/lists/Onboarding_Modules/items?expand=fields`)
+            .get();
 
-        const items = response.value || [];
-        if (items.length === 0) return mockOnboardingModules;
-
-        return items.map((item: any) => {
-          const f = item.fields || {};
-          return {
-            id: item.id,
-            code: f.Title || f.Code || `ONB-${item.id}`,
-            titre: f.Titre || f.Title || '',
-            description: f.Description || '',
-            categorie: (f.Categorie || 'culture').toLowerCase() as OnboardingModule['categorie'],
-            videoUrl: f.VideoUrl || '',
-            thumbnailUrl: f.ThumbnailUrl || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
-            dureeMinutes: parseInt(f.DureeMinutes || '5', 10),
-            ordre: parseInt(f.Ordre || '1', 10),
-            estObligatoire: f.EstObligatoire !== false,
-          };
-        });
-      } catch (err) {
-        console.warn('[Onboarding] Utilisation des modules mock:', err);
-        return mockOnboardingModules;
+          const items = response.value || [];
+          if (items.length > 0) {
+            modules = items.map((item: any) => {
+              const f = item.fields || {};
+              return {
+                id: item.id,
+                code: f.Code || f.Title || `ONB-${item.id}`,
+                titre: f.Titre || f.Title || '',
+                description: f.Description || '',
+                categorie: (f.Categorie || 'culture').toLowerCase() as OnboardingModule['categorie'],
+                videoUrl: f.VideoUrl || '',
+                thumbnailUrl: f.ThumbnailUrl || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
+                dureeMinutes: parseInt(f.DureeMinutes || '5', 10),
+                ordre: parseInt(f.Ordre || '1', 10),
+                estObligatoire: f.EstObligatoire !== false,
+              };
+            });
+          }
+        } catch (err) {
+          console.warn('[Onboarding] Utilisation des modules de base + vidéos SharePoint:', err);
+        }
       }
+
+      // Incorporer les vidéos dynamiquement publiées depuis SharePoint List
+      try {
+        const { getVideosFromSharePoint } = await import('./sharepoint');
+        const spVideos = await getVideosFromSharePoint();
+        if (spVideos.length > 0) {
+          spVideos.forEach((vid, idx) => {
+            const exists = modules.some((m) => m.titre === vid.titre || m.videoUrl === vid.videoUrl);
+            if (!exists) {
+              const dureeNum = parseInt(vid.duree.replace(/\D/g, ''), 10) || 5;
+              let cat: OnboardingModule['categorie'] = 'culture';
+              const catLower = vid.categorie.toLowerCase();
+              if (catLower.includes('securite') || catLower.includes('hse')) cat = 'securite';
+              else if (catLower.includes('it') || catLower.includes('digital')) cat = 'it';
+              else if (catLower.includes('rh')) cat = 'rh';
+
+              modules.push({
+                id: `sp-vid-${vid.id}`,
+                code: `SP-VID-${idx + 1}`,
+                titre: vid.titre,
+                description: vid.description,
+                categorie: cat,
+                videoUrl: vid.videoUrl,
+                thumbnailUrl: vid.thumbnailUrl,
+                dureeMinutes: dureeNum,
+                ordre: modules.length + 1,
+                estObligatoire: true,
+              });
+            }
+          });
+        }
+      } catch (spVideoErr) {
+        console.warn('[Onboarding] Erreur fusion vidéos SharePoint:', spVideoErr);
+      }
+
+      return modules;
     },
     ONBOARDING_MODULES_TTL
   );
