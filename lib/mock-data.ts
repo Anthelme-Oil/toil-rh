@@ -135,6 +135,34 @@ export const outilsM365: OutilM365[] = [
 
   // ── Applications métiers ──
   {
+    nom: 'Gest-oil',
+    icone: '/icons/gest-oil.svg',
+    url: 'https://gest-oil.togosh.com/login',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 't-oil.tg',
+    icone: '/images/image.png',
+    url: 'https://gest-oil.togosh.com/login',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'JDE E1 - 10007',
+    icone: '/icons/jde-10007.svg',
+    url: 'http://192.168.203.15:10007/jde/E1Menu.maf?RENDER_MAFLET=E1Menu&jdeowpBackButtonProtect=PROTECTED',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
+    nom: 'JDE E1 - 10006',
+    icone: '/icons/jde-10006.svg',
+    url: 'http://192.168.203.15:10006/jde/E1Menu.maf?RENDER_MAFLET=E1Menu&jdeowpBackButtonProtect=PROTECTED',
+    couleur: '#DC2626',
+    categorie: 'Applications métiers',
+  },
+  {
     nom: 'Procédures QSE',
     icone: '/icons/qse.svg',
     url: '#',
@@ -153,27 +181,6 @@ export const outilsM365: OutilM365[] = [
     icone: '/icons/stsl-stock.svg',
     url: '#',
     couleur: '#0284C7',
-    categorie: 'Applications métiers',
-  },
-  {
-    nom: 'Gest-oil',
-    icone: '/icons/gest-oil.svg',
-    url: '#',
-    couleur: '#DC2626',
-    categorie: 'Applications métiers',
-  },
-  {
-    nom: 'JDE E1 - 10007',
-    icone: '/icons/jde-10007.svg',
-    url: '#',
-    couleur: '#DC2626',
-    categorie: 'Applications métiers',
-  },
-  {
-    nom: 'JDE E1-10006',
-    icone: '/icons/jde-10006.svg',
-    url: '#',
-    couleur: '#DC2626',
     categorie: 'Applications métiers',
   },
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect width="100" height="100" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+  <path fill="#DC2626" d="M50 20 C40 33 36 42 36 50 C36 58 42 64 50 64 C58 64 64 58 64 50 C64 42 60 33 50 20 Z"/>
+  <path fill="#16A34A" d="M50 30 C44 39 42 45 42 50 C42 54 45 58 50 58 C55 58 58 54 58 50 C58 45 56 39 50 30 Z"/>
+  <text x="50" y="80" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#0F172A" text-anchor="middle">t-oil.tg</text>
+</svg>
