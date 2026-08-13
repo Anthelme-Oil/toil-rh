@@ -18,6 +18,7 @@ import {
   DRIVE_BLOG_IMAGES,
 } from './graph';
 import { prisma, withRetry } from '@/lib/prisma';
+import { serverCache } from './cache';
 import type { Actualite, DocumentSP, Evenement, Annonce } from '@/types';
 
 const SHAREPOINT_HOSTNAME = process.env.SHAREPOINT_HOSTNAME || 'togooil.sharepoint.com';
@@ -74,57 +75,59 @@ function extractImageUrl(fields: Record<string, string>, itemId: string): string
  * @param top - Nombre maximum d'éléments à retourner (défaut: 5)
  */
 export async function getActualites(top: number = 5): Promise<Actualite[]> {
-  const graphClient = getGraphClient();
-  if (!graphClient) {
-    console.warn('[SharePoint] Graph non configuré. Utilisation des données par défaut.');
-    return [];
-  }
-  const siteBase = getSiteApiBase();
+  return serverCache.getOrFetch(`sp:actualites:${top}`, async () => {
+    const graphClient = getGraphClient();
+    if (!graphClient) {
+      console.warn('[SharePoint] Graph non configuré. Utilisation des données par défaut.');
+      return [];
+    }
+    const siteBase = getSiteApiBase();
 
-  try {
-    const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items`)
-      .expand('fields')
-      .top(100)
-      .get();
+    try {
+      const response = await graphClient
+        .api(`${siteBase}/lists/${LIST_ACTUALITES_ID}/items`)
+        .expand('fields')
+        .top(100)
+        .get();
 
-    const rawItems = response.value || [];
-    const items: Actualite[] = rawItems
-      .filter((item: Record<string, unknown>) => {
-        const fields = (item.fields || {}) as Record<string, string>;
-        const cat = fields.Categorie || '';
-        const img = fields.ImageUrl || '';
-        // Filtrer pour ne garder QUE les articles réels, pas les vidéos
-        return !cat.toLowerCase().startsWith('vidéo') && !img.toLowerCase().includes('.mp4');
-      })
-      .map((item: Record<string, unknown>) => {
-        const fields = item.fields as Record<string, string>;
-        const id = item.id as string;
-        return {
-          id,
-          titre: fields.Title || '',
-          description: fields.Description || '',
-          contenu: fields.Contenu || '',
-          datePublication: fields.DatePublication || (item.createdDateTime as string) || '',
-          imageUrl: extractImageUrl(fields, id),
-          categorie: fields.Categorie || undefined,
-          auteur: fields.Auteur || undefined,
-          lienVersPage: fields.LienVersPage || undefined,
-        };
+      const rawItems = response.value || [];
+      const items: Actualite[] = rawItems
+        .filter((item: Record<string, unknown>) => {
+          const fields = (item.fields || {}) as Record<string, string>;
+          const cat = fields.Categorie || '';
+          const img = fields.ImageUrl || '';
+          // Filtrer pour ne garder QUE les articles réels, pas les vidéos
+          return !cat.toLowerCase().startsWith('vidéo') && !img.toLowerCase().includes('.mp4');
+        })
+        .map((item: Record<string, unknown>) => {
+          const fields = item.fields as Record<string, string>;
+          const id = item.id as string;
+          return {
+            id,
+            titre: fields.Title || '',
+            description: fields.Description || '',
+            contenu: fields.Contenu || '',
+            datePublication: fields.DatePublication || (item.createdDateTime as string) || '',
+            imageUrl: extractImageUrl(fields, id),
+            categorie: fields.Categorie || undefined,
+            auteur: fields.Auteur || undefined,
+            lienVersPage: fields.LienVersPage || undefined,
+          };
+        });
+
+      // Tri par date de publication DÉCROISSANTE (du plus récent au plus ancien)
+      items.sort((a, b) => {
+        const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;
+        const dateB = b.datePublication ? new Date(b.datePublication).getTime() : 0;
+        return dateB - dateA;
       });
 
-    // Tri par date de publication DÉCROISSANTE (du plus récent au plus ancien)
-    items.sort((a, b) => {
-      const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;
-      const dateB = b.datePublication ? new Date(b.datePublication).getTime() : 0;
-      return dateB - dateA;
-    });
-
-    return items.slice(0, top);
-  } catch (error) {
-    console.error('[SharePoint] Erreur récupération actualités:', error);
-    return [];
-  }
+      return items.slice(0, top);
+    } catch (error) {
+      console.error('[SharePoint] Erreur récupération actualités:', error);
+      return [];
+    }
+  }, 3 * 60 * 1000);
 }
 
 /**
@@ -217,31 +220,43 @@ export async function uploadBlogImage(buffer: Buffer, fileName: string): Promise
   const filePath = `T-oil Intranet Files/${timestamp}_${cleanFileName}`;
 
   try {
-    // Upload du fichier dans la bibliothèque d'images de blog
-    const uploadResponse = await graphClient
-      .api(`${siteBase}/drives/${DRIVE_BLOG_IMAGES}/root:/${filePath}:/content`)
-      .put(buffer);
+    let uploadResponse: any;
+    try {
+      // 1. Essayer le drive principal du site (/drive/root)
+      uploadResponse = await graphClient
+        .api(`${siteBase}/drive/root:/${filePath}:/content`)
+        .put(buffer);
+    } catch {
+      // 2. Fallback avec DRIVE_BLOG_IMAGES
+      uploadResponse = await graphClient
+        .api(`${siteBase}/drives/${DRIVE_BLOG_IMAGES}/root:/${filePath}:/content`)
+        .put(buffer);
+    }
 
-    const itemId = uploadResponse.id as string;
+    const itemWebUrl = uploadResponse?.webUrl as string;
+    if (itemWebUrl) {
+      console.log('[SharePoint] Image uploadée avec succès (webUrl permanente):', itemWebUrl);
+      return itemWebUrl;
+    }
 
-    // Récupérer les métadonnées — webUrl est l'URL permanente de la page SharePoint
-    // On retourne webUrl et le proxy s'occupe de l'authentification lors de l'affichage
-    const itemMeta = await graphClient
-      .api(`${siteBase}/drives/${DRIVE_BLOG_IMAGES}/items/${itemId}`)
-      .select('id,webUrl,@microsoft.graph.downloadUrl')
-      .get();
+    const itemId = uploadResponse?.id as string;
+    if (itemId) {
+      try {
+        const itemMeta = await graphClient
+          .api(`${siteBase}/drive/items/${itemId}`)
+          .select('id,webUrl')
+          .get();
+        if (itemMeta?.webUrl) return itemMeta.webUrl as string;
+      } catch {}
+    }
 
-    // Préférer l'URL de téléchargement directe si disponible (expire après ~1h, non adaptée au stockage long terme)
-    // On stocke webUrl et on passe par le proxy /api/images/proxy?url= pour l'authentification
-    const sharePointUrl = (itemMeta['@microsoft.graph.downloadUrl'] as string) || (itemMeta.webUrl as string);
-
-    if (!sharePointUrl) {
+    const fallbackUrl = (uploadResponse?.webUrl as string) || (uploadResponse?.['@microsoft.graph.downloadUrl'] as string);
+    if (!fallbackUrl) {
       throw new Error('URL de l\'image non retournée par SharePoint.');
     }
 
-    console.log('[SharePoint] Image uploadée avec succès. URL:', sharePointUrl);
-    // Retourner l'URL directe — elle sera déjà passée par extractImageUrl qui ajoutera le proxy
-    return sharePointUrl;
+    console.log('[SharePoint] Image uploadée. URL:', fallbackUrl);
+    return fallbackUrl;
   } catch (error) {
     console.error('[SharePoint] Erreur upload image blog:', error);
     throw new Error('Échec de l\'upload de l\'image de couverture.');
@@ -279,6 +294,7 @@ export async function creerActualite(blog: {
         },
       });
 
+    serverCache.invalidateByPrefix('sp:actualites');
     return response.id as string;
   } catch (error) {
     console.error('[SharePoint] Erreur création actualité:', error);
@@ -338,31 +354,33 @@ export async function getDocuments(
  * Récupère les événements du jour depuis la liste SharePoint.
  */
 export async function getEvenementsDuJour(): Promise<Evenement[]> {
-  const graphClient = getGraphClient();
-  if (!graphClient) return [];
-  const siteBase = getSiteApiBase();
+  return serverCache.getOrFetch('sp:evenements', async () => {
+    const graphClient = getGraphClient();
+    if (!graphClient) return [];
+    const siteBase = getSiteApiBase();
 
-  try {
-    const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_EVENEMENTS_ID}/items`)
-      .expand('fields')
-      .get();
+    try {
+      const response = await graphClient
+        .api(`${siteBase}/lists/${LIST_EVENEMENTS_ID}/items`)
+        .expand('fields')
+        .get();
 
-    return (response.value || []).map((item: Record<string, unknown>) => {
-      const fields = item.fields as Record<string, string>;
-      return {
-        id: item.id as string,
-        titre: fields.Title || '',
-        dateDebut: fields.DateDebut || fields.EventDate || fields.StartDate || new Date().toISOString(),
-        dateFin: fields.DateFin || fields.EndDate || undefined,
-        lieu: fields.Lieu || fields.Location || undefined,
-        description: fields.Description || undefined,
-      };
-    });
-  } catch (error) {
-    console.error('[SharePoint] Erreur récupération événements:', error);
-    return [];
-  }
+      return (response.value || []).map((item: Record<string, unknown>) => {
+        const fields = item.fields as Record<string, string>;
+        return {
+          id: item.id as string,
+          titre: fields.Title || '',
+          dateDebut: fields.DateDebut || fields.EventDate || fields.StartDate || new Date().toISOString(),
+          dateFin: fields.DateFin || fields.EndDate || undefined,
+          lieu: fields.Lieu || fields.Location || undefined,
+          description: fields.Description || undefined,
+        };
+      });
+    } catch (error) {
+      console.error('[SharePoint] Erreur récupération événements:', error);
+      return [];
+    }
+  }, 5 * 60 * 1000);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -373,32 +391,34 @@ export async function getEvenementsDuJour(): Promise<Evenement[]> {
  * Récupère les annonces actives depuis la liste SharePoint.
  */
 export async function getAnnonces(): Promise<Annonce[]> {
-  const graphClient = getGraphClient();
-  if (!graphClient) return [];
-  const siteBase = getSiteApiBase();
+  return serverCache.getOrFetch('sp:annonces', async () => {
+    const graphClient = getGraphClient();
+    if (!graphClient) return [];
+    const siteBase = getSiteApiBase();
 
-  try {
-    const response = await graphClient
-      .api(`${siteBase}/lists/${LIST_ANNONCES_ID}/items`)
-      .expand('fields')
-      .top(5)
-      .get();
+    try {
+      const response = await graphClient
+        .api(`${siteBase}/lists/${LIST_ANNONCES_ID}/items`)
+        .expand('fields')
+        .top(5)
+        .get();
 
-    return (response.value || []).map((item: Record<string, unknown>) => {
-      const fields = item.fields as Record<string, string>;
-      return {
-        id: item.id as string,
-        titre: fields.Title || '',
-        contenu: fields.Contenu || '',
-        type: (fields.Type as Annonce['type']) || 'info',
-        datePublication: fields.DatePublication || fields.Created || '',
-        lien: fields.Lien || undefined,
-      };
-    });
-  } catch (error) {
-    console.error('[SharePoint] Erreur récupération annonces:', error);
-    return [];
-  }
+      return (response.value || []).map((item: Record<string, unknown>) => {
+        const fields = item.fields as Record<string, string>;
+        return {
+          id: item.id as string,
+          titre: fields.Title || '',
+          contenu: fields.Contenu || '',
+          type: (fields.Type as Annonce['type']) || 'info',
+          datePublication: fields.DatePublication || fields.Created || '',
+          lien: fields.Lien || undefined,
+        };
+      });
+    } catch (error) {
+      console.error('[SharePoint] Erreur récupération annonces:', error);
+      return [];
+    }
+  }, 5 * 60 * 1000);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -532,79 +552,81 @@ export async function getVideosFromSharePoint(): Promise<Array<{
   videoUrl: string;
   description: string;
 }>> {
-  const videos: Array<{
-    id: string;
-    titre: string;
-    categorie: string;
-    duree: string;
-    date: string;
-    thumbnailUrl: string;
-    videoUrl: string;
-    description: string;
-  }> = [];
+  return serverCache.getOrFetch('sp:videos', async () => {
+    const videos: Array<{
+      id: string;
+      titre: string;
+      categorie: string;
+      duree: string;
+      date: string;
+      thumbnailUrl: string;
+      videoUrl: string;
+      description: string;
+    }> = [];
 
-  // 1. Charger depuis la table dédiée VideoIntranet dans MySQL
-  try {
-    const dbVideos = await withRetry(() =>
-      prisma.videoIntranet.findMany({
-        orderBy: { creeLe: 'desc' },
-      })
-    );
-
-    for (const v of dbVideos) {
-      videos.push({
-        id: v.id,
-        titre: v.titre,
-        categorie: v.categorie,
-        duree: v.duree || '5 min 00 s',
-        date: v.creeLe ? new Date(v.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
-        thumbnailUrl: v.thumbnailUrl || `${v.videoUrl}#t=2`,
-        videoUrl: v.videoUrl,
-        description: v.description || '',
-      });
-    }
-  } catch (err) {
-    console.warn('[Vidéo Storage] Erreur lecture DB vidéo:', err);
-  }
-
-  // 2. Analyser le dossier SharePoint Drive "T-oil Intranet Files" pour les vidéos téléversées
-  const graphClient = getGraphClient();
-  if (graphClient) {
+    // 1. Charger depuis la table dédiée VideoIntranet dans MySQL
     try {
-      const siteBase = getSiteApiBase();
-      const driveId = DRIVE_BLOG_IMAGES || DRIVE_PROCEDURES_IT;
-      const folderRes = await graphClient
-        .api(`${siteBase}/drives/${driveId}/root:/T-oil Intranet Files:/children`)
-        .get();
+      const dbVideos = await withRetry(() =>
+        prisma.videoIntranet.findMany({
+          orderBy: { creeLe: 'desc' },
+        })
+      );
 
-      const files = folderRes.value || [];
-      for (const file of files) {
-        const name = file.name as string;
-        if (name && (name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov'))) {
-          const rawUrl = file.webUrl || file['@microsoft.graph.downloadUrl'] || '';
-          const formattedUrl = `/api/images/proxy?url=${encodeURIComponent(rawUrl)}`;
-          
-          // Éviter les doublons déjà présents en BDD
-          const exists = videos.some((v) => v.videoUrl.includes(encodeURIComponent(rawUrl)) || v.titre === name);
-          if (!exists) {
-            videos.push({
-              id: file.id || name,
-              titre: name.replace(/^[0-9]+_/, '').replace(/\.[^/.]+$/, ''),
-              categorie: 'Formation',
-              duree: '5 min 00 s',
-              date: file.createdDateTime ? new Date(file.createdDateTime).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
-              thumbnailUrl: `${formattedUrl}#t=2`,
-              videoUrl: formattedUrl,
-              description: 'Vidéo téléversée sur SharePoint Drive (T-oil Intranet Files).',
-            });
+      for (const v of dbVideos) {
+        videos.push({
+          id: v.id,
+          titre: v.titre,
+          categorie: v.categorie,
+          duree: v.duree || '5 min 00 s',
+          date: v.creeLe ? new Date(v.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
+          thumbnailUrl: v.thumbnailUrl || `${v.videoUrl}#t=2`,
+          videoUrl: v.videoUrl,
+          description: v.description || '',
+        });
+      }
+    } catch (err) {
+      console.warn('[Vidéo Storage] Erreur lecture DB vidéo:', err);
+    }
+
+    // 2. Analyser le dossier SharePoint Drive "T-oil Intranet Files" pour les vidéos téléversées
+    const graphClient = getGraphClient();
+    if (graphClient) {
+      try {
+        const siteBase = getSiteApiBase();
+        const driveId = DRIVE_BLOG_IMAGES || DRIVE_PROCEDURES_IT;
+        const folderRes = await graphClient
+          .api(`${siteBase}/drives/${driveId}/root:/T-oil Intranet Files:/children`)
+          .get();
+
+        const files = folderRes.value || [];
+        for (const file of files) {
+          const name = file.name as string;
+          if (name && (name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov'))) {
+            const rawUrl = file.webUrl || file['@microsoft.graph.downloadUrl'] || '';
+            const formattedUrl = `/api/images/proxy?url=${encodeURIComponent(rawUrl)}`;
+            
+            // Éviter les doublons déjà présents en BDD
+            const exists = videos.some((v) => v.videoUrl.includes(encodeURIComponent(rawUrl)) || v.titre === name);
+            if (!exists) {
+              videos.push({
+                id: file.id || name,
+                titre: name.replace(/^[0-9]+_/, '').replace(/\.[^/.]+$/, ''),
+                categorie: 'Formation',
+                duree: '5 min 00 s',
+                date: file.createdDateTime ? new Date(file.createdDateTime).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment',
+                thumbnailUrl: `${formattedUrl}#t=2`,
+                videoUrl: formattedUrl,
+                description: 'Vidéo téléversée sur SharePoint Drive (T-oil Intranet Files).',
+              });
+            }
           }
         }
+      } catch (driveErr) {
+        console.warn('[SharePoint Drive] Erreur lecture dossiers vidéos:', driveErr);
       }
-    } catch (driveErr) {
-      console.warn('[SharePoint Drive] Erreur lecture dossiers vidéos:', driveErr);
     }
-  }
 
-  return videos;
+    return videos;
+  }, 5 * 60 * 1000);
 }
 

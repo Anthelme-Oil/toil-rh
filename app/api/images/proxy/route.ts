@@ -102,11 +102,18 @@ async function resolveSharePointUrl(shareUrl: string, token: string): Promise<{ 
   let fileName = rawFileName;
   try { fileName = decodeURIComponent(rawFileName); } catch {}
 
-  if (siteId && driveId && fileName) {
-    // A. Si l'URL contient "Blogs"
-    if (shareUrl.includes('Blogs')) {
+  if (siteId && fileName) {
+    const drivePathsToTry = [
+      `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root`,
+    ];
+    if (driveId && driveId !== 'Procedures_IT') {
+      drivePathsToTry.push(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root`);
+    }
+
+    for (const basePath of drivePathsToTry) {
+      // A. T-oil Intranet Files
       try {
-        const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root:/Blogs/${encodeURIComponent(fileName)}:/content`, {
+        const res = await fetch(`${basePath}:/T-oil Intranet Files/${encodeURIComponent(fileName)}:/content`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -115,12 +122,10 @@ async function resolveSharePointUrl(shareUrl: string, token: string): Promise<{ 
           if (buffer.byteLength > 0) return { buffer, contentType: ct };
         }
       } catch {}
-    }
 
-    // B. Si l'URL contient "T-oil Intranet Files"
-    if (shareUrl.includes('T-oil') || shareUrl.includes('Intranet')) {
+      // B. Blogs
       try {
-        const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root:/T-oil Intranet Files/${encodeURIComponent(fileName)}:/content`, {
+        const res = await fetch(`${basePath}:/Blogs/${encodeURIComponent(fileName)}:/content`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -129,32 +134,32 @@ async function resolveSharePointUrl(shareUrl: string, token: string): Promise<{ 
           if (buffer.byteLength > 0) return { buffer, contentType: ct };
         }
       } catch {}
-    }
 
-    // C. Recherche directe dans la bibliothèque d'images / documents par nom de fichier
-    try {
-      const searchRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root/search(q='${encodeURIComponent(fileName)}')`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (searchRes.ok) {
-        const searchJson = await searchRes.json();
-        const items = searchJson.value || [];
-        if (items.length > 0) {
-          const match = items[0];
-          const downloadUrl = match['@microsoft.graph.downloadUrl'] || (match.id ? `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${match.id}/content` : null);
-          if (downloadUrl) {
-            const contentRes = await fetch(downloadUrl, {
-              headers: downloadUrl.includes('graph.microsoft.com') ? { Authorization: `Bearer ${token}` } : {},
-            });
-            if (contentRes.ok) {
-              const ct = contentRes.headers.get('content-type') || '';
-              const buffer = await contentRes.arrayBuffer();
-              if (buffer.byteLength > 0) return { buffer, contentType: ct };
+      // C. Recherche directe par nom de fichier
+      try {
+        const searchRes = await fetch(`${basePath}/search(q='${encodeURIComponent(fileName)}')`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (searchRes.ok) {
+          const searchJson = await searchRes.json();
+          const items = searchJson.value || [];
+          if (items.length > 0) {
+            const match = items[0];
+            const downloadUrl = match['@microsoft.graph.downloadUrl'] || (match.id ? `${basePath}/items/${match.id}/content` : null);
+            if (downloadUrl) {
+              const contentRes = await fetch(downloadUrl, {
+                headers: downloadUrl.includes('graph.microsoft.com') ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (contentRes.ok) {
+                const ct = contentRes.headers.get('content-type') || '';
+                const buffer = await contentRes.arrayBuffer();
+                if (buffer.byteLength > 0) return { buffer, contentType: ct };
+              }
             }
           }
         }
-      }
-    } catch {}
+      } catch {}
+    }
   }
 
   // 3. Fallback: Pièces jointes de listes SharePoint (Attachments)

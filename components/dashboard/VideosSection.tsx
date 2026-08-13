@@ -98,20 +98,17 @@ export default function VideosSection() {
           >
             {/* Thumbnail avec overlay play */}
             <div className="relative h-40 w-full overflow-hidden bg-slate-900">
-              {vid.videoUrl.endsWith('.mp4') || vid.thumbnailUrl.includes('.mp4') ? (
-                <video
-                  src={`${vid.videoUrl}#t=2`}
-                  preload="metadata"
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-                />
-              ) : (
+              {vid.thumbnailUrl && !vid.thumbnailUrl.includes('.mp4') ? (
                 <img
                   src={vid.thumbnailUrl}
                   alt={vid.titre}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
                 />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-slate-900 via-primary-950/80 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+                  <Tv className="w-8 h-8 text-primary/60 mb-1 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-semibold text-slate-300 line-clamp-1 max-w-[80%]">{vid.titre}</span>
+                </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
