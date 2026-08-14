@@ -47,6 +47,15 @@ interface Salle {
   reservations: Reservation[];
 }
 
+const SALLES_DEFAUT = [
+  { id: 'GRANDE_SALLE', nom: 'La grande salle de réunion', capacite: 30, emplacement: 'Siège T-OIL — 1er Étage' },
+  { id: 'HALL_DG', nom: 'La salle de réunion Hall DG', capacite: 12, emplacement: 'Direction Générale — RDC' },
+  { id: 'HALL_FINANCE', nom: 'La salle de réunion Hall Finance', capacite: 10, emplacement: 'Direction Financière — 1er Étage' },
+  { id: 'HALL_COMMERCIAL', nom: 'La salle de réunion Hall Commercial', capacite: 10, emplacement: 'Direction Commerciale — RDC' },
+  { id: 'HALL_OPERATION', nom: 'La salle de réunion Hall Opération', capacite: 15, emplacement: 'Direction des Opérations — Bâtiment B' },
+  { id: 'JURIDIQUE', nom: 'La salle de réunion Juridique', capacite: 8, emplacement: 'Direction Juridique — 2ème Étage' },
+];
+
 export default function ReservationsClient() {
   const { userName, userEmail, userRole, isAdmin } = useUser();
   const todayStr = new Date().toISOString().split('T')[0];
@@ -86,7 +95,9 @@ export default function ReservationsClient() {
       const res = await fetch(`/api/reservations?date=${date}`);
       if (res.ok) {
         const data = await res.json();
-        setSalles(data.salles || []);
+        if (Array.isArray(data.salles) && data.salles.length > 0) {
+          setSalles(data.salles);
+        }
       }
     } catch (err) {
       console.error('Erreur chargement réservations:', err);
@@ -100,10 +111,11 @@ export default function ReservationsClient() {
   }, [selectedDate]);
 
   const handleOpenModal = (salleId?: string) => {
+    const list = salles.length > 0 ? salles : SALLES_DEFAUT;
     if (salleId) {
       setSelectedSalleId(salleId);
-    } else if (salles.length > 0) {
-      setSelectedSalleId(salles[0].id);
+    } else if (list.length > 0) {
+      setSelectedSalleId(list[0].id);
     }
     setDateResa(selectedDate);
     setAlertMsg(null);
@@ -436,10 +448,13 @@ export default function ReservationsClient() {
                   required
                   value={selectedSalleId}
                   onChange={(e) => setSelectedSalleId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-xs"
                 >
-                  {salles.map((s) => (
-                    <option key={s.id} value={s.id}>
+                  <option value="" disabled className="text-slate-400 bg-white">
+                    -- Sélectionner une salle de réunion --
+                  </option>
+                  {(salles.length > 0 ? salles : SALLES_DEFAUT).map((s) => (
+                    <option key={s.id} value={s.id} className="text-slate-900 bg-white font-medium py-1.5">
                       {s.nom} ({s.capacite} places) — {s.emplacement}
                     </option>
                   ))}

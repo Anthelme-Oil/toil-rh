@@ -13,9 +13,13 @@ function parseDatabaseUrl(rawUrl?: string) {
     const parsed = new URL(urlStr);
     const host = parsed.hostname === 'localhost' ? '127.0.0.1' : (parsed.hostname || '127.0.0.1');
     const port = parsed.port ? parseInt(parsed.port, 10) : 3306;
-    const user = parsed.username || 'root';
-    const password = parsed.password || '';
+    const user = decodeURIComponent(parsed.username || 'root');
+    const password = decodeURIComponent(parsed.password || '');
     const database = parsed.pathname ? parsed.pathname.replace('/', '') : 'toil_db';
+
+    const ssl = (parsed.searchParams.has('sslaccept') || parsed.hostname.includes('tidbcloud'))
+      ? { rejectUnauthorized: false }
+      : undefined;
 
     return {
       host,
@@ -23,11 +27,12 @@ function parseDatabaseUrl(rawUrl?: string) {
       user,
       password,
       database,
-      connectionLimit: 10,
-      minimumIdle: 0,
-      idleTimeout: 30, // Fermeture propre des sockets inactifs après 30s
-      connectTimeout: 10000,
-      acquireTimeout: 10000,
+      ssl,
+      connectionLimit: 5,
+      minimumIdle: 1,
+      idleTimeout: 60,
+      connectTimeout: 30000,
+      acquireTimeout: 30000,
     };
   } catch {
     return {
@@ -35,9 +40,9 @@ function parseDatabaseUrl(rawUrl?: string) {
       port: 3306,
       user: 'root',
       database: 'toil_db',
-      connectionLimit: 10,
-      minimumIdle: 0,
-      idleTimeout: 30,
+      connectionLimit: 5,
+      minimumIdle: 1,
+      idleTimeout: 60,
     };
   }
 }
@@ -72,7 +77,6 @@ export function resetPrismaClient(): PrismaClient {
 
 /**
  * Proxy dynamique vers l'instance active de PrismaClient.
- * Permet la réinstanciation transparente du pool mariadb sans casser les références importées.
  */
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop: keyof PrismaClient) {
@@ -90,10 +94,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 /**
- * Robustesse maximale : Exécute une opération Prisma avec re-tentatives automatiques
- * et réinstanciation intégrale du pool MariaDB en cas de rupture de socket (ECONNRESET / pool ending)
+ * Exécute une opération Prisma avec re-tentatives sur vraies ruptures réseau.
  */
-export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   try {
     return await fn();
   } catch (err: unknown) {
@@ -101,19 +104,15 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T
     const isConnError =
       errString.includes('ECONNRESET') ||
       errString.includes('ClosedConnection') ||
-      errString.includes('connection') ||
-      errString.includes('socket') ||
-      errString.includes('Protocol error') ||
       errString.includes('write ECONNRESET') ||
-      errString.includes('pool is ending') ||
-      errString.includes('45037');
+      errString.includes('pool is ending');
 
     if (retries > 0 && isConnError) {
       console.warn(
-        `[Prisma Retry] Coupure de socket MySQL/Pool terminée. Régénération du pool (${retries} tentative(s) restante(s))...`
+        `[Prisma Retry] Coupure réseau détectée. Régénération du pool (${retries} tentative(s) restante(s))...`
       );
       resetPrismaClient();
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return await withRetry(fn, retries - 1);
     }
     throw err;

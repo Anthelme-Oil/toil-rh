@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
   '/api/images',    // Proxy images SharePoint
   '/api/uploads',   // Fichiers uploadés localement
   '/api/actualites',// Consultation et publication d'actualités
+  '/api/reservations', // Consultation et réservation de salles
 ];
 
 export function proxy(request: NextRequest) {
