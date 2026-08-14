@@ -369,9 +369,9 @@ export async function getEvenementsDuJour(): Promise<Evenement[]> {
         const fields = item.fields as Record<string, string>;
         return {
           id: item.id as string,
-          titre: fields.Title || '',
-          dateDebut: fields.DateDebut || fields.EventDate || fields.StartDate || new Date().toISOString(),
-          dateFin: fields.DateFin || fields.EndDate || undefined,
+          titre: fields.Title || fields.Titre || '',
+          dateDebut: fields.EventDate || fields.Start || fields.StartDate || fields.DateDebut || new Date().toISOString(),
+          dateFin: fields.EndDate || fields.End || fields.DateFin || undefined,
           lieu: fields.Lieu || fields.Location || undefined,
           description: fields.Description || undefined,
         };
@@ -381,6 +381,78 @@ export async function getEvenementsDuJour(): Promise<Evenement[]> {
       return [];
     }
   }, 5 * 60 * 1000);
+}
+
+/**
+ * Crée un nouvel événement dans la liste SharePoint 'Evenement t-oil'.
+ */
+export async function creerEvenement(evt: {
+  titre: string;
+  dateDebut: string;
+  dateFin?: string;
+  lieu?: string;
+  description?: string;
+}): Promise<string> {
+  const graphClient = getGraphClient();
+  if (!graphClient) {
+    throw new Error('SharePoint n\'est pas encore configuré dans .env.local.');
+  }
+  const siteBase = getSiteApiBase();
+
+  try {
+    const fieldsToPost: Record<string, any> = {
+      Title: evt.titre,
+    };
+
+    if (evt.dateDebut) {
+      const isoStart = new Date(evt.dateDebut).toISOString();
+      fieldsToPost.EventDate = isoStart;
+      fieldsToPost.Start = isoStart;
+      fieldsToPost.DateDebut = isoStart;
+    }
+
+    if (evt.dateFin) {
+      const isoEnd = new Date(evt.dateFin).toISOString();
+      fieldsToPost.EndDate = isoEnd;
+      fieldsToPost.End = isoEnd;
+      fieldsToPost.DateFin = isoEnd;
+    }
+
+    if (evt.lieu) {
+      fieldsToPost.Location = evt.lieu;
+      fieldsToPost.Lieu = evt.lieu;
+    }
+
+    if (evt.description) {
+      fieldsToPost.Description = evt.description;
+    }
+
+    let response: any;
+    try {
+      response = await graphClient
+        .api(`${siteBase}/lists/${LIST_EVENEMENTS_ID}/items`)
+        .post({ fields: fieldsToPost });
+    } catch (err) {
+      console.warn('[SharePoint] Retry création événement avec champs standards...', err);
+      response = await graphClient
+        .api(`${siteBase}/lists/${LIST_EVENEMENTS_ID}/items`)
+        .post({
+          fields: {
+            Title: evt.titre,
+            ...(evt.dateDebut ? { EventDate: new Date(evt.dateDebut).toISOString() } : {}),
+            ...(evt.dateFin ? { EndDate: new Date(evt.dateFin).toISOString() } : {}),
+            ...(evt.lieu ? { Location: evt.lieu } : {}),
+            ...(evt.description ? { Description: evt.description } : {}),
+          },
+        });
+    }
+
+    serverCache.invalidateByPrefix('sp:evenements');
+    return response.id as string;
+  } catch (error) {
+    console.error('[SharePoint] Erreur création événement dans Evenement t-oil:', error);
+    throw new Error('Impossible de publier l\'événement dans la liste SharePoint Evenement t-oil.');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

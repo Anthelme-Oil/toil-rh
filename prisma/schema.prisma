@@ -91,3 +91,45 @@ model VideoIntranet {
   @@map("videos_intranet")
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 4. Table des Salles de Réunion T-OIL
+// ═══════════════════════════════════════════════════════════════
+model Salle {
+  id           String             @id @default(cuid())
+  nom          String             @map("nom")
+  code         String?            @unique @map("code")
+  capacite     Int                @default(10) @map("capacite")
+  emplacement  String             @default("Siège T-OIL") @map("emplacement")
+  equipements  Json?              @map("equipements") // ["Écran", "Visio", "Tableau blanc"]
+  estActive    Boolean            @default(true) @map("est_active")
+  creeLe       DateTime           @default(now()) @map("cree_le")
+  misAJourLe   DateTime           @updatedAt @map("mis_a_jour_le")
+
+  reservations ReservationSalle[]
+
+  @@map("salles")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 5. Table des Réservations de Salles
+// ═══════════════════════════════════════════════════════════════
+model ReservationSalle {
+  id             String   @id @default(cuid())
+  salleId        String   @map("salle_id")
+  salle          Salle    @relation(fields: [salleId], references: [id], onDelete: Cascade)
+  titre          String   @map("titre") // Objet de la réunion
+  demandeurNom   String   @map("demandeur_nom")
+  demandeurEmail String   @map("demandeur_email")
+  date           DateTime @map("date") // Date de la réunion (YYYY-MM-DD)
+  heureDebut     String   @map("heure_debut") // HH:mm ex: "09:00"
+  heureFin       String   @map("heure_fin") // HH:mm ex: "10:30"
+  participants   Int?     @default(1) @map("participants")
+  motif          String?  @db.Text @map("motif")
+  statut         String   @default("CONFIRMEE") @map("statut") // CONFIRMEE, ANNULEE
+  creeLe         DateTime @default(now()) @map("cree_le")
+  misAJourLe     DateTime @updatedAt @map("mis_a_jour_le")
+
+  @@map("reservations_salles")
+}
+
+

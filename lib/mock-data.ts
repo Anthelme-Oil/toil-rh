@@ -179,7 +179,7 @@ export const outilsM365: OutilM365[] = [
   {
     nom: 'stsl-stock',
     icone: '/icons/stsl-stock.svg',
-    url: '#',
+    url: 'https://stsl-stock.togosh.com',
     couleur: '#0284C7',
     categorie: 'Applications métiers',
   },

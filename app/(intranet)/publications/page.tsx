@@ -59,10 +59,11 @@ const CATEGORIES_VIDEOS = [
 
 export default function PublicationsPage() {
   const { isCom, isAdmin } = useUser();
-  const [activeTab, setActiveTab] = useState<'article' | 'video'>('article');
+  const [activeTab, setActiveTab] = useState<'article' | 'video' | 'evenement'>('article');
 
   const [actualites, setActualites] = useState<Actualite[]>([]);
   const [publishedVideos, setPublishedVideos] = useState<PublishedVideo[]>([]);
+  const [publishedEvents, setPublishedEvents] = useState<any[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
 
   // State Formulaire Article
@@ -82,10 +83,17 @@ export default function PublicationsPage() {
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
+  // State Formulaire Événement SharePoint (Evenement t-oil)
+  const [titreEvt, setTitreEvt] = useState('');
+  const [dateDebutEvt, setDateDebutEvt] = useState('');
+  const [dateFinEvt, setDateFinEvt] = useState('');
+  const [lieuEvt, setLieuEvt] = useState('');
+  const [descriptionEvt, setDescriptionEvt] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Charger les actualités et vidéos depuis l'API SharePoint
+  // Charger les actualités, vidéos et événements depuis l'API SharePoint
   const fetchContent = async () => {
     setIsLoadingList(true);
     try {
@@ -94,6 +102,7 @@ export default function PublicationsPage() {
         const data = await res.json();
         setActualites(data.actualites || []);
         setPublishedVideos(data.videos || []);
+        setPublishedEvents(data.evenements || []);
       }
     } catch (err) {
       console.error('Erreur chargement contenus:', err);
@@ -238,6 +247,55 @@ export default function PublicationsPage() {
     }
   };
 
+  // Soumission Événement (SharePoint List: Evenement t-oil)
+  const handleSubmitEvenement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!titreEvt.trim() || !dateDebutEvt) {
+      setStatusMsg({ type: 'error', text: 'Le titre et la date de début de l\'événement sont requis.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatusMsg(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('type', 'evenement');
+      formData.append('titre', titreEvt.trim());
+      formData.append('dateDebut', dateDebutEvt);
+      if (dateFinEvt) formData.append('dateFin', dateFinEvt);
+      if (lieuEvt.trim()) formData.append('lieu', lieuEvt.trim());
+      if (descriptionEvt.trim()) formData.append('description', descriptionEvt.trim());
+
+      const res = await fetch('/api/actualites', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStatusMsg({
+          type: 'success',
+          text: data.message || 'Événement publié avec succès dans la liste SharePoint (Evenement t-oil) !',
+        });
+        setTitreEvt('');
+        setDateDebutEvt('');
+        setDateFinEvt('');
+        setLieuEvt('');
+        setDescriptionEvt('');
+        fetchContent();
+      } else {
+        throw new Error(data.error || 'Erreur lors de la création de l\'événement sur SharePoint.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Une erreur est survenue lors de la publication de l\'événement.';
+      setStatusMsg({ type: 'error', text: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const hasAccess = isAdmin || isCom;
 
   if (!hasAccess) {
@@ -248,7 +306,7 @@ export default function PublicationsPage() {
         </div>
         <h1 className="text-xl font-bold text-slate-900">Accès restreint aux Publications</h1>
         <p className="text-sm text-slate-600 max-w-md mx-auto">
-          Vous devez avoir le rôle <strong>Communication</strong> ou <strong>Administrateur</strong> pour publier des articles et vidéos sur l'intranet SharePoint.
+          Vous devez avoir le rôle <strong>Communication</strong> ou <strong>Administrateur</strong> pour publier des articles, vidéos et événements sur l'intranet SharePoint.
         </p>
         <Link
           href="/"
@@ -268,29 +326,29 @@ export default function PublicationsPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Newspaper className="w-6 h-6 text-emerald-600" />
-            Espace Publication & Médias SharePoint
+            Espace Publication & Événements SharePoint
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Publiez des articles d'actualités et des vidéos/formations directement synchronisés avec SharePoint Online.
+            Publiez des articles d'actualités, vidéos et planifiez les événements d'entreprise (Liste SharePoint: <strong>Evenement t-oil</strong>).
           </p>
         </div>
       </div>
 
-      {/* Selecteur de mode : Article vs Vidéo */}
-      <div className="flex items-center gap-3 bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200">
+      {/* Selecteur de mode : Article vs Vidéo vs Événement */}
+      <div className="flex items-center gap-2 sm:gap-3 bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200 flex-wrap">
         <button
           onClick={() => {
             setActiveTab('article');
             setStatusMsg(null);
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'article'
               ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <FileText className={`w-4 h-4 ${activeTab === 'article' ? 'text-emerald-600' : ''}`} />
-          Publier un Article d'Actualité
+          Publier un Article
         </button>
 
         <button
@@ -298,14 +356,29 @@ export default function PublicationsPage() {
             setActiveTab('video');
             setStatusMsg(null);
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'video'
               ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Video className={`w-4 h-4 ${activeTab === 'video' ? 'text-emerald-600' : ''}`} />
-          Publier une Vidéo & Formation
+          Publier une Vidéo
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('evenement');
+            setStatusMsg(null);
+          }}
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'evenement'
+              ? 'bg-white text-emerald-700 shadow-sm border border-emerald-200'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Calendar className={`w-4 h-4 ${activeTab === 'evenement' ? 'text-emerald-600' : ''}`} />
+          Définir un Événement
         </button>
       </div>
 
@@ -316,7 +389,11 @@ export default function PublicationsPage() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-emerald-600" />
-              {activeTab === 'article' ? 'Nouvel Article d\'Actualité' : 'Nouvelle Vidéo / Capsule Formation'}
+              {activeTab === 'article'
+                ? 'Nouvel Article d\'Actualité'
+                : activeTab === 'video'
+                ? 'Nouvelle Vidéo / Capsule Formation'
+                : 'Nouvel Événement à Venir (Evenement t-oil)'}
             </h2>
             <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-semibold border border-emerald-200">
               Synchro SharePoint Online
@@ -571,10 +648,151 @@ export default function PublicationsPage() {
               </div>
             </form>
           )}
+
+          {/* Formulaire Événement (Evenement t-oil) */}
+          {activeTab === 'evenement' && (
+            <form onSubmit={handleSubmitEvenement} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Titre de l'Événement *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex: Réunion Générale T-OIL, Célébration Q3, Formation Sécurité"
+                  value={titreEvt}
+                  onChange={(e) => setTitreEvt(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Date & Heure de Début *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={dateDebutEvt}
+                    onChange={(e) => setDateDebutEvt(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Date & Heure de Fin (Optionnel)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dateFinEvt}
+                    onChange={(e) => setDateFinEvt(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Lieu / Emplacement (Optionnel)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ex: Grande Salle de Réunion, Dépôt Lomé Port, Teams, ..."
+                  value={lieuEvt}
+                  onChange={(e) => setLieuEvt(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Description & Détails de l'Événement (Optionnel)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Précisez l'ordre du jour, les personnes convoquées ou la logistique..."
+                  value={descriptionEvt}
+                  onChange={(e) => setDescriptionEvt(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Publication dans SharePoint (Evenement t-oil)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4" />
+                      <span>Publier l'Événement sur SharePoint</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Colonne de droite : Liste des contenus publiés (5 colonnes) */}
         <div className="lg:col-span-5 space-y-4">
+          {/* Liste Événements Publiés */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-emerald-600" />
+                Événements (Evenement t-oil)
+              </span>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold">
+                {publishedEvents.length}
+              </span>
+            </h3>
+
+            {isLoadingList ? (
+              <div className="py-6 text-center text-slate-400 flex flex-col items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                <span className="text-xs">Chargement des événements...</span>
+              </div>
+            ) : publishedEvents.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 text-xs">
+                Aucun événement à venir trouvé dans SharePoint.
+              </div>
+            ) : (
+              <div className="space-y-3 divide-y divide-slate-100 max-h-72 overflow-y-auto pr-1">
+                {publishedEvents.map((evt) => (
+                  <div key={evt.id} className="pt-3 first:pt-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">{evt.titre}</h4>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 shrink-0">
+                        {new Date(evt.dateDebut).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    {evt.lieu && (
+                      <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                        📍 {evt.lieu}
+                      </p>
+                    )}
+                    {evt.description && (
+                      <p className="text-[11px] text-slate-400 line-clamp-1">{evt.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {/* Liste Vidéos Publiées */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <h3 className="text-base font-bold text-slate-900 flex items-center justify-between">

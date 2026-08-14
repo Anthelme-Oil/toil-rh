@@ -9,6 +9,8 @@ import {
   uploadVideoToSharePoint,
   creerVideo,
   getVideosFromSharePoint,
+  creerEvenement,
+  getEvenementsDuJour,
 } from '@/lib/sharepoint';
 
 export const dynamic = 'force-dynamic';
@@ -16,17 +18,18 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const [actualites, videos] = await Promise.all([
+    const [actualites, videos, evenements] = await Promise.all([
       getActualites(100),
       getVideosFromSharePoint(),
+      getEvenementsDuJour(),
     ]);
 
     return NextResponse.json(
-      { actualites, videos },
+      { actualites, videos, evenements },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
     );
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Erreur récupération actualités & vidéos.';
+    const msg = error instanceof Error ? error.message : 'Erreur récupération actualités & événements.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -41,6 +44,41 @@ export async function POST(request: Request) {
     const contenu = formData.get('contenu') as string;
     const categorie = formData.get('categorie') as string;
     const duree = (formData.get('duree') as string) || '5 min';
+
+    // 📅 PUBLICATION D'ÉVÉNEMENT (LIST: Evenement t-oil)
+    if (type === 'evenement') {
+      const dateDebut = formData.get('dateDebut') as string;
+      const dateFin = (formData.get('dateFin') as string) || undefined;
+      const lieu = (formData.get('lieu') as string) || undefined;
+
+      if (!titre || !dateDebut) {
+        return NextResponse.json(
+          { error: 'Le titre et la date de début de l\'événement sont requis.' },
+          { status: 400 }
+        );
+      }
+
+      const id = await creerEvenement({
+        titre,
+        dateDebut,
+        dateFin,
+        lieu,
+        description,
+      });
+
+      revalidatePath('/informations');
+      revalidatePath('/publications');
+      revalidatePath('/');
+
+      return NextResponse.json(
+        {
+          success: true,
+          id,
+          message: 'Événement publié avec succès dans la liste SharePoint Evenement t-oil !',
+        },
+        { status: 201 }
+      );
+    }
 
     if (!titre || !description) {
       return NextResponse.json(
