@@ -33,7 +33,6 @@ export function HeroOnboarding({
             <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
             Parcours d'Intégration T-OIL
           </div> */}
-
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
             Bienvenue chez T-OIL, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-amber-300">{userName}</span> !
           </h1>

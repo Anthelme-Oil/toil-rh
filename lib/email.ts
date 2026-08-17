@@ -328,3 +328,124 @@ export function getEmailTemplatePrint({
   `;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// MODÈLES DE MAILS POUR DOMICILIATION BANCAIRE
+// ═══════════════════════════════════════════════════════════════
+
+/** 1. Notification à la DRH pour Validation */
+export function getEmailTemplateDomiciliationDRH({
+  demandeurNom,
+  banque,
+  agenceBancaire,
+  dateSouhaitee,
+}: {
+  demandeurNom: string;
+  banque: string;
+  agenceBancaire: string;
+  dateSouhaitee: string;
+}): string {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #059669;">
+        <h2 style="color: #064e3b; margin: 0;">🏛️ Demande de Domiciliation Bancaire — Validation DRH</h2>
+      </div>
+      <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
+        <p>Bonjour la Direction des Ressources Humaines,</p>
+        <p>Le collaborateur <strong>${demandeurNom}</strong> a soumis une nouvelle demande de domiciliation bancaire avec RIB joint.</p>
+        <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Collaborateur :</strong> ${demandeurNom}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Banque :</strong> ${banque}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Agence :</strong> ${agenceBancaire}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Date souhaitée :</strong> ${dateSouhaitee}</p>
+        </div>
+        <p style="text-align: center; margin-top: 24px;">
+          <a href="${getAppBaseUrl()}/demandes" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Ouvrir la Demande & Valider</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/** 2. Notification de Refus au Collaborateur */
+export function getEmailTemplateDomiciliationRefus({
+  demandeurNom,
+  motifRefus,
+}: {
+  demandeurNom: string;
+  motifRefus: string;
+}): string {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #dc2626;">
+        <h2 style="color: #dc2626; margin: 0;">❌ Demande de Domiciliation Non Accordée</h2>
+      </div>
+      <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
+        <p>Bonjour <strong>${demandeurNom}</strong>,</p>
+        <p>Votre demande de domiciliation bancaire a été <strong>refusée par la DRH</strong>.</p>
+        <div style="background-color: #fef2f2; padding: 16px; border-radius: 12px; border: 1px solid #fecaca; margin: 16px 0; color: #991b1b;">
+          <strong>Motif du refus :</strong> ${motifRefus}
+        </div>
+        <p style="text-align: center; margin-top: 24px;">
+          <a href="${getAppBaseUrl()}/demandes" style="background-color: #334155; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Consulter Mes Demandes</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/** 3. Notification à la RH chargée du traitement */
+export function getEmailTemplateDomiciliationRH({
+  demandeurNom,
+  banque,
+  agenceBancaire,
+}: {
+  demandeurNom: string;
+  banque: string;
+  agenceBancaire: string;
+}): string {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #2563eb;">
+        <h2 style="color: #1e3a8a; margin: 0;">📄 Domiciliation à Traiter — Génération du Document</h2>
+      </div>
+      <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
+        <p>Bonjour l'équipe RH,</p>
+        <p>La demande de domiciliation bancaire de <strong>${demandeurNom}</strong> a été <strong>validée par la DRH</strong> et est désormais prête à être traitée.</p>
+        <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #cbd5e1; margin: 16px 0;">
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Employé :</strong> ${demandeurNom}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Banque :</strong> ${banque}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Agence :</strong> ${agenceBancaire}</p>
+        </div>
+        <p>Veuillez générer/imprimer le document de domiciliation, le déposer sur la demande et valider sa mise à disposition.</p>
+        <p style="text-align: center; margin-top: 24px;">
+          <a href="${getAppBaseUrl()}/demandes" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Traiter et Déposer le Document</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/** 4. Notification au Collaborateur (Document Disponible) */
+export function getEmailTemplateDomiciliationDocDispo({
+  demandeurNom,
+}: {
+  demandeurNom: string;
+}): string {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #059669;">
+        <h2 style="color: #064e3b; margin: 0;">🎉 Document de Domiciliation Disponible !</h2>
+      </div>
+      <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
+        <p>Bonjour <strong>${demandeurNom}</strong>,</p>
+        <p>Votre demande de domiciliation bancaire a été traitée avec succès par le service RH.</p>
+        <p>Votre document officiel de domiciliation est désormais disponible au téléchargement et à l'impression sur l'intranet.</p>
+        <p style="text-align: center; margin-top: 24px;">
+          <a href="${getAppBaseUrl()}/demandes" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Télécharger / Imprimer ma Domiciliation</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+
