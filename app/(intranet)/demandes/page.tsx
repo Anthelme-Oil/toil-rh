@@ -35,6 +35,7 @@ import {
 import type { TypeDemande, PrioriteDemande, DemandeConge } from '@/types';
 import { DemandeCongeModal } from '@/components/demandes/DemandeCongeModal';
 import { DemandeDomiciliationModal } from '@/components/demandes/DemandeDomiciliationModal';
+import { DemandeAttestationModal } from '@/components/demandes/DemandeAttestationModal';
 import { useUser } from '@/context/UserContext';
 
 interface DemandeOption {
@@ -80,7 +81,7 @@ const DEMANDE_CATEGORIES = [
         id: 'attestation_travail' as TypeDemande,
         label: 'Attestation de travail',
         icon: FileCheck,
-        description: 'Demande de certificat de travail ou fiche de paie',
+        description: 'Demande de certificat de travail (T-OIL, STSL, COMPEL)',
       },
     ],
   },
@@ -100,33 +101,33 @@ const DEMANDE_CATEGORIES = [
         id: 'materiel_informatique' as TypeDemande,
         label: 'Matériel informatique',
         icon: Monitor,
-        description: 'PC, écran, souris, clavier, casque et accessoires',
+        description: "Ordinateurs, écrans, souris, claviers et accessoires",
       },
       {
-        id: 'intervention' as TypeDemande,
-        label: 'Intervention',
+        id: 'maintenance_logicielle' as TypeDemande,
+        label: 'Maintenance logicielle / Installation',
         icon: Wrench,
-        description: 'Assistance technique sur site ou dépannage à distance',
+        description: 'Installation de logiciels, mises à jour, correctifs',
+      },
+      {
+        id: 'achat_materiel' as TypeDemande,
+        label: 'Achat de matériel spécifique',
+        icon: ShoppingCart,
+        description: 'Demande d\'acquisition d\'équipements non standards',
       },
     ],
   },
   {
     id: 'autre',
-    title: 'Autres demandes',
-    description: 'Achats, déplacements et autorisations d\'accès',
-    color: 'indigo',
+    title: 'Autres Services',
+    description: 'Besoins métiers, accès et autorisations',
+    color: 'purple',
     items: [
       {
-        id: 'fiche_achat' as TypeDemande,
-        label: "Fiche d'achat",
-        icon: ShoppingCart,
-        description: "Demande d'acquisition d'équipements ou services",
-      },
-      {
-        id: 'ordre_mission' as TypeDemande,
-        label: 'Ordre de mission',
+        id: 'besoin_metier' as TypeDemande,
+        label: 'Besoin Métier / Evolution',
         icon: Briefcase,
-        description: 'Validation de déplacement professionnel et prise en charge',
+        description: 'Demande de nouvelles fonctionnalités ou droits applicatifs',
       },
       {
         id: 'autorisation_acces' as TypeDemande,
@@ -146,6 +147,7 @@ export default function DemandesPage() {
   // Modales
   const [isCongeModalOpen, setIsCongeModalOpen] = useState(false);
   const [isDomiciliationModalOpen, setIsDomiciliationModalOpen] = useState(false);
+  const [isAttestationModalOpen, setIsAttestationModalOpen] = useState(false);
 
   // Form State pour demandes génériques IT / Fournitures
   const [type, setType] = useState<TypeDemande>('renouvellement_compte');
@@ -164,6 +166,10 @@ export default function DemandesPage() {
   // Demandes de Domiciliation Bancaire
   const [domiciliationsList, setDomiciliationsList] = useState<any[]>([]);
   const [isLoadingDomiciliations, setIsLoadingDomiciliations] = useState(false);
+
+  // Demandes d'Attestation de Travail
+  const [attestationsList, setAttestationsList] = useState<any[]>([]);
+  const [isLoadingAttestations, setIsLoadingAttestations] = useState(false);
 
   // Cache client
   const congesCacheRef = useRef<Map<string, { data: any[]; fetchedAt: number }>>(new Map());
@@ -228,6 +234,26 @@ export default function DemandesPage() {
     }
   };
 
+  // Charger les données d'Attestation de Travail
+  const loadAttestationsData = async (tab: string) => {
+    if (!userEmail) return;
+    setIsLoadingAttestations(true);
+    try {
+      let role = 'collaborateur';
+      if (tab === 'validations_rh') role = isDRH ? 'drh' : 'rh';
+
+      const res = await fetch(`/api/demandes/attestation?role=${role}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAttestationsList(data.demandes || []);
+      }
+    } catch (err) {
+      console.error('Erreur chargement attestations:', err);
+    } finally {
+      setIsLoadingAttestations(false);
+    }
+  };
+
   const invalidateCongesCache = () => {
     congesCacheRef.current.clear();
   };
@@ -236,6 +262,7 @@ export default function DemandesPage() {
     loadCongesData(activeTab);
     if (activeTab === 'historique' || activeTab === 'validations_rh') {
       loadDomiciliationData(activeTab);
+      loadAttestationsData(activeTab);
     }
   }, [activeTab, userEmail]);
 
@@ -243,7 +270,7 @@ export default function DemandesPage() {
   const [refusalModal, setRefusalModal] = useState<{
     isOpen: boolean;
     id?: string;
-    typeDemande?: 'CONGE' | 'DOMICILIATION';
+    typeDemande?: 'CONGE' | 'DOMICILIATION' | 'ATTESTATION';
     role?: 'N1' | 'RH' | 'DRH';
     item?: any;
   }>({ isOpen: false });
@@ -336,6 +363,53 @@ export default function DemandesPage() {
     }
   };
 
+  // Traitement DRH pour Attestation de Travail
+  const handleTraiterAttestationDRH = async (
+    demandeId: string,
+    action: 'VALIDER' | 'REFUSER',
+    motifRefusParam?: string
+  ) => {
+    if (action === 'REFUSER' && !motifRefusParam) {
+      setRefusalModal({ isOpen: true, id: demandeId, typeDemande: 'ATTESTATION', role: 'DRH' });
+      setRefusalReason('');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/demandes/attestation/traiter-drh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demandeId, action, motifRefus: motifRefusParam }),
+      });
+      if (res.ok) {
+        setRefusalModal({ isOpen: false });
+        setRefusalReason('');
+        loadAttestationsData(activeTab);
+      }
+    } catch (err) {
+      console.error('Erreur traitement DRH Attestation:', err);
+    }
+  };
+
+  // Traitement RH pour Attestation de Travail (Générer & Clôturer)
+  const handleTraiterAttestationRH = async (demandeId: string) => {
+    try {
+      const res = await fetch('/api/demandes/attestation/traiter-rh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demandeId }),
+      });
+      if (res.ok) {
+        loadAttestationsData(activeTab);
+      }
+    } catch (err) {
+      console.error('Erreur traitement RH Attestation:', err);
+    }
+  };
+
+  // Modale "En cours de développement"
+  const [devNoticeItem, setDevNoticeItem] = useState<{ id: string; label: string } | null>(null);
+
   function handleSelectDemande(item: { id: TypeDemande; label: string }) {
     if (item.id === 'demande_conges') {
       setIsCongeModalOpen(true);
@@ -345,9 +419,12 @@ export default function DemandesPage() {
       setIsDomiciliationModalOpen(true);
       return;
     }
-    setSelectedDemande(item);
-    setType(item.id);
-    setTitre(`${item.label} - ${new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`);
+    if (item.id === 'attestation_travail') {
+      setIsAttestationModalOpen(true);
+      return;
+    }
+    // Pour toutes les demandes dont le workflow est en cours de développement :
+    setDevNoticeItem(item);
   }
 
   async function handleSubmitGeneric(e: React.FormEvent) {
@@ -425,7 +502,7 @@ export default function DemandesPage() {
                 : 'text-text-secondary hover:text-primary'
             }`}
           >
-            Mes demandes ({congesHistory.length + domiciliationsList.length})
+            Mes demandes ({congesHistory.length + domiciliationsList.length + attestationsList.length})
           </button>
 
           {(isManager || isAdmin) && (
@@ -452,7 +529,7 @@ export default function DemandesPage() {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              Validation DRH & Treatment ({congesRhList.length + domiciliationsList.length})
+              Validation DRH & Treatment ({congesRhList.length + domiciliationsList.length + attestationsList.length})
             </button>
           )}
         </div>
@@ -508,53 +585,6 @@ export default function DemandesPage() {
             ))}
           </div>
 
-          {/* Formulaire générique IT si sélectionné */}
-          {selectedDemande && (
-            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-md max-w-2xl mx-auto my-8">
-              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" /> {selectedDemande.label}
-              </h3>
-              <form onSubmit={handleSubmitGeneric} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Titre de la demande</label>
-                  <input
-                    type="text"
-                    required
-                    value={titre}
-                    onChange={(e) => setTitre(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Description / Motif</label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDemande(null)}
-                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={status === 'loading'}
-                    className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2"
-                  >
-                    {status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Soumettre
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
         </>
       ) : activeTab === 'validations_n1' ? (
         /* ── VUE VALIDATIONS N+1 ── */
@@ -732,7 +762,112 @@ export default function DemandesPage() {
             )}
           </div>
 
-          {/* Section 2: Validation des Congés RH */}
+          {/* Section 1.5: Attestations de Travail */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-sm space-y-6">
+            <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-blue-600" />
+              Demandes d&apos;Attestation de Travail ({attestationsList.length})
+            </h2>
+            <p className="text-sm text-text-secondary">
+              Validation DRH et génération du document officiel pour T-OIL, STSL ou COMPEL.
+            </p>
+
+            {isLoadingAttestations ? (
+              <div className="py-6 flex items-center justify-center gap-2 text-text-secondary text-sm">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                Chargement des demandes d&apos;attestations...
+              </div>
+            ) : attestationsList.length === 0 ? (
+              <div className="p-6 text-center bg-blue-50/40 rounded-xl border border-blue-200 text-blue-900 text-sm">
+                Aucune demande d&apos;attestation de travail en attente.
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {attestationsList.map((item) => (
+                  <div key={item.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                          {item.societe}
+                        </span>
+                        <span className="text-xs text-text-muted">
+                          Créée le : {item.dateCreation ? new Date(item.dateCreation).toLocaleDateString('fr-FR') : 'ND'}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-text-primary">
+                        {item.nomDemandeur} ({item.emailDemandeur})
+                      </h3>
+                      <p className="text-xs text-slate-600">
+                        Motif : <strong className="text-slate-800">{item.motif}</strong>
+                      </p>
+                      {item.motifRefus && (
+                        <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded-lg border border-red-200 mt-1">
+                          Motif du refus : {item.motifRefus}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                        item.statut === 'EN_ATTENTE_DRH'
+                          ? 'bg-amber-100 text-amber-800'
+                          : item.statut === 'VALIDEE_DRH'
+                          ? 'bg-blue-100 text-blue-800'
+                          : item.statut === 'REFUSEE_DRH'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {item.statut === 'EN_ATTENTE_DRH'
+                          ? 'En attente DRH'
+                          : item.statut === 'VALIDEE_DRH'
+                          ? 'Validée DRH (À traiter RH)'
+                          : item.statut === 'REFUSEE_DRH'
+                          ? 'Refusée par DRH'
+                          : 'Attestation Générée / Prête'}
+                      </span>
+
+                      {item.statut === 'EN_ATTENTE_DRH' && (isDRH || isAdmin) && (
+                        <>
+                          <button
+                            onClick={() => handleTraiterAttestationDRH(item.id, 'VALIDER')}
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs"
+                          >
+                            Valider DRH
+                          </button>
+                          <button
+                            onClick={() => handleTraiterAttestationDRH(item.id, 'REFUSER')}
+                            className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-lg"
+                          >
+                            Refuser
+                          </button>
+                        </>
+                      )}
+
+                      {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
+                        <button
+                          onClick={() => handleTraiterAttestationRH(item.id)}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Générer & Mettre à dispo
+                        </button>
+                      )}
+
+                      {item.statut === 'TRAITEE' && (
+                        <button
+                          onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                          className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          Voir / Imprimer Doc Officiel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-sm space-y-6">
             <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
@@ -860,6 +995,51 @@ export default function DemandesPage() {
               </div>
             )}
 
+            {/* Attestations de travail de l'utilisateur */}
+            {attestationsList.length > 0 && (
+              <div className="space-y-3 pb-6 border-b border-border">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-blue-600" /> Demandes d&apos;Attestation de Travail
+                </h3>
+                {attestationsList.map((item) => (
+                  <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">Société : {item.societe}</h4>
+                      <p className="text-xs text-slate-500">Motif : {item.motif}</p>
+                      {item.motifRefus && (
+                        <p className="text-xs text-red-600 font-semibold mt-1">Motif du refus : {item.motifRefus}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                        item.statut === 'TRAITEE'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : item.statut === 'REFUSEE_DRH'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {item.statut === 'TRAITEE'
+                          ? 'Document Disponible'
+                          : item.statut === 'REFUSEE_DRH'
+                          ? 'Refusée'
+                          : 'En cours de validation'}
+                      </span>
+
+                      {item.statut === 'TRAITEE' && (
+                        <button
+                          onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Voir / Imprimer Attestation</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Congés de l'utilisateur */}
             <div className="divide-y divide-border">
               {isLoadingConges ? (
@@ -867,7 +1047,7 @@ export default function DemandesPage() {
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
                   Chargement de vos demandes...
                 </div>
-              ) : congesHistory.length === 0 && domiciliationsList.length === 0 ? (
+              ) : congesHistory.length === 0 && domiciliationsList.length === 0 && attestationsList.length === 0 ? (
                 <div className="py-8 text-center text-text-secondary text-sm">
                   Aucune demande enregistrée.
                 </div>
@@ -937,6 +1117,16 @@ export default function DemandesPage() {
         }}
       />
 
+      {/* Modale Demande d'Attestation de Travail */}
+      <DemandeAttestationModal
+        isOpen={isAttestationModalOpen}
+        onClose={() => setIsAttestationModalOpen(false)}
+        onSuccess={() => {
+          loadAttestationsData('historique');
+          setActiveTab('historique');
+        }}
+      />
+
       {/* Modale de Saisie Obligatoire du Motif de Refus */}
       {refusalModal.isOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -987,6 +1177,8 @@ export default function DemandesPage() {
                   setIsSubmittingRefusal(true);
                   if (refusalModal.typeDemande === 'DOMICILIATION') {
                     await handleTraiterDomiciliationDRH(refusalModal.id, 'REFUSER', refusalReason);
+                  } else if (refusalModal.typeDemande === 'ATTESTATION') {
+                    await handleTraiterAttestationDRH(refusalModal.id, 'REFUSER', refusalReason);
                   } else if (refusalModal.role === 'N1' || refusalModal.role === 'RH') {
                     await handleTraiterConge(
                       refusalModal.id,
@@ -1002,6 +1194,36 @@ export default function DemandesPage() {
               >
                 {isSubmittingRefusal && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Confirmer le Refus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale d'Information : Demande en cours de développement */}
+      {devNoticeItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 border border-slate-100 animate-in zoom-in-95 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+              <Wrench className="w-8 h-8 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">
+                Service en cours de développement
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Le formulaire de demande pour <strong className="text-emerald-700 font-semibold">&laquo; {devNoticeItem.label} &raquo;</strong> est actuellement en cours d&apos;implémentation. Il sera disponible très prochainement sur votre portail Intranet.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setDevNoticeItem(null)}
+                className="w-full py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-2xl shadow-md transition-all cursor-pointer"
+              >
+                Compris, fermer
               </button>
             </div>
           </div>

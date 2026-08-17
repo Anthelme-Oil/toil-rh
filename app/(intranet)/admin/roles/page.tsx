@@ -61,6 +61,10 @@ export default function AdminRolesPage() {
     rhEmail: 'rh@compel-toil.com',
     rhPrintEmail: 'rh.attestation@compel-toil.com',
     drhEmail: 'drh@compel-toil.com',
+    drhDomiciliationEmail: 'drh@compel-toil.com',
+    rhPrintDomiciliationEmail: 'rh.domiciliation@compel-toil.com',
+    drhAttestationEmail: 'drh@compel-toil.com',
+    rhPrintAttestationEmail: 'rh.attestation@compel-toil.com',
     itRespEmail: 'it.responsable@togosh.com',
     itSupportEmail: 'it.support@togosh.com',
     enableEmailNotifications: true,
@@ -97,6 +101,10 @@ export default function AdminRolesPage() {
           rhEmail: data.rhEmail || 'rh@compel-toil.com',
           rhPrintEmail: data.rhPrintEmail || 'rh.attestation@compel-toil.com',
           drhEmail: data.drhEmail || 'drh@compel-toil.com',
+          drhDomiciliationEmail: data.drhDomiciliationEmail || 'drh@compel-toil.com',
+          rhPrintDomiciliationEmail: data.rhPrintDomiciliationEmail || 'rh.domiciliation@compel-toil.com',
+          drhAttestationEmail: data.drhAttestationEmail || 'drh@compel-toil.com',
+          rhPrintAttestationEmail: data.rhPrintAttestationEmail || 'rh.attestation@compel-toil.com',
           itRespEmail: data.itRespEmail || 'it.responsable@togosh.com',
           itSupportEmail: data.itSupportEmail || 'it.support@togosh.com',
           enableEmailNotifications: data.enableEmailNotifications !== undefined ? data.enableEmailNotifications : true,
@@ -653,7 +661,95 @@ export default function AdminRolesPage() {
                 </div>
               </div>
 
-              {/* SECTION: WORKFLOW IT / DEPARTEMENT IT */}
+              {/* SECTION: WORKFLOW DOMICILIATION BANCAIRE */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  Workflow Demande de Domiciliation Bancaire
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* DRH Domiciliation validation email */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email RH / DRH Responsable Validation :
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.drhDomiciliationEmail}
+                      onChange={(e) => setSettings({ ...settings, drhDomiciliationEmail: e.target.value })}
+                      required
+                      placeholder="ex: drh@compel-toil.com"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                      Membre RH qui reçoit la notification initiale et effectue la première validation/refus (Par défaut: IT Helpdesk fallback si non renseigné).
+                    </p>
+                  </div>
+
+                  {/* RH Domiciliation print email */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email RH Responsable Traitement & Impression Document :
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.rhPrintDomiciliationEmail}
+                      onChange={(e) => setSettings({ ...settings, rhPrintDomiciliationEmail: e.target.value })}
+                      required
+                      placeholder="ex: rh.domiciliation@compel-toil.com"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                      Membre RH chargé de déposer le document imprimable final et de clore le traitement de la domiciliation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: WORKFLOW ATTESTATION DE TRAVAIL */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Workflow Demande d&apos;Attestation de Travail (T-OIL / STSL / COMPEL)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* DRH Attestation email */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email DRH Responsable Validation Attestations :
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.drhAttestationEmail}
+                      onChange={(e) => setSettings({ ...settings, drhAttestationEmail: e.target.value })}
+                      required
+                      placeholder="ex: drh@compel-toil.com"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                      Membre DRH chargé d&apos;approuver la délivrance des attestations de travail.
+                    </p>
+                  </div>
+
+                  {/* RH Attestation print email */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email RH Responsable Génération & Impression :
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.rhPrintAttestationEmail}
+                      onChange={(e) => setSettings({ ...settings, rhPrintAttestationEmail: e.target.value })}
+                      required
+                      placeholder="ex: rh.attestation@compel-toil.com"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                      Membre RH recevant le document validé pour impression papier finale aux armes de T-OIL, STSL ou COMPEL.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
                   <Laptop className="w-4 h-4 text-blue-500" />

@@ -6,6 +6,10 @@ export interface SystemSettings {
   rhEmail: string;
   rhPrintEmail: string;
   drhEmail: string;
+  drhDomiciliationEmail: string;
+  rhPrintDomiciliationEmail: string;
+  drhAttestationEmail: string;
+  rhPrintAttestationEmail: string;
   itRespEmail: string;
   itSupportEmail: string;
   enableEmailNotifications: boolean;
@@ -56,6 +60,26 @@ export async function getSystemSettings(): Promise<SystemSettings> {
         settingsMap.get('DRH_EMAIL') ||
         process.env.DRH_EMAIL ||
         'drh@compel-toil.com',
+      drhDomiciliationEmail:
+        settingsMap.get('DRH_DOMICILIATION_EMAIL') ||
+        process.env.DRH_DOMICILIATION_EMAIL ||
+        settingsMap.get('DRH_EMAIL') ||
+        'drh@compel-toil.com',
+      rhPrintDomiciliationEmail:
+        settingsMap.get('RH_PRINT_DOMICILIATION_EMAIL') ||
+        process.env.RH_PRINT_DOMICILIATION_EMAIL ||
+        settingsMap.get('RH_PRINT_EMAIL') ||
+        'rh.domiciliation@compel-toil.com',
+      drhAttestationEmail:
+        settingsMap.get('DRH_ATTESTATION_EMAIL') ||
+        process.env.DRH_ATTESTATION_EMAIL ||
+        settingsMap.get('DRH_EMAIL') ||
+        'drh@compel-toil.com',
+      rhPrintAttestationEmail:
+        settingsMap.get('RH_PRINT_ATTESTATION_EMAIL') ||
+        process.env.RH_PRINT_ATTESTATION_EMAIL ||
+        settingsMap.get('RH_PRINT_EMAIL') ||
+        'rh.attestation@compel-toil.com',
       itRespEmail:
         settingsMap.get('IT_RESP_EMAIL') ||
         process.env.IT_RESP_EMAIL ||
@@ -76,6 +100,10 @@ export async function getSystemSettings(): Promise<SystemSettings> {
       rhEmail: process.env.RH_NOTIFICATION_EMAIL || 'rh@compel-toil.com',
       rhPrintEmail: process.env.RH_PRINT_EMAIL || 'rh.attestation@compel-toil.com',
       drhEmail: process.env.DRH_EMAIL || 'drh@compel-toil.com',
+      drhDomiciliationEmail: 'drh@compel-toil.com',
+      rhPrintDomiciliationEmail: 'rh.domiciliation@compel-toil.com',
+      drhAttestationEmail: 'drh@compel-toil.com',
+      rhPrintAttestationEmail: 'rh.attestation@compel-toil.com',
       itRespEmail: process.env.IT_RESP_EMAIL || 'it.responsable@togosh.com',
       itSupportEmail: process.env.IT_SUPPORT_EMAIL || 'it.support@togosh.com',
       enableEmailNotifications: true,
@@ -101,6 +129,18 @@ export async function saveSystemSettings(settings: Partial<SystemSettings>): Pro
     }
     if (settings.drhEmail !== undefined) {
       entries.push(['DRH_EMAIL', settings.drhEmail.trim()]);
+    }
+    if (settings.drhDomiciliationEmail !== undefined) {
+      entries.push(['DRH_DOMICILIATION_EMAIL', settings.drhDomiciliationEmail.trim()]);
+    }
+    if (settings.rhPrintDomiciliationEmail !== undefined) {
+      entries.push(['RH_PRINT_DOMICILIATION_EMAIL', settings.rhPrintDomiciliationEmail.trim()]);
+    }
+    if (settings.drhAttestationEmail !== undefined) {
+      entries.push(['DRH_ATTESTATION_EMAIL', settings.drhAttestationEmail.trim()]);
+    }
+    if (settings.rhPrintAttestationEmail !== undefined) {
+      entries.push(['RH_PRINT_ATTESTATION_EMAIL', settings.rhPrintAttestationEmail.trim()]);
     }
     if (settings.itRespEmail !== undefined) {
       entries.push(['IT_RESP_EMAIL', settings.itRespEmail.trim()]);

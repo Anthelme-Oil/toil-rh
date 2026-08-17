@@ -50,13 +50,30 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { senderEmail, rhEmail, rhPrintEmail, drhEmail, itRespEmail, itSupportEmail, enableEmailNotifications } = body;
+
+    const {
+      senderEmail,
+      rhEmail,
+      rhPrintEmail,
+      drhEmail,
+      drhDomiciliationEmail,
+      rhPrintDomiciliationEmail,
+      drhAttestationEmail,
+      rhPrintAttestationEmail,
+      itRespEmail,
+      itSupportEmail,
+      enableEmailNotifications,
+    } = body;
 
     const ok = await saveSystemSettings({
       senderEmail,
       rhEmail,
       rhPrintEmail,
       drhEmail,
+      drhDomiciliationEmail,
+      rhPrintDomiciliationEmail,
+      drhAttestationEmail,
+      rhPrintAttestationEmail,
       itRespEmail,
       itSupportEmail,
       enableEmailNotifications,

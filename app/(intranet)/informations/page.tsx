@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// Page Informations / Actualités — 100% Données Réelles SharePoint
+// Page Informations / Actualités — Données Réelles SharePoint
 // ═══════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Newspaper, ArrowLeft } from 'lucide-react';
+import { Newspaper, ArrowLeft, Radio } from 'lucide-react';
 import { getActualites } from '@/lib/sharepoint';
 import ActualitesListClient from '@/components/actualites/ActualitesListClient';
 
@@ -12,12 +12,11 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'Actualités & Informations',
-  description: 'Retrouvez toutes les actualités et informations de COMPEL STSL T-OIL.',
+  title: 'Actualités & Informations — T-OIL STSL',
+  description: 'Retrouvez toutes les actualités, annonces et informations du groupe T-OIL & STSL.',
 };
 
 export default async function InformationsPage() {
-  // Récupération directe et exclusive des actualités réelles publiées dans SharePoint
   const actualites = await getActualites(100);
 
   // Tri du plus récent au plus ancien
@@ -38,17 +37,28 @@ export default async function InformationsPage() {
         <span className="text-text-primary font-semibold">Informations & Actualités</span>
       </div>
 
-      {/* ── En-tête ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-md">
-            <Newspaper className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary">Actualités & Informations</h1>
-            <p className="text-sm text-text-secondary">
-              Retrouvez toutes les nouvelles de l&apos;entreprise triées du plus récent au plus ancien et filtrables par catégorie.
-            </p>
+      {/* ── En-tête Principal ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden">
+        {/* Motif décoratif en arrière-plan */}
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-2 max-w-2xl">
+          {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-bold backdrop-blur-md border border-white/10">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+            Kiosque d&apos;Information Groupe
+          </div> */}
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Actualités & Communication Interne
+          </h1>
+          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+            Suivez la vie de l&apos;entreprise, les faits marquants, les annonces RH et les consignes QSE en temps réel.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="px-5 py-3 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-center">
+            <span className="block text-2xl font-black text-white">{actualites.length}</span>
+            <span className="text-[11px] text-emerald-200 font-medium uppercase tracking-wider">Articles publiés</span>
           </div>
         </div>
       </div>
