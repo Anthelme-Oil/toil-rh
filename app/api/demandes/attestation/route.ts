@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
         societe: extra.societe || 'T-OIL',
         poste: extra.poste || '',
         motif: row.motif || extra.motif || '',
+        emailPro: extra.emailPro || row.email_demandeur || '',
+        commentaire: extra.commentaire || '',
         documentFinalUrl: extra.documentFinalUrl || null,
         motifRefus: row.commentaire_rh || extra.motifRefus || null,
         dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
@@ -81,28 +83,32 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { nom, prenom, societe, poste, motif } = body;
+    const { nom, prenom, societe, poste, motif, emailPro, commentaire } = body;
 
     if (!nom || !prenom || !societe || !motif) {
       return Response.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
     }
 
-    const validSocietes = ['T-OIL', 'STSL', 'COMPEL'];
+    const validSocietes = ['T-OIL', 'STSL', 'COMPEL', 'T-Oil'];
+    const normalizedSociete = societe.toUpperCase() === 'T-OIL' || societe === 'T-Oil' ? 'T-OIL' : societe;
+
     if (!validSocietes.includes(societe)) {
-      return Response.json({ error: 'Société invalide. Choisissez T-OIL, STSL ou COMPEL.' }, { status: 400 });
+      return Response.json({ error: 'Société invalide. Choisissez T-Oil, STSL ou COMPEL.' }, { status: 400 });
     }
 
     const id = generateId();
     const now = new Date();
     const nomComplet = `${nom} ${prenom}`.trim();
-    const titre = `Attestation de Travail (${societe}) — ${nomComplet}`;
+    const titre = `Attestation de Travail (${normalizedSociete}) — ${nomComplet} [${motif}]`;
 
     const extraData = {
-      nom,
-      prenom,
-      societe,
-      poste: poste || '',
-      motif,
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      societe: normalizedSociete,
+      poste: (poste || '').trim(),
+      motif: motif.trim(),
+      emailPro: (emailPro || email).trim(),
+      commentaire: (commentaire || '').trim(),
     };
 
     const sql = `
@@ -115,7 +121,7 @@ export async function POST(request: NextRequest) {
     await execute(sql, [
       id,
       titre,
-      email.toLowerCase().trim(),
+      (emailPro || email).toLowerCase().trim(),
       nomComplet,
       motif,
       JSON.stringify(extraData),
@@ -128,14 +134,15 @@ export async function POST(request: NextRequest) {
     const drhTargetEmail = settings.drhAttestationEmail || settings.drhEmail || 'drh@compel-toil.com';
 
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; rounded: 10px;">
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
         <h2 style="color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 10px;">Nouvelle Demande d'Attestation de Travail</h2>
         <p>Une nouvelle demande d'attestation de travail a été soumise sur l'Intranet.</p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-          <tr><td style="padding: 8px; font-weight: bold; width: 40%;">Collaborateur :</td><td style="padding: 8px;">${nomComplet} (${email})</td></tr>
-          <tr><td style="padding: 8px; font-weight: bold;">Société :</td><td style="padding: 8px;"><strong>${societe}</strong></td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; width: 40%;">Collaborateur :</td><td style="padding: 8px;">${nomComplet} (${emailPro || email})</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold;">Société :</td><td style="padding: 8px;"><strong>${normalizedSociete}</strong></td></tr>
           ${poste ? `<tr><td style="padding: 8px; font-weight: bold;">Poste :</td><td style="padding: 8px;">${poste}</td></tr>` : ''}
           <tr><td style="padding: 8px; font-weight: bold;">Motif :</td><td style="padding: 8px;">${motif}</td></tr>
+          ${commentaire ? `<tr><td style="padding: 8px; font-weight: bold;">Commentaires :</td><td style="padding: 8px;">${commentaire}</td></tr>` : ''}
         </table>
         <div style="margin-top: 25px; text-align: center;">
           <a href="${process.env.NEXTAUTH_URL || ''}/demandes" style="background-color: #0284c7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Accéder au portail Intranet</a>
@@ -145,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     sendLeaveNotificationEmail({
       to: drhTargetEmail,
-      subject: `📄 Nouvelle Demande d'Attestation de Travail (${societe}) — ${nomComplet}`,
+      subject: `📄 Nouvelle Demande d'Attestation de Travail (${normalizedSociete}) — ${nomComplet}`,
       html: emailHtml,
     }).catch((err) => console.error('[Email DRH Attestation Error]:', err));
 

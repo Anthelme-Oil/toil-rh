@@ -39,9 +39,13 @@ export function DemandeAttestationModal({
   const nameParts = (userName || '').split(' ');
   const [nom, setNom] = useState(nameParts[0] || '');
   const [prenom, setPrenom] = useState(nameParts.slice(1).join(' ') || '');
-  const [societe, setSociete] = useState<'T-OIL' | 'STSL' | 'COMPEL'>('T-OIL');
+  const [societe, setSociete] = useState<'T-Oil' | 'STSL' | 'COMPEL'>('T-Oil');
+  const [emailPro, setEmailPro] = useState(userEmail || '');
+  const [motif, setMotif] = useState<
+    'Usage administratif' | 'Dossier bancaire' | 'Demande de visa' | 'Location immobilière' | 'Autre'
+  >('Usage administratif');
+  const [commentaire, setCommentaire] = useState('');
   const [poste, setPoste] = useState('');
-  const [motif, setMotif] = useState('');
 
   // Status state
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -55,8 +59,12 @@ export function DemandeAttestationModal({
       setErrorMsg('Veuillez renseigner votre nom et votre prénom.');
       return;
     }
-    if (!motif.trim()) {
-      setErrorMsg('Veuillez indiquer le motif de votre demande d\'attestation.');
+    if (!emailPro.trim()) {
+      setErrorMsg('Veuillez saisir votre adresse e-mail professionnelle.');
+      return;
+    }
+    if (!motif) {
+      setErrorMsg('Veuillez sélectionner un motif de demande.');
       return;
     }
 
@@ -68,8 +76,10 @@ export function DemandeAttestationModal({
         nom: nom.trim(),
         prenom: prenom.trim(),
         societe,
+        emailPro: emailPro.trim(),
+        motif,
+        commentaire: commentaire.trim(),
         poste: poste.trim(),
-        motif: motif.trim(),
         demandeurEmail: userEmail,
       };
 
@@ -87,8 +97,7 @@ export function DemandeAttestationModal({
       setStatus('success');
       setTimeout(() => {
         setStatus('idle');
-        setMotif('');
-        setPoste('');
+        setCommentaire('');
         onSuccess?.();
         onClose();
       }, 2000);
@@ -116,7 +125,7 @@ export function DemandeAttestationModal({
             <div>
               <h2 className="text-xl font-bold">Demande d&apos;Attestation de Travail</h2>
               <p className="text-xs text-blue-100 mt-0.5">
-                Sélectionnez votre société (T-OIL, STSL ou COMPEL) et indiquez le motif
+                Complétez les informations pour la délivrance de votre attestation
               </p>
             </div>
           </div>
@@ -130,12 +139,12 @@ export function DemandeAttestationModal({
             </div>
             <h3 className="text-xl font-bold text-slate-900">Demande transmise avec succès !</h3>
             <p className="text-sm text-slate-600 max-w-md mx-auto">
-              Un e-mail automatique a été envoyé à la DRH pour validation. Votre attestation de travail sera disponible dès validation.
+              Un e-mail automatique a été envoyé à la DRH pour validation. Votre attestation de travail sera disponible dès qu&apos;elle aura été traitée.
             </p>
           </div>
         ) : (
           /* ── Formulaire ── */
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
             {errorMsg && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -143,38 +152,11 @@ export function DemandeAttestationModal({
               </div>
             )}
 
-            {/* Société */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                Société / Entité d&apos;appartenance <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2.5 mt-1">
-                {LISTE_SOCIETES.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSociete(item.id as 'T-OIL' | 'STSL' | 'COMPEL')}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      societe === item.id
-                        ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-bold shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-sm font-extrabold">{item.id}</span>
-                    <span className="text-[10px] text-slate-500 font-normal leading-tight line-clamp-1">
-                      {item.id === 'T-OIL' ? 'T-OIL S.A.' : item.id === 'STSL' ? 'STSL S.A.' : 'COMPEL S.A.'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Identité */}
+            {/* 1. Nom et Prénom */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nom <span className="text-red-500">*</span>
+                  1. Nom <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -201,33 +183,96 @@ export function DemandeAttestationModal({
               </div>
             </div>
 
-            {/* Fonction / Poste */}
+            {/* 2. Société */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <Briefcase className="w-3.5 h-3.5 text-slate-500" />
-                Poste / Fonction occupée (Optionnel)
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                2. Société <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {(['T-Oil', 'STSL', 'COMPEL'] as const).map((item) => (
+                  <label
+                    key={item}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
+                      societe === item
+                        ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="societeAttestation"
+                      value={item}
+                      checked={societe === item}
+                      onChange={() => setSociete(item)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    {item}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Adresse e-mail professionnelle */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                3. Adresse e-mail professionnelle <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
-                value={poste}
-                onChange={(e) => setPoste(e.target.value)}
-                placeholder="ex: Chef Service Informatique, Comptable, Commercial..."
+                type="email"
+                required
+                value={emailPro}
+                onChange={(e) => setEmailPro(e.target.value)}
+                placeholder="nom@togosh.com"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
               />
             </div>
 
-            {/* Motif de la demande */}
+            {/* 4. Motif de la demande */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                4. Motif de la demande <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {[
+                  'Usage administratif',
+                  'Dossier bancaire',
+                  'Demande de visa',
+                  'Location immobilière',
+                  'Autre',
+                ].map((m) => (
+                  <label
+                    key={m}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+                      motif === m
+                        ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="motifAttestation"
+                      value={m}
+                      checked={motif === m}
+                      onChange={() => setMotif(m as any)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. Commentaires (facultatif) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5 text-blue-600" />
-                Motif de la demande d&apos;attestation <span className="text-red-500">*</span>
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                5. Commentaires (facultatif)
               </label>
               <textarea
                 rows={3}
-                required
-                value={motif}
-                onChange={(e) => setMotif(e.target.value)}
-                placeholder="Précisez le motif (ex: Constituer un dossier de visa, Demande de prêt bancaire, Démarche administrative...)"
+                value={commentaire}
+                onChange={(e) => setCommentaire(e.target.value)}
+                placeholder="Précisions complémentaires sur votre demande..."
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
               />
             </div>

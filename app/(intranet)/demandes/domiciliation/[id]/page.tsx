@@ -14,8 +14,15 @@ interface DomiciliationDetail {
   titre: string;
   nomDemandeur: string;
   emailDemandeur: string;
+  matricule?: string;
   nom: string;
   prenom: string;
+  societe?: string;
+  poste?: string;
+  departement?: string;
+  objetDemande?: string;
+  emailPro?: string;
+  telephone?: string;
   banque: string;
   agenceBancaire: string;
   dateSouhaitee: string;
@@ -160,7 +167,9 @@ export default function DomiciliationDocumentPage({
               />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">T-OIL S.A.</h1>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                {demande.societe || 'T-OIL S.A.'}
+              </h1>
               <p className="text-xs text-slate-500 font-medium">
                 Société Togolaise d'Entreposage et de Distribution de Produits Pétroliers
               </p>
@@ -183,26 +192,42 @@ export default function DomiciliationDocumentPage({
             ATTESTATION DE DOMICILIATION BANCAIRE
           </h2>
           <p className="text-xs text-slate-500 italic">
-            Engagement de virement de salaire sur compte bancaire
+            {demande.objetDemande ? `Objet : ${demande.objetDemande}` : 'Engagement de virement de salaire sur compte bancaire'}
           </p>
         </div>
 
         {/* Corps du texte */}
         <div className="space-y-6 text-sm leading-relaxed text-slate-800">
           <p>
-            La Société <strong>T-OIL S.A.</strong> atteste par la présente que le salaire mensuel de son collaborateur :
+            La Société <strong>{demande.societe || 'T-OIL S.A.'}</strong> atteste par la présente que le salaire mensuel de son collaborateur :
           </p>
 
           {/* Fiche Employé */}
-          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-xs text-slate-500 block">Nom & Prénom :</span>
                 <strong className="text-base text-slate-900">{demande.nomDemandeur}</strong>
               </div>
               <div>
-                <span className="text-xs text-slate-500 block">Adresse E-mail :</span>
-                <strong className="text-sm text-slate-800">{demande.emailDemandeur}</strong>
+                <span className="text-xs text-slate-500 block">Numéro de Matricule :</span>
+                <strong className="text-sm text-slate-900">{demande.matricule || 'N/A'}</strong>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 block">Poste Occupé :</span>
+                <strong className="text-sm text-slate-800">{demande.poste || 'N/A'}</strong>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 block">Département / Service :</span>
+                <strong className="text-sm text-slate-800">{demande.departement || 'N/A'}</strong>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 block">Adresse E-mail pro :</span>
+                <strong className="text-sm text-slate-800">{demande.emailPro || demande.emailDemandeur}</strong>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 block">Téléphone :</span>
+                <strong className="text-sm text-slate-800">{demande.telephone || 'N/A'}</strong>
               </div>
             </div>
           </div>
@@ -220,11 +245,11 @@ export default function DomiciliationDocumentPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-xs text-slate-500 block">Nom de la Banque :</span>
-                <strong className="text-slate-900 text-base">{demande.banque}</strong>
+                <strong className="text-slate-900 text-base">{demande.banque || 'Non spécifiée'}</strong>
               </div>
               <div>
                 <span className="text-xs text-slate-500 block">Agence Bancaire :</span>
-                <strong className="text-slate-900 text-base">{demande.agenceBancaire}</strong>
+                <strong className="text-slate-900 text-base">{demande.agenceBancaire || 'Non spécifiée'}</strong>
               </div>
             </div>
           </div>

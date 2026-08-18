@@ -53,8 +53,15 @@ export async function GET(request: NextRequest) {
         statut: row.statut, // EN_ATTENTE_DRH, VALIDEE_DRH, REFUSEE_DRH, TRAITEE
         nomDemandeur: row.nom_demandeur,
         emailDemandeur: row.email_demandeur,
+        matricule: extra.matricule || '',
         nom: extra.nom || row.nom_demandeur?.split(' ')[0] || '',
         prenom: extra.prenom || row.nom_demandeur?.split(' ').slice(1).join(' ') || '',
+        societe: extra.societe || 'T-Oil',
+        poste: extra.poste || '',
+        departement: extra.departement || '',
+        objetDemande: extra.objetDemande || 'Mise à jour de dossier bancaire',
+        emailPro: extra.emailPro || row.email_demandeur || '',
+        telephone: extra.telephone || '',
         banque: extra.banque || '',
         agenceBancaire: extra.agenceBancaire || '',
         dateSouhaitee: extra.dateSouhaitee || '',
@@ -85,30 +92,58 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { nom, prenom, banque, agenceBancaire, dateSouhaitee, commentaire, pieceJointe } = body;
-
-    if (!nom || !prenom || !banque || !agenceBancaire || !pieceJointe) {
-      return Response.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
-    }
-
-    // Sauvegarde physique de la pièce jointe (RIB)
-    const processedAttachments = await processAndSaveAttachments([pieceJointe]);
-    const ribUrl = processedAttachments[0]?.url || '';
-
-    const id = generateId();
-    const now = new Date();
-    const nomComplet = `${nom} ${prenom}`.trim();
-    const titre = `Domiciliation Bancaire — ${nomComplet} (${banque})`;
-
-    const extraData = {
+    const {
+      matricule,
       nom,
       prenom,
+      societe,
+      poste,
+      departement,
+      objetDemande,
+      emailPro,
+      telephone,
       banque,
       agenceBancaire,
       dateSouhaitee,
       commentaire,
+      pieceJointe,
+    } = body;
+
+    if (!matricule || !nom || !prenom || !societe || !poste || !departement || !objetDemande) {
+      return Response.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
+    }
+
+    let ribUrl = '';
+    let pieceJointeName = '';
+
+    // Sauvegarde physique de la pièce jointe (RIB) si présente
+    if (pieceJointe) {
+      const processedAttachments = await processAndSaveAttachments([pieceJointe]);
+      ribUrl = processedAttachments[0]?.url || '';
+      pieceJointeName = pieceJointe.name;
+    }
+
+    const id = generateId();
+    const now = new Date();
+    const nomComplet = `${nom} ${prenom}`.trim();
+    const titre = `Domiciliation Bancaire (${objetDemande || 'Demande'}) — ${nomComplet} [${societe || 'T-Oil'}]`;
+
+    const extraData = {
+      matricule: matricule.trim(),
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      societe: societe || 'T-Oil',
+      poste: poste.trim(),
+      departement: departement.trim(),
+      objetDemande: objetDemande || 'Mise à jour de dossier bancaire',
+      emailPro: (emailPro || email).trim(),
+      telephone: (telephone || '').trim(),
+      banque: banque || '',
+      agenceBancaire: agenceBancaire || '',
+      dateSouhaitee: dateSouhaitee || '',
+      commentaire: (commentaire || '').trim(),
       ribUrl,
-      ribFilename: pieceJointe.name,
+      ribFilename: pieceJointeName,
     };
 
     const sql = `
@@ -121,7 +156,7 @@ export async function POST(request: NextRequest) {
     await execute(sql, [
       id,
       titre,
-      email.toLowerCase().trim(),
+      (emailPro || email).toLowerCase().trim(),
       nomComplet,
       commentaire || '',
       ribUrl,
@@ -133,9 +168,9 @@ export async function POST(request: NextRequest) {
     // Envoi de la notification à la DRH
     const emailHtml = getEmailTemplateDomiciliationDRH({
       demandeurNom: nomComplet,
-      banque,
-      agenceBancaire,
-      dateSouhaitee,
+      banque: banque || 'Non spécifiée',
+      agenceBancaire: agenceBancaire || 'Non spécifiée',
+      dateSouhaitee: dateSouhaitee || new Date().toISOString().split('T')[0],
     });
 
     // Email adressé à la DRH

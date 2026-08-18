@@ -48,10 +48,19 @@ export function DemandeDomiciliationModal({
 }: DemandeDomiciliationModalProps) {
   const { userName, userEmail } = useUser();
 
-  // Nom & Prénom déduits ou modifiables
+  // States pour les 10 champs du formulaire de domiciliation
+  const [matricule, setMatricule] = useState('');
   const nameParts = (userName || '').split(' ');
   const [nom, setNom] = useState(nameParts[0] || '');
   const [prenom, setPrenom] = useState(nameParts.slice(1).join(' ') || '');
+  const [societe, setSociete] = useState<'T-Oil' | 'STSL' | 'COMPEL'>('T-Oil');
+  const [poste, setPoste] = useState('');
+  const [departement, setDepartement] = useState('');
+  const [objetDemande, setObjetDemande] = useState<
+    'Ouverture de compte bancaire' | 'Mise à jour de dossier bancaire' | 'Demande de crédit' | 'Autre'
+  >('Mise à jour de dossier bancaire');
+  const [emailPro, setEmailPro] = useState(userEmail || '');
+  const [telephone, setTelephone] = useState('');
   const [banque, setBanque] = useState(LISTE_BANQUES[0]);
   const [agenceBancaire, setAgenceBancaire] = useState('');
   const [dateSouhaitee, setDateSouhaitee] = useState(
@@ -80,16 +89,28 @@ export function DemandeDomiciliationModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!matricule.trim()) {
+      setErrorMsg('Veuillez renseigner votre numéro de matricule.');
+      return;
+    }
     if (!nom.trim() || !prenom.trim()) {
       setErrorMsg('Veuillez remplir le nom et le prénom.');
       return;
     }
-    if (!agenceBancaire.trim()) {
-      setErrorMsg("L'agence bancaire est requise.");
+    if (!poste.trim()) {
+      setErrorMsg('Veuillez préciser le poste occupé.');
       return;
     }
-    if (!file) {
-      setErrorMsg('Veuillez joindre votre RIB ou attestation bancaire.');
+    if (!departement.trim()) {
+      setErrorMsg('Veuillez indiquer votre département / service.');
+      return;
+    }
+    if (!emailPro.trim()) {
+      setErrorMsg('Veuillez renseigner votre adresse e-mail professionnelle.');
+      return;
+    }
+    if (!telephone.trim()) {
+      setErrorMsg('Veuillez indiquer un numéro de téléphone.');
       return;
     }
 
@@ -97,50 +118,64 @@ export function DemandeDomiciliationModal({
     setErrorMsg('');
 
     try {
-      // Conversion du fichier en Base64
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64Content = (reader.result as string).split(',')[1];
+      let base64Content = null;
+      let fileName = null;
 
-        const payload = {
-          nom: nom.trim(),
-          prenom: prenom.trim(),
-          banque,
-          agenceBancaire: agenceBancaire.trim(),
-          dateSouhaitee,
-          commentaire: commentaire.trim(),
-          demandeurEmail: userEmail,
-          pieceJointe: {
-            name: file.name,
-            contentBase64: base64Content,
-          },
-        };
-
-        const res = await fetch('/api/demandes/domiciliation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+      if (file) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            base64Content = (reader.result as string).split(',')[1];
+            fileName = file.name;
+            resolve(true);
+          };
+          reader.onerror = reject;
         });
+      }
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Erreur lors de la soumission.');
-        }
-
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('idle');
-          setFile(null);
-          setCommentaire('');
-          onSuccess?.();
-          onClose();
-        }, 2000);
+      const payload = {
+        matricule: matricule.trim(),
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        societe,
+        poste: poste.trim(),
+        departement: departement.trim(),
+        objetDemande,
+        emailPro: emailPro.trim(),
+        telephone: telephone.trim(),
+        banque,
+        agenceBancaire: agenceBancaire.trim(),
+        dateSouhaitee,
+        commentaire: commentaire.trim(),
+        demandeurEmail: userEmail,
+        pieceJointe: file
+          ? {
+              name: fileName,
+              contentBase64: base64Content,
+            }
+          : null,
       };
 
-      reader.onerror = () => {
-        throw new Error('Erreur lors de la lecture du fichier.');
-      };
+      const res = await fetch('/api/demandes/domiciliation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur lors de la soumission.');
+      }
+
+      setStatus('success');
+      setTimeout(() => {
+        setStatus('idle');
+        setFile(null);
+        setCommentaire('');
+        onSuccess?.();
+        onClose();
+      }, 2000);
     } catch (err: any) {
       setStatus('error');
       setErrorMsg(err.message || 'Une erreur est survenue.');
@@ -149,7 +184,7 @@ export function DemandeDomiciliationModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95 my-8">
+      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95 my-8">
         {/* ── En-tête ── */}
         <div className="bg-gradient-to-r from-emerald-700 to-teal-800 p-6 text-white relative">
           <button
@@ -165,7 +200,7 @@ export function DemandeDomiciliationModal({
             <div>
               <h2 className="text-xl font-bold">Demande de Domiciliation Bancaire</h2>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Soumettez votre RIB pour transmission à la DRH & RH
+                Remplissez les informations de domiciliation bancaire pour transmission aux RH
               </p>
             </div>
           </div>
@@ -184,7 +219,7 @@ export function DemandeDomiciliationModal({
           </div>
         ) : (
           /* ── Formulaire ── */
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
             {errorMsg && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -192,11 +227,26 @@ export function DemandeDomiciliationModal({
               </div>
             )}
 
-            {/* Identité */}
+            {/* 1. Numéro de matricule */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                1. Numéro de matricule <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={matricule}
+                onChange={(e) => setMatricule(e.target.value)}
+                placeholder="Ex: EMP-2024-042"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+              />
+            </div>
+
+            {/* 2. Nom et Prénom */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nom <span className="text-red-500">*</span>
+                  2. Nom <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -223,12 +273,72 @@ export function DemandeDomiciliationModal({
               </div>
             </div>
 
-            {/* Banque & Agence */}
+            {/* 3. Société */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                3. Société <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-4">
+                {(['T-Oil', 'STSL', 'COMPEL'] as const).map((item) => (
+                  <label
+                    key={item}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
+                      societe === item
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="societe"
+                      value={item}
+                      checked={societe === item}
+                      onChange={() => setSociete(item)}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    {item}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Poste occupé & 5. Département / Service */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  4. Poste occupé <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={poste}
+                  onChange={(e) => setPoste(e.target.value)}
+                  placeholder="Ex: Chef de Projet / Comptable..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  5. Département / Service <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={departement}
+                  onChange={(e) => setDepartement(e.target.value)}
+                  placeholder="Ex: Direction des Systèmes d'Information"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+            </div>
+
+            {/* 6. Établissement Bancaire & Agence */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
                   <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Banque <span className="text-red-500">*</span>
+                  6. Banque <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={banque}
@@ -258,41 +368,105 @@ export function DemandeDomiciliationModal({
               </div>
             </div>
 
+            {/* 7. Objet de la demande */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                7. Objet de la demande <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {[
+                  'Ouverture de compte bancaire',
+                  'Mise à jour de dossier bancaire',
+                  'Demande de crédit',
+                  'Autre',
+                ].map((obj) => (
+                  <label
+                    key={obj}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+                      objetDemande === obj
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="objetDemande"
+                      value={obj}
+                      checked={objetDemande === obj}
+                      onChange={() => setObjetDemande(obj as any)}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    {obj}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 8. Adresse e-mail professionnelle & 9. Numéro de téléphone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  8. Adresse e-mail professionnelle <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={emailPro}
+                  onChange={(e) => setEmailPro(e.target.value)}
+                  placeholder="nom@togosh.com"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  9. Numéro de téléphone <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={telephone}
+                  onChange={(e) => setTelephone(e.target.value)}
+                  placeholder="+228 90 00 00 00"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+            </div>
+
             {/* Date souhaitée */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                Date souhaitée pour la domiciliation <span className="text-red-500">*</span>
+                Date souhaitée pour l'effet de la domiciliation
               </label>
               <input
                 type="date"
-                required
                 value={dateSouhaitee}
                 onChange={(e) => setDateSouhaitee(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
               />
             </div>
 
-            {/* Commentaire */}
+            {/* 10. Commentaires complémentaires */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
-                Commentaire / Remarques (Optionnel)
+                10. Commentaires complémentaires (Optionnel)
               </label>
               <textarea
                 rows={2}
                 value={commentaire}
                 onChange={(e) => setCommentaire(e.target.value)}
-                placeholder="Précisions éventuelles sur votre compte bancaire..."
+                placeholder="Précisions complémentaires concernant votre demande..."
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
               />
             </div>
 
-            {/* Upload RIB / Attestation */}
+            {/* Upload RIB / Attestation bancaire */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
                 <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                RIB ou Attestation Bancaire (Pièce Jointe) <span className="text-red-500">*</span>
+                RIB ou Attestation Bancaire (Pièce Jointe Optionnelle/Recommandée)
               </label>
               <div className="mt-1 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-4 text-center transition-colors bg-slate-50/50 hover:bg-emerald-50/30">
                 <input
