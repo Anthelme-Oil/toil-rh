@@ -8,7 +8,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ClipboardCheck,
   CheckCircle2,
-  XCircle,
   ExternalLink,
   FileText,
   Clock,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import type { DemandeConge } from '@/types';
+import { DemandeStatusBadge } from '@/components/demandes/DemandeStatusBadge';
 
 export default function ValidationDemandesPage() {
   const { userEmail, isManager, isRH, isDRH, isRHPrint, isAdmin } = useUser();
@@ -47,7 +47,9 @@ export default function ValidationDemandesPage() {
     setLoading(true);
     try {
       // 1. Demandes à valider en tant que N+1
-      const resN1 = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=n1&_t=${Date.now()}`);
+      const resN1 = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=n1&_t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       if (resN1.ok) {
         const dataN1 = await resN1.json();
         setDemandesN1(dataN1.demandes || []);
@@ -55,7 +57,9 @@ export default function ValidationDemandesPage() {
 
       // 2. Demandes à valider en tant que RH (DRH)
       if (isDRH || isRH || isRHPrint || isAdmin) {
-        const resRH = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=rh&_t=${Date.now()}`);
+        const resRH = await fetch(`/api/demandes/conges?email=${encodeURIComponent(userEmail)}&role=rh&_t=${Date.now()}`, {
+          cache: 'no-store',
+        });
         if (resRH.ok) {
           const dataRH = await resRH.json();
           setDemandesRH(dataRH.demandes || []);
@@ -92,6 +96,32 @@ export default function ValidationDemandesPage() {
     reason?: string
   ) => {
     setActionId(demandeId);
+
+    // Optimistic state update immediately
+    if (role === 'N1') {
+      setDemandesN1((prev) =>
+        prev.map((d) =>
+          d.id === demandeId
+            ? {
+                ...d,
+                statut: action === 'APPROUVER' ? 'EN_ATTENTE_RH' : 'Refusée',
+              }
+            : d
+        )
+      );
+    } else {
+      setDemandesRH((prev) =>
+        prev.map((d) =>
+          d.id === demandeId
+            ? {
+                ...d,
+                statut: action === 'APPROUVER' ? 'Accordée' : 'Refusée',
+              }
+            : d
+        )
+      );
+    }
+
     try {
       const res = await fetch('/api/demandes/conges/traiter', {
         method: 'POST',
@@ -110,7 +140,7 @@ export default function ValidationDemandesPage() {
         setNotification({
           message: action === 'APPROUVER' ? 'Demande approuvée avec succès.' : 'Demande refusée.',
           type: 'success',
-          });
+        });
         setRefusingDemande(null);
         setMotifRefus('');
         await fetchDemandes();
@@ -121,60 +151,35 @@ export default function ValidationDemandesPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Une erreur est survenue.';
       setNotification({ message: msg, type: 'error' });
+      await fetchDemandes();
     } finally {
       setActionId(null);
     }
   };
 
-  const getStatusBadge = (statut: string) => {
-    if (statut === 'EN_ATTENTE_RH') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5 text-blue-600" />
-          En attente de validation DRH
-        </span>
-      );
-    }
-    if (statut === 'En attente de validation') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5 text-amber-600" />
-          En attente de validation N+1
-        </span>
-      );
-    }
-    if (statut === 'Accordée') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-          Accordée
-        </span>
-      );
-    }
-    if (statut === 'Refusée') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-800 border border-red-200 flex items-center gap-1">
-          <XCircle className="w-3.5 h-3.5 text-red-600" />
-          Refusée
-        </span>
-      );
-    }
-    return (
-      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-800 border border-slate-200 flex items-center gap-1">
-        <Clock className="w-3.5 h-3.5 text-slate-600" />
-        {statut}
-      </span>
-    );
-  };
+  const pendingN1List = demandesN1.filter((d) => {
+    const s = (d.statut || '').toUpperCase();
+    return s === 'EN ATTENTE DE VALIDATION' || s === 'EN_ATTENTE' || s === 'EN_ATTENTE_N1';
+  });
 
-  const pendingN1Count = demandesN1.filter((d) => d.statut === 'En attente de validation').length;
-  const pendingRHCount = demandesRH.filter((d) => d.statut === 'EN_ATTENTE_RH').length;
+  const pendingRHList = demandesRH.filter((d) => {
+    const s = (d.statut || '').toUpperCase();
+    return s === 'EN_ATTENTE_RH' || s === 'EN ATTENTE RH' || s === 'EN_ATTENTE_DRH';
+  });
+
+  const pendingN1Count = pendingN1List.length;
+  const pendingRHCount = pendingRHList.length;
 
   const currentDemandes = activeTab === 'n1' ? demandesN1 : demandesRH;
   const filteredDemandes = currentDemandes.filter((d) => {
+    const s = (d.statut || '').toUpperCase();
     if (filterStatus === 'pending') {
-      if (activeTab === 'n1' && d.statut !== 'En attente de validation') return false;
-      if (activeTab === 'rh' && d.statut !== 'EN_ATTENTE_RH') return false;
+      if (activeTab === 'n1' && s !== 'EN ATTENTE DE VALIDATION' && s !== 'EN_ATTENTE' && s !== 'EN_ATTENTE_N1') {
+        return false;
+      }
+      if (activeTab === 'rh' && s !== 'EN_ATTENTE_RH' && s !== 'EN ATTENTE RH' && s !== 'EN_ATTENTE_DRH') {
+        return false;
+      }
     }
     const q = searchQuery.toLowerCase();
     return (
@@ -202,7 +207,7 @@ export default function ValidationDemandesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={fetchDemandes}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Actualiser</span>
@@ -234,7 +239,7 @@ export default function ValidationDemandesPage() {
           {(isManager || isAdmin) && (
             <button
               onClick={() => setActiveTab('n1')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'n1'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -257,7 +262,7 @@ export default function ValidationDemandesPage() {
           {(isDRH || isRH || isRHPrint || isAdmin) && (
             <button
               onClick={() => setActiveTab('rh')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'rh'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -282,9 +287,9 @@ export default function ValidationDemandesPage() {
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
           <button
             onClick={() => setFilterStatus('pending')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               filterStatus === 'pending'
-                ? 'bg-white text-slate-900 shadow-2xs'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -292,9 +297,9 @@ export default function ValidationDemandesPage() {
           </button>
           <button
             onClick={() => setFilterStatus('all')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               filterStatus === 'all'
-                ? 'bg-white text-slate-900 shadow-2xs'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -339,6 +344,16 @@ export default function ValidationDemandesPage() {
           {filteredDemandes.map((demande) => {
             const mainAttachment = demande.piecesJointes?.[0] || (demande.pieceJointeUrl ? { name: 'Pièce jointe', url: demande.pieceJointeUrl } : null);
 
+            const s = (demande.statut || '').toUpperCase();
+            const isPendingN1 = activeTab === 'n1' && (s === 'EN ATTENTE DE VALIDATION' || s === 'EN_ATTENTE' || s === 'EN_ATTENTE_N1');
+            const isPendingRH = activeTab === 'rh' && (s === 'EN_ATTENTE_RH' || s === 'EN ATTENTE RH' || s === 'EN_ATTENTE_DRH');
+
+            const initials = demande.demandeurNom
+              ? demande.demandeurNom.slice(0, 2).toUpperCase()
+              : demande.demandeurEmail
+              ? demande.demandeurEmail.slice(0, 2).toUpperCase()
+              : 'U';
+
             return (
               <div
                 key={demande.id}
@@ -348,7 +363,7 @@ export default function ValidationDemandesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm border border-emerald-200 shrink-0">
-                      {demande.demandeurNom ? demande.demandeurNom.slice(0, 2).toUpperCase() : 'U'}
+                      {initials}
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900 text-base">{demande.titre}</h3>
@@ -360,39 +375,41 @@ export default function ValidationDemandesPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(demande.statut)}
+                    <DemandeStatusBadge statut={demande.statut} />
                   </div>
                 </div>
 
-                {/* Corps des détails */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/70 p-3.5 rounded-xl text-xs text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                {/* ── Bloc Résumé Demandeur, Motif, Période & Durée ── */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/80 p-3.5 rounded-xl text-xs text-slate-700 border border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-white text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200">
+                      <User className="w-3.5 h-3.5 text-slate-600" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Demandeur</span>
+                      <span className="font-bold text-slate-900 block truncate">{demande.demandeurNom || 'Non renseigné'}</span>
+                      <span className="text-[11px] text-slate-500 block truncate">{demande.demandeurEmail}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="overflow-hidden">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Motif de la demande</span>
+                      <span className="font-medium text-slate-800 block truncate">{demande.motif || 'Non précisé'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Période :</span>
-                      <span className="font-semibold">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Période & Durée</span>
+                      <span className="font-semibold text-slate-900 block">
                         {demande.dateDebut ? new Date(demande.dateDebut).toLocaleDateString('fr-FR') : '-'}
                         {' ➔ '}
                         {demande.dateFin ? new Date(demande.dateFin).toLocaleDateString('fr-FR') : '-'}
                       </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Durée totale :</span>
-                      <span className="font-bold text-slate-900">{demande.nombreJours} jour(s)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-500 shrink-0" />
-                    <div className="truncate">
-                      <span className="text-slate-400 block text-[10px]">Motif :</span>
-                      <span className="font-medium text-slate-800 truncate block">
-                        {demande.motif || 'Non précisé'}
-                      </span>
+                      <span className="text-[11px] text-slate-500 font-bold">({demande.nombreJours} jour(s))</span>
                     </div>
                   </div>
                 </div>
@@ -425,37 +442,27 @@ export default function ValidationDemandesPage() {
 
                 {/* Actions Approbation / Refus ou Impression */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                  {demande.statut === 'Accordée' || demande.statut === 'Refusée' ? (
+                  {demande.statut === 'Accordée' || demande.statut === 'APPROUVEE' ? (
                     <div className="flex items-center gap-2">
-                      {demande.statut === 'Accordée' && (
-                        <button
-                          onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
-                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                        >
-                          <Printer className="w-4 h-4 text-purple-600" />
-                          <span>Imprimer l&apos;Attestation</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
+                        className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Printer className="w-4 h-4 text-purple-600" />
+                        <span>Imprimer l&apos;Attestation</span>
+                      </button>
                     </div>
-                  ) : activeTab === 'n1' && demande.statut === 'EN_ATTENTE_RH' ? (
-                    <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  ) : activeTab === 'n1' && !isPendingN1 ? (
+                    <span className="text-xs text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                       Validée par vous — Transmise à la DRH
                     </span>
-                  ) : activeTab === 'rh' && demande.statut === 'En attente de validation' ? (
-                    <span className="text-xs text-slate-500 italic font-medium">
-                      En attente de la validation préalable du supérieur hiérarchique N+1
-                    </span>
-                  ) : activeTab === 'rh' && !isDRH && !isAdmin && !isRH ? (
-                    <span className="text-xs text-slate-500 italic font-medium">
-                      En attente de validation par la DRH
-                    </span>
-                  ) : (
+                  ) : isPendingN1 || isPendingRH ? (
                     <>
                       <button
                         onClick={() => setRefusingDemande(demande)}
                         disabled={actionId === demande.id}
-                        className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                       >
                         <X className="w-4 h-4 text-red-600" />
                         <span>Refuser</span>
@@ -466,7 +473,7 @@ export default function ValidationDemandesPage() {
                           handleTraiter(demande.id!, 'APPROUVER', activeTab === 'n1' ? 'N1' : 'RH')
                         }
                         disabled={actionId === demande.id}
-                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                       >
                         {actionId === demande.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -476,7 +483,7 @@ export default function ValidationDemandesPage() {
                         <span>{activeTab === 'n1' ? 'Approuver (N+1)' : 'Approuver (DRH)'}</span>
                       </button>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );
@@ -490,12 +497,12 @@ export default function ValidationDemandesPage() {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-slate-200 space-y-4 animate-fade-in">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <XCircle className="w-5 h-5 text-red-600" />
+                <X className="w-5 h-5 text-red-600" />
                 Refuser la demande
               </h3>
               <button
                 onClick={() => setRefusingDemande(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -524,7 +531,7 @@ export default function ValidationDemandesPage() {
               <button
                 type="button"
                 onClick={() => setRefusingDemande(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
                 Annuler
               </button>
@@ -539,7 +546,7 @@ export default function ValidationDemandesPage() {
                     motifRefus
                   )
                 }
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 {actionId === refusingDemande.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Confirmer le Refus

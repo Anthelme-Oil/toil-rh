@@ -4,8 +4,9 @@
 // Composant — Validations DRH & Traitements RH (Senior Component)
 // ═══════════════════════════════════════════════════════════════
 
-import { Landmark, FileCheck, ShieldCheck, FileText, CheckCircle2, Printer, Loader2 } from 'lucide-react';
+import { Landmark, FileCheck, ShieldCheck, FileText, CheckCircle2, Printer, Loader2, Calendar, User } from 'lucide-react';
 import type { DemandeConge } from '@/types';
+import { DemandeStatusBadge } from './DemandeStatusBadge';
 
 interface ValidationsRhTabProps {
   isLoadingDomiciliations: boolean;
@@ -57,111 +58,158 @@ export function ValidationsRhTab({
           Demandes de Domiciliation Bancaire ({domiciliationsList.length})
         </h2>
         <p className="text-sm text-text-secondary">
-          Workflow DRH (Validation / Refus avec motif) et Traitement RH (Mise à disposition du document).
+          Workflow DRH (Validation / Refus) et Traitement RH (Impression / Mise à disposition).
         </p>
 
         {isLoadingDomiciliations ? (
-          <div className="py-6 flex items-center justify-center gap-2 text-text-secondary text-sm">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-            Chargement des domiciliations...
+          <div className="py-8 flex flex-col items-center justify-center gap-2 text-text-secondary text-sm">
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+            <span>Chargement des domiciliations...</span>
           </div>
         ) : domiciliationsList.length === 0 ? (
           <div className="p-6 text-center bg-emerald-50/40 rounded-xl border border-emerald-200 text-emerald-800 text-sm">
-            Aucune demande de domiciliation bancaire en attente.
+            Aucune demande de domiciliation bancaire enregistrée.
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {domiciliationsList.map((item) => (
-              <div key={item.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      {item.banque} ({item.agenceBancaire})
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      Demandée pour le : {item.dateSouhaitee ? new Date(item.dateSouhaitee).toLocaleDateString('fr-FR') : 'ND'}
-                    </span>
+          <div className="space-y-4">
+            {domiciliationsList.map((item) => {
+              const initials = item.nomDemandeur
+                ? item.nomDemandeur.slice(0, 2).toUpperCase()
+                : item.emailDemandeur
+                ? item.emailDemandeur.slice(0, 2).toUpperCase()
+                : 'U';
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-slate-50/60 rounded-2xl border border-slate-200/90 p-5 space-y-4 hover:border-slate-300 transition-all shadow-2xs"
+                >
+                  {/* En-tête Carte */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                        {initials}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base">
+                          {item.banque} — Agence {item.agenceBancaire}
+                        </h3>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span className="font-semibold text-slate-700">{item.nomDemandeur}</span>
+                          <span>({item.emailDemandeur})</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="self-start sm:self-auto">
+                      <DemandeStatusBadge statut={item.statut} />
+                    </div>
                   </div>
-                  <h3 className="text-base font-bold text-text-primary">
-                    {item.nomDemandeur} ({item.emailDemandeur})
-                  </h3>
-                  {item.ribUrl && (
-                    <a
-                      href={item.ribUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline font-semibold"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> Voir le RIB joint
-                    </a>
-                  )}
+
+                  {/* ── Bloc Résumé : Demandeur, Motif / Agence, Dates ── */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-3.5 rounded-xl text-xs text-slate-700 border border-slate-200/70">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200">
+                        <User className="w-3.5 h-3.5 text-slate-600" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Demandeur
+                        </span>
+                        <span className="font-bold text-slate-900 block truncate">
+                          {item.nomDemandeur || 'Non renseigné'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block truncate">
+                          {item.emailDemandeur}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Landmark className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Établissement & RIB
+                        </span>
+                        <span className="font-medium text-slate-800 block truncate">
+                          {item.banque} ({item.agenceBancaire})
+                        </span>
+                        {item.ribUrl && (
+                          <a
+                            href={item.ribUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:underline font-semibold"
+                          >
+                            <FileText className="w-3 h-3" /> Voir le RIB
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Date souhaitée
+                        </span>
+                        <span className="font-semibold text-slate-900 block">
+                          {item.dateSouhaitee
+                            ? new Date(item.dateSouhaitee).toLocaleDateString('fr-FR')
+                            : 'Date non définie'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {item.motifRefus && (
-                    <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded-lg border border-red-200 mt-1">
+                    <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-200">
                       Motif du refus : {item.motifRefus}
                     </p>
                   )}
-                </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-xs font-bold px-3 py-1 rounded-full ${
-                      item.statut === 'EN_ATTENTE_DRH'
-                        ? 'bg-amber-100 text-amber-800'
-                        : item.statut === 'VALIDEE_DRH'
-                        ? 'bg-blue-100 text-blue-800'
-                        : item.statut === 'REFUSEE_DRH'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {item.statut === 'EN_ATTENTE_DRH'
-                      ? 'En attente DRH'
-                      : item.statut === 'VALIDEE_DRH'
-                      ? 'Validée DRH (À traiter)'
-                      : item.statut === 'REFUSEE_DRH'
-                      ? 'Refusée par DRH'
-                      : 'Traitée / Document dispo'}
-                  </span>
+                  {/* Actions Footer */}
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                    {item.statut === 'EN_ATTENTE_DRH' && (isDRH || isAdmin) && (
+                      <>
+                        <button
+                          onClick={() => onTraiterDomiciliationDRH(item.id, 'REFUSER')}
+                          className="px-3.5 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                        >
+                          Refuser
+                        </button>
+                        <button
+                          onClick={() => onTraiterDomiciliationDRH(item.id, 'VALIDER')}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-colors"
+                        >
+                          Valider (DRH)
+                        </button>
+                      </>
+                    )}
 
-                  {item.statut === 'EN_ATTENTE_DRH' && (isDRH || isAdmin) && (
-                    <>
+                    {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
                       <button
-                        onClick={() => onTraiterDomiciliationDRH(item.id, 'VALIDER')}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
+                        onClick={() => onTraiterDomiciliationRH(item.id)}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        Valider (DRH)
+                        <CheckCircle2 className="w-4 h-4" />
+                        Marquer comme Traitée / Imprimée
                       </button>
+                    )}
+
+                    {item.statut === 'TRAITEE' && (
                       <button
-                        onClick={() => onTraiterDomiciliationDRH(item.id, 'REFUSER')}
-                        className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-lg cursor-pointer"
+                        onClick={() => window.open(`/demandes/domiciliation/${item.id}`, '_blank')}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        Refuser
+                        <Printer className="w-4 h-4" />
+                        Voir / Imprimer Doc Officiel
                       </button>
-                    </>
-                  )}
-
-                  {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
-                    <button
-                      onClick={() => onTraiterDomiciliationRH(item.id)}
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Marquer comme Traitée / Doc Dispo
-                    </button>
-                  )}
-
-                  {item.statut === 'TRAITEE' && (
-                    <button
-                      onClick={() => window.open(`/demandes/domiciliation/${item.id}`, '_blank')}
-                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Voir / Imprimer Doc Officiel
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -177,100 +225,144 @@ export function ValidationsRhTab({
         </p>
 
         {isLoadingAttestations ? (
-          <div className="py-6 flex items-center justify-center gap-2 text-text-secondary text-sm">
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            Chargement des demandes d&apos;attestations...
+          <div className="py-8 flex flex-col items-center justify-center gap-2 text-text-secondary text-sm">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <span>Chargement des demandes d&apos;attestations...</span>
           </div>
         ) : attestationsList.length === 0 ? (
           <div className="p-6 text-center bg-blue-50/40 rounded-xl border border-blue-200 text-blue-900 text-sm">
-            Aucune demande d&apos;attestation de travail en attente.
+            Aucune demande d&apos;attestation de travail enregistrée.
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {attestationsList.map((item) => (
-              <div key={item.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                      {item.societe}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      Créée le : {item.dateCreation ? new Date(item.dateCreation).toLocaleDateString('fr-FR') : 'ND'}
-                    </span>
+          <div className="space-y-4">
+            {attestationsList.map((item) => {
+              const initials = item.nomDemandeur
+                ? item.nomDemandeur.slice(0, 2).toUpperCase()
+                : item.emailDemandeur
+                ? item.emailDemandeur.slice(0, 2).toUpperCase()
+                : 'U';
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-slate-50/60 rounded-2xl border border-slate-200/90 p-5 space-y-4 hover:border-slate-300 transition-all shadow-2xs"
+                >
+                  {/* En-tête Carte */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                        {initials}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base">
+                          Attestation — Société {item.societe}
+                        </h3>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span className="font-semibold text-slate-700">{item.nomDemandeur}</span>
+                          <span>({item.emailDemandeur})</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="self-start sm:self-auto">
+                      <DemandeStatusBadge statut={item.statut} />
+                    </div>
                   </div>
-                  <h3 className="text-base font-bold text-text-primary">
-                    {item.nomDemandeur} ({item.emailDemandeur})
-                  </h3>
-                  <p className="text-xs text-slate-600">
-                    Motif : <strong className="text-slate-800">{item.motif}</strong>
-                  </p>
+
+                  {/* ── Bloc Résumé : Demandeur, Motif, Dates ── */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-3.5 rounded-xl text-xs text-slate-700 border border-slate-200/70">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200">
+                        <User className="w-3.5 h-3.5 text-slate-600" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Demandeur
+                        </span>
+                        <span className="font-bold text-slate-900 block truncate">
+                          {item.nomDemandeur || 'Non renseigné'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block truncate">
+                          {item.emailDemandeur}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Motif de l&apos;attestation
+                        </span>
+                        <span className="font-medium text-slate-800 block truncate">
+                          {item.motif || 'Non précisé'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Date de soumission
+                        </span>
+                        <span className="font-semibold text-slate-900 block">
+                          {item.dateCreation
+                            ? new Date(item.dateCreation).toLocaleDateString('fr-FR')
+                            : 'ND'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {item.motifRefus && (
-                    <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded-lg border border-red-200 mt-1">
+                    <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-200">
                       Motif du refus : {item.motifRefus}
                     </p>
                   )}
-                </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-xs font-bold px-3 py-1 rounded-full ${
-                      item.statut === 'EN_ATTENTE_DRH'
-                        ? 'bg-amber-100 text-amber-800'
-                        : item.statut === 'VALIDEE_DRH'
-                        ? 'bg-blue-100 text-blue-800'
-                        : item.statut === 'REFUSEE_DRH'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {item.statut === 'EN_ATTENTE_DRH'
-                      ? 'En attente DRH'
-                      : item.statut === 'VALIDEE_DRH'
-                      ? 'Validée DRH (À traiter RH)'
-                      : item.statut === 'REFUSEE_DRH'
-                      ? 'Refusée par DRH'
-                      : 'Attestation Générée / Prête'}
-                  </span>
+                  {/* Actions Footer */}
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                    {item.statut === 'EN_ATTENTE_DRH' && (isDRH || isAdmin) && (
+                      <>
+                        <button
+                          onClick={() => onTraiterAttestationDRH(item.id, 'REFUSER')}
+                          className="px-3.5 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                        >
+                          Refuser
+                        </button>
+                        <button
+                          onClick={() => onTraiterAttestationDRH(item.id, 'VALIDER')}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-colors"
+                        >
+                          Valider DRH
+                        </button>
+                      </>
+                    )}
 
-                  {item.statut === 'EN_ATTENTE_DRH' && (isDRH || isAdmin) && (
-                    <>
+                    {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
                       <button
-                        onClick={() => onTraiterAttestationDRH(item.id, 'VALIDER')}
-                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
+                        onClick={() => onTraiterAttestationRH(item.id)}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        Valider DRH
+                        <CheckCircle2 className="w-4 h-4" />
+                        Générer & Mettre à dispo
                       </button>
+                    )}
+
+                    {item.statut === 'TRAITEE' && (
                       <button
-                        onClick={() => onTraiterAttestationDRH(item.id, 'REFUSER')}
-                        className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-lg cursor-pointer"
+                        onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                        className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        Refuser
+                        <Printer className="w-4 h-4" />
+                        Voir / Imprimer Doc Officiel
                       </button>
-                    </>
-                  )}
-
-                  {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
-                    <button
-                      onClick={() => onTraiterAttestationRH(item.id)}
-                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Générer & Mettre à dispo
-                    </button>
-                  )}
-
-                  {item.statut === 'TRAITEE' && (
-                    <button
-                      onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
-                      className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Voir / Imprimer Doc Officiel
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -279,66 +371,137 @@ export function ValidationsRhTab({
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-sm space-y-6">
         <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-600" />
-          Demandes de congé à valider (DRH)
+          Demandes de congé à valider (DRH) ({congesRhList.length})
         </h2>
 
         {isLoadingConges ? (
-          <div className="py-6 flex items-center justify-center gap-2 text-text-secondary text-sm">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-            Chargement des congés...
+          <div className="py-8 flex flex-col items-center justify-center gap-2 text-text-secondary text-sm">
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+            <span>Chargement des congés...</span>
           </div>
         ) : congesRhList.length === 0 ? (
           <div className="p-6 text-center bg-emerald-50/50 rounded-xl border border-emerald-200 text-emerald-900 text-sm">
-            Toutes les demandes de congés sont à jour.
+            Toutes les demandes de congés DRH sont à jour.
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {congesRhList.map((item) => (
-              <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      {item.typeConge}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      du {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : 'ND'} au{' '}
-                      {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : 'ND'}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold text-text-primary">{item.titre}</h3>
-                  <p className="text-xs text-text-secondary">
-                    Demandeur : <span className="font-semibold">{item.demandeurNom || item.demandeurEmail}</span>
-                  </p>
-                </div>
+          <div className="space-y-4">
+            {congesRhList.map((item) => {
+              const initials = item.demandeurNom
+                ? item.demandeurNom.slice(0, 2).toUpperCase()
+                : item.demandeurEmail
+                ? item.demandeurEmail.slice(0, 2).toUpperCase()
+                : 'U';
 
-                <div className="flex items-center gap-2">
-                  {item.statut === 'Accordée' || item.statut === 'Refusée' ? (
-                    <button
-                      onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
-                      className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Imprimer Attestation</span>
-                    </button>
-                  ) : (
-                    <>
+              const isPendingRH = item.statut === 'EN_ATTENTE_RH';
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-slate-50/60 rounded-2xl border border-slate-200/90 p-5 space-y-4 hover:border-slate-300 transition-all shadow-2xs"
+                >
+                  {/* En-tête Carte */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                        {initials}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base">{item.titre}</h3>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span className="font-semibold text-slate-700">{item.demandeurNom}</span>
+                          <span>({item.demandeurEmail})</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="self-start sm:self-auto">
+                      <DemandeStatusBadge statut={item.statut} />
+                    </div>
+                  </div>
+
+                  {/* ── Bloc Résumé : Demandeur, Motif, Dates & Durée ── */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-3.5 rounded-xl text-xs text-slate-700 border border-slate-200/70">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200">
+                        <User className="w-3.5 h-3.5 text-slate-600" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Demandeur
+                        </span>
+                        <span className="font-bold text-slate-900 block truncate">
+                          {item.demandeurNom || 'Non renseigné'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block truncate">
+                          {item.demandeurEmail}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                      <div className="overflow-hidden">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Type & Motif
+                        </span>
+                        <span className="font-medium text-slate-800 block truncate">
+                          {item.typeConge} — {item.motif || 'Non précisé'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                          Période & Durée
+                        </span>
+                        <span className="font-semibold text-slate-900 block">
+                          {item.dateDebut
+                            ? new Date(item.dateDebut).toLocaleDateString('fr-FR')
+                            : '-'}
+                          {' ➔ '}
+                          {item.dateFin
+                            ? new Date(item.dateFin).toLocaleDateString('fr-FR')
+                            : '-'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-bold">
+                          ({item.nombreJours} jour(s))
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                    {isPendingRH && (isDRH || isRH || isAdmin) ? (
+                      <>
+                        <button
+                          onClick={() => item.id && onTraiterConge(item.id, 'REFUSER', 'RH', undefined, item)}
+                          className="px-3.5 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                        >
+                          Refuser
+                        </button>
+                        <button
+                          onClick={() => item.id && onTraiterConge(item.id, 'APPROUVER', 'RH', undefined, item)}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-colors"
+                        >
+                          Valider DRH
+                        </button>
+                      </>
+                    ) : (item.statut === 'Accordée' || item.statut === 'APPROUVEE') ? (
                       <button
-                        onClick={() => item.id && onTraiterConge(item.id, 'APPROUVER', 'RH', undefined, item)}
-                        className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        Valider DRH
+                        <Printer className="w-4 h-4 text-white" />
+                        <span>Imprimer Attestation de Congé</span>
                       </button>
-                      <button
-                        onClick={() => item.id && onTraiterConge(item.id, 'REFUSER', 'RH', undefined, item)}
-                        className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer"
-                      >
-                        Refuser
-                      </button>
-                    </>
-                  )}
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

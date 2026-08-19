@@ -169,11 +169,11 @@ export default function DemandesPage() {
 
     setIsLoadingConges(true);
     try {
-      let url = `/api/demandes/conges?email=${encodeURIComponent(userEmail)}`;
+      let url = `/api/demandes/conges?email=${encodeURIComponent(userEmail)}&_t=${Date.now()}`;
       if (tab === 'validations_n1') url += '&role=n1';
       if (tab === 'validations_rh') url += '&role=rh';
 
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const list = data.demandes || [];
@@ -198,7 +198,7 @@ export default function DemandesPage() {
       let role = 'collaborateur';
       if (tab === 'validations_rh') role = isDRH ? 'drh' : 'rh';
 
-      const res = await fetch(`/api/demandes/domiciliation?role=${role}`);
+      const res = await fetch(`/api/demandes/domiciliation?role=${role}&_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setDomiciliationsList(data.demandes || []);
@@ -218,7 +218,7 @@ export default function DemandesPage() {
       let role = 'collaborateur';
       if (tab === 'validations_rh') role = isDRH ? 'drh' : 'rh';
 
-      const res = await fetch(`/api/demandes/attestation?role=${role}`);
+      const res = await fetch(`/api/demandes/attestation?role=${role}&_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setAttestationsList(data.demandes || []);
@@ -268,6 +268,31 @@ export default function DemandesPage() {
       return;
     }
 
+    // Mise à jour optimiste immédiate de l'interface
+    if (role === 'N1') {
+      setCongesN1List((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                statut: action === 'APPROUVER' ? 'EN_ATTENTE_RH' : 'Refusée',
+              }
+            : c
+        )
+      );
+    } else {
+      setCongesRhList((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                statut: action === 'APPROUVER' ? 'Accordée' : 'Refusée',
+              }
+            : c
+        )
+      );
+    }
+
     try {
       const res = await fetch('/api/demandes/conges/traiter', {
         method: 'POST',
@@ -288,10 +313,13 @@ export default function DemandesPage() {
       if (res.ok) {
         setRefusalModal({ isOpen: false });
         invalidateCongesCache();
-        loadCongesData(activeTab, true);
+        await loadCongesData(activeTab, true);
+      } else {
+        await loadCongesData(activeTab, true);
       }
     } catch (err) {
       console.error('Erreur traitement congé:', err);
+      await loadCongesData(activeTab, true);
     }
   };
 
@@ -306,6 +334,19 @@ export default function DemandesPage() {
       return;
     }
 
+    // Optimistic update
+    setDomiciliationsList((prev) =>
+      prev.map((d) =>
+        d.id === demandeId
+          ? {
+              ...d,
+              statut: action === 'VALIDER' ? 'VALIDEE_DRH' : 'REFUSEE_DRH',
+              motifRefus: motifRefusParam || d.motifRefus,
+            }
+          : d
+      )
+    );
+
     try {
       const res = await fetch('/api/demandes/domiciliation/traiter-drh', {
         method: 'POST',
@@ -314,14 +355,22 @@ export default function DemandesPage() {
       });
       if (res.ok) {
         setRefusalModal({ isOpen: false });
-        loadDomiciliationData(activeTab);
+        await loadDomiciliationData(activeTab);
+      } else {
+        await loadDomiciliationData(activeTab);
       }
     } catch (err) {
       console.error('Erreur traitement DRH Domiciliation:', err);
+      await loadDomiciliationData(activeTab);
     }
   };
 
   const handleTraiterDomiciliationRH = async (demandeId: string) => {
+    // Optimistic update
+    setDomiciliationsList((prev) =>
+      prev.map((d) => (d.id === demandeId ? { ...d, statut: 'TRAITEE' } : d))
+    );
+
     try {
       const res = await fetch('/api/demandes/domiciliation/traiter-rh', {
         method: 'POST',
@@ -329,10 +378,13 @@ export default function DemandesPage() {
         body: JSON.stringify({ demandeId }),
       });
       if (res.ok) {
-        loadDomiciliationData(activeTab);
+        await loadDomiciliationData(activeTab);
+      } else {
+        await loadDomiciliationData(activeTab);
       }
     } catch (err) {
       console.error('Erreur traitement RH Domiciliation:', err);
+      await loadDomiciliationData(activeTab);
     }
   };
 
@@ -347,6 +399,19 @@ export default function DemandesPage() {
       return;
     }
 
+    // Optimistic update
+    setAttestationsList((prev) =>
+      prev.map((a) =>
+        a.id === demandeId
+          ? {
+              ...a,
+              statut: action === 'VALIDER' ? 'VALIDEE_DRH' : 'REFUSEE_DRH',
+              motifRefus: motifRefusParam || a.motifRefus,
+            }
+          : a
+      )
+    );
+
     try {
       const res = await fetch('/api/demandes/attestation/traiter-drh', {
         method: 'POST',
@@ -355,14 +420,22 @@ export default function DemandesPage() {
       });
       if (res.ok) {
         setRefusalModal({ isOpen: false });
-        loadAttestationsData(activeTab);
+        await loadAttestationsData(activeTab);
+      } else {
+        await loadAttestationsData(activeTab);
       }
     } catch (err) {
       console.error('Erreur traitement DRH Attestation:', err);
+      await loadAttestationsData(activeTab);
     }
   };
 
   const handleTraiterAttestationRH = async (demandeId: string) => {
+    // Optimistic update
+    setAttestationsList((prev) =>
+      prev.map((a) => (a.id === demandeId ? { ...a, statut: 'TRAITEE' } : a))
+    );
+
     try {
       const res = await fetch('/api/demandes/attestation/traiter-rh', {
         method: 'POST',
@@ -370,10 +443,13 @@ export default function DemandesPage() {
         body: JSON.stringify({ demandeId }),
       });
       if (res.ok) {
-        loadAttestationsData(activeTab);
+        await loadAttestationsData(activeTab);
+      } else {
+        await loadAttestationsData(activeTab);
       }
     } catch (err) {
       console.error('Erreur traitement RH Attestation:', err);
+      await loadAttestationsData(activeTab);
     }
   };
 
