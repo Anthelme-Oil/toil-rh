@@ -201,133 +201,197 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         </div>
 
         {/* Titre du document */}
-        <div className="text-center my-8">
+        <div className="text-center my-6">
           <h1 className="text-2xl font-bold font-sans tracking-wider uppercase underline underline-offset-8 text-slate-900">
-            {isConge ? 'ATTESTATION DE CONGÉ PAYÉ' : 'ATTESTATION DE TRAVAIL'}
+            {isConge ? 'DEMANDE DE CONGÉ' : 'ATTESTATION DE TRAVAIL'}
           </h1>
         </div>
 
-        {/* Corps de l'attestation */}
-        <div className="space-y-5 text-base text-justify font-serif text-slate-800 leading-8 my-6">
-          <p>
-            Je soussigné, <strong>Directeur des Ressources Humaines</strong> de la société{' '}
-            <strong>{societeName}</strong>, atteste par la présente que :
-          </p>
-
-          <div className="bg-slate-50 p-5 rounded-lg border-l-4 border-slate-800 font-sans my-5 space-y-1.5 text-sm">
-            <p>
-              <strong>Nom & Prénom :</strong> {item.nomDemandeur.toUpperCase()}
-            </p>
-            <p>
-              <strong>Adresse E-mail :</strong> {item.emailDemandeur}
-            </p>
-            {item.poste && (
-              <p>
-                <strong>Fonction / Poste :</strong> {item.poste}
-              </p>
-            )}
-            <p>
-              <strong>Société d&apos;appartenance :</strong> {societeName}
-            </p>
-          </div>
-
-          {isConge ? (
-            <>
-              <p>
-                bénéficie d&apos;un <strong>{item.typeConge || 'Congé Payé'}</strong> régulièrement accordé et validé par la hiérarchie pour la période suivante :
-              </p>
-
-              <div className="bg-emerald-50/70 p-4 rounded-lg border border-emerald-200 font-sans my-3 space-y-1 text-sm text-slate-900">
-                <p>
-                  <strong>• Date de début :</strong> {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : '-'}
-                </p>
-                <p>
-                  <strong>• Date de reprise / Fin :</strong> {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : '-'}
-                </p>
-                <p>
-                  <strong>• Durée totale :</strong> {item.nombreJours || 1} jour(s) ouvrable(s)
-                </p>
-                {item.motif && (
-                  <p>
-                    <strong>• Motif / Précisions :</strong> {item.motif}
-                  </p>
+        {isConge ? (
+          /* Document Présentant la Demande de Congé */
+          <div className="space-y-6 font-sans">
+            {/* 1. Informations Collaborateur */}
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-2">
+                1. Informations du Collaborateur
+              </h2>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-500">Nom & Prénom :</span>
+                  <p className="font-bold text-slate-900 text-sm mt-0.5">{item.nomDemandeur.toUpperCase()}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Adresse E-mail :</span>
+                  <p className="font-semibold text-slate-800 text-xs mt-0.5">{item.emailDemandeur}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Société d&apos;appartenance :</span>
+                  <p className="font-bold text-emerald-800 text-xs mt-0.5">{societeName}</p>
+                </div>
+                {item.poste && (
+                  <div>
+                    <span className="text-slate-500">Fonction / Poste :</span>
+                    <p className="font-semibold text-slate-800 text-xs mt-0.5">{item.poste}</p>
+                  </div>
                 )}
               </div>
+            </div>
 
-              <p>
-                L&apos;intéressé(e) est autorisé(e) à suspendre ses activités professionnelles pendant ladite période et reprendra ses fonctions à l&apos;expiration de ce congé.
+            {/* 2. Caractéristiques & Période du Congé */}
+            <div className="bg-emerald-50/60 p-5 rounded-xl border border-emerald-200 space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-800 border-b border-emerald-200 pb-2">
+                2. Détails & Période du Congé
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-500">Type de congé :</span>
+                  <p className="font-bold text-slate-900 text-xs mt-0.5">{item.typeConge || 'Congé Payé'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Date de début :</span>
+                  <p className="font-bold text-slate-900 text-xs mt-0.5">
+                    {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : '-'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Date de reprise / Fin :</span>
+                  <p className="font-bold text-slate-900 text-xs mt-0.5">
+                    {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : '-'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Nombre de jours :</span>
+                  <p className="font-bold text-emerald-700 text-sm mt-0.5">
+                    {item.nombreJours || 1} jour(s) ouvrable(s)
+                  </p>
+                </div>
+                {item.motif && (
+                  <div className="col-span-2">
+                    <span className="text-slate-500">Motif / Observations :</span>
+                    <p className="font-medium text-slate-800 text-xs mt-0.5">{item.motif}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Approbateurs (Manager Approbateur & RH Approbateur) */}
+            <div className="space-y-3 pt-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <FileCheck className="w-4 h-4 text-emerald-700" />
+                <span>3. Visas des Approbateurs</span>
+              </h2>
+
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                {/* Manager Approbateur */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-extrabold uppercase text-[9px] text-slate-500">Manager Approbateur (N+1)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-100 text-emerald-800">
+                      Visa Accordé
+                    </span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs">{item.managerNom || 'Manager Hiérarchique N+1'}</p>
+                  {item.managerPoste && <p className="text-[10px] text-slate-600">{item.managerPoste}</p>}
+                  {item.managerEmail && <p className="text-[9px] text-slate-400 font-mono">{item.managerEmail}</p>}
+                  <p className="text-[9px] text-slate-500 pt-1.5 border-t border-slate-200 mt-1">
+                    Approuvé le : {item.dateValidationN1 ? new Date(item.dateValidationN1).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date(item.dateCreation).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+
+                {/* RH Approbateur */}
+                <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 space-y-1.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-extrabold uppercase text-[9px] text-emerald-800">RH Approbateur</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-600 text-white">
+                      Validé & Certifié
+                    </span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs">{item.drhNom || 'Direction des Ressources Humaines'}</p>
+                  <p className="text-[10px] text-slate-600">{item.drhPoste || 'Directeur des RH'}</p>
+                  <p className="text-[9px] text-slate-500 pt-1.5 border-t border-emerald-200 mt-1">
+                    Approuvé le : {item.dateValidationRH || item.dateValidationDRH ? new Date(item.dateValidationRH || item.dateValidationDRH!).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : dateDelivrance}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Zones de Signatures Autorisées (DRH & DG) */}
+            <div className="mt-8 pt-6 border-t-2 border-slate-200">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-6 text-center">
+                Signatures Autorisées
               </p>
-            </>
-          ) : (
-            <>
-              <p>
-                est bien employé(e) au sein de notre société et exerce ses fonctions en toute régularité.
-              </p>
-            </>
-          )}
+              <div className="grid grid-cols-2 gap-8 text-center font-sans">
+                <div className="space-y-14">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-900">Le Directeur des Ressources Humaines (DRH)</p>
+                    <p className="text-[10px] text-slate-500">Signature & Visa DRH</p>
+                  </div>
+                  <div className="border-t border-dashed border-slate-400 pt-2 text-[9px] text-slate-400">
+                    Cachet officiel & Signature
+                  </div>
+                </div>
 
-          <p>
-            La présente attestation est délivrée à l&apos;intéressé(e) sur sa demande, pour servir et valoir ce que de droit
-            {!isConge && item.motif ? `, notamment dans le cadre de : « ${item.motif} »` : '.'}
-          </p>
-        </div>
-
-        {/* Personnes ayant approuvé la demande (Circuit d'approbation & Visas) */}
-        {isConge && (
-          <div className="mt-8 pt-5 border-t-2 border-slate-200 font-sans">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
-              <FileCheck className="w-4 h-4 text-emerald-700 inline" />
-              <span>Circuit d&apos;approbation & Visas de validation</span>
+                <div className="space-y-14">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-900">La Direction Générale (DG)</p>
+                    <p className="text-[10px] text-slate-500">Signature & Visa DG</p>
+                  </div>
+                  <div className="border-t border-dashed border-slate-400 pt-2 text-[9px] text-slate-400">
+                    Cachet officiel & Signature
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Corps de l'attestation de travail classique */
+          <div className="space-y-5 text-base text-justify font-serif text-slate-800 leading-8 my-6">
+            <p>
+              Je soussigné, <strong>Directeur des Ressources Humaines</strong> de la société{' '}
+              <strong>{societeName}</strong>, atteste par la présente que :
             </p>
 
-            <div className="grid grid-cols-2 gap-4 text-xs text-slate-800">
-              {/* Approbation N+1 (Manager) */}
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold uppercase text-[9px] text-slate-500">1. Supérieur Hiérarchique (N+1)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-100 text-emerald-800">
-                    Visa Accordé
-                  </span>
-                </div>
-                <p className="font-bold text-slate-900 text-xs">{item.managerNom || 'Manager Hiérarchique N+1'}</p>
-                {item.managerPoste && <p className="text-[10px] text-slate-600">{item.managerPoste}</p>}
-                {item.managerEmail && <p className="text-[9px] text-slate-400 font-mono">{item.managerEmail}</p>}
-                <p className="text-[9px] text-slate-500 pt-1 border-t border-slate-200 mt-1.5">
-                  Approuvé le : {item.dateValidationN1 ? new Date(item.dateValidationN1).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date(item.dateCreation).toLocaleDateString('fr-FR')}
+            <div className="bg-slate-50 p-5 rounded-lg border-l-4 border-slate-800 font-sans my-5 space-y-1.5 text-sm">
+              <p>
+                <strong>Nom & Prénom :</strong> {item.nomDemandeur.toUpperCase()}
+              </p>
+              <p>
+                <strong>Adresse E-mail :</strong> {item.emailDemandeur}
+              </p>
+              {item.poste && (
+                <p>
+                  <strong>Fonction / Poste :</strong> {item.poste}
                 </p>
-              </div>
+              )}
+              <p>
+                <strong>Société d&apos;appartenance :</strong> {societeName}
+              </p>
+            </div>
 
-              {/* Validation RH / DRH */}
-              <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 space-y-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold uppercase text-[9px] text-emerald-700">2. Direction des Ressources Humaines</span>
-                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-600 text-white">
-                    Approuvé & Certifié
-                  </span>
+            <p>
+              est bien employé(e) au sein de notre société et exerce ses fonctions en toute régularité.
+            </p>
+
+            <p>
+              La présente attestation est délivrée à l&apos;intéressé(e) sur sa demande, pour servir et valoir ce que de droit
+              {item.motif ? `, notamment dans le cadre de : « ${item.motif} »` : '.'}
+            </p>
+
+            {/* Zone de Signature Officielle (Attestation de Travail) */}
+            <div className="mt-10 pt-4 flex justify-end">
+              <div className="text-center font-sans space-y-12 w-72">
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-900">Pour la Direction Générale</p>
+                  <p className="text-[11px] font-semibold text-slate-700">Le Directeur des Ressources Humaines</p>
                 </div>
-                <p className="font-bold text-slate-900 text-xs">{item.drhNom || 'Direction des Ressources Humaines'}</p>
-                <p className="text-[10px] text-slate-600">{item.drhPoste || 'Directeur des RH'}</p>
-                <p className="text-[9px] text-slate-500 pt-1 border-t border-emerald-200 mt-1.5">
-                  Approuvé le : {item.dateValidationRH || item.dateValidationDRH ? new Date(item.dateValidationRH || item.dateValidationDRH!).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : dateDelivrance}
-                </p>
+
+                <div className="border-t border-dashed border-slate-400 pt-2 text-[10px] text-slate-400">
+                  Cachet officiel & Signature autorisée
+                </div>
               </div>
             </div>
           </div>
         )}
-
-        {/* Zone de Signature Officielle */}
-        <div className="mt-10 pt-4 flex justify-end">
-          <div className="text-center font-sans space-y-12 w-72">
-            <div>
-              <p className="text-xs font-bold uppercase text-slate-900">Pour la Direction Générale</p>
-              <p className="text-[11px] font-semibold text-slate-700">Le Directeur des Ressources Humaines</p>
-            </div>
-
-            <div className="border-t border-dashed border-slate-400 pt-2 text-[10px] text-slate-400">
-              Cachet officiel & Signature autorisée
-            </div>
-          </div>
-        </div>
 
         {/* Footer bas de page */}
         <div className="mt-12 border-t border-slate-200 pt-3 text-center font-sans text-[9px] text-slate-400 space-y-0.5">
