@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const {
       titre,
       typeConge,
+      societe,
       dateDebut,
       dateFin,
       nombreJours,
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     const id = await creerDemandeConge({
       titre,
       typeConge: typeConge || 'conge_paye',
+      societe: societe || 'T-OIL',
       dateDebut,
       dateFin,
       nombreJours: parseFloat(nombreJours) || 1,

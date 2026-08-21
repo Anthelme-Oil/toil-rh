@@ -45,7 +45,7 @@ const communautes = [
     description: 'Partagez des ressources d\'apprentissage et des retours d\'expérience.',
     membres: 42,
     messages: 89,
-    couleur: 'from-purple-500 to-purple-700',
+    couleur: 'from-emerald-600 to-emerald-800',
     emoji: '📚',
   },
   {

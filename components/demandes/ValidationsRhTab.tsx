@@ -190,7 +190,7 @@ export function ValidationsRhTab({
                     {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
                       <button
                         onClick={() => onTraiterDomiciliationRH(item.id)}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         Marquer comme Traitée / Imprimée
@@ -343,7 +343,7 @@ export function ValidationsRhTab({
                     {item.statut === 'VALIDEE_DRH' && (isRH || isRHPrint || isAdmin) && (
                       <button
                         onClick={() => onTraiterAttestationRH(item.id)}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         Générer & Mettre à dispo
@@ -402,7 +402,7 @@ export function ValidationsRhTab({
                   {/* En-tête Carte */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
                         {initials}
                       </div>
                       <div>
@@ -439,7 +439,7 @@ export function ValidationsRhTab({
                     </div>
 
                     <div className="flex items-center gap-2.5">
-                      <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                      <FileText className="w-4 h-4 text-teal-600 shrink-0" />
                       <div className="overflow-hidden">
                         <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
                           Type & Motif
@@ -492,7 +492,7 @@ export function ValidationsRhTab({
                     ) : (item.statut === 'Accordée' || item.statut === 'APPROUVEE') ? (
                       <button
                         onClick={() => window.open(`/demandes/attestation/${item.id}`, '_blank')}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <Printer className="w-4 h-4 text-white" />
                         <span>Imprimer Attestation de Congé</span>

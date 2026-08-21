@@ -35,8 +35,8 @@ const CATEGORY_CONFIG: Record<
   },
   rh: {
     label: 'Guide & Avantages RH',
-    bg: 'bg-purple-500/10 border-purple-500/30',
-    text: 'text-purple-700',
+    bg: 'bg-teal-500/10 border-teal-500/30',
+    text: 'text-teal-700',
     icon: Award,
   },
 };

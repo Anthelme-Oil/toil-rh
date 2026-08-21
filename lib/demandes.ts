@@ -132,7 +132,11 @@ export async function creerDemandeConge(
     const now = new Date();
     const dateDeb = demande.dateDebut ? new Date(demande.dateDebut) : null;
     const dateF = demande.dateFin ? new Date(demande.dateFin) : null;
-    const donneesFormulaire = processedAttachments.length > 0 ? JSON.stringify({ piecesJointes: processedAttachments }) : null;
+
+    const extraData: Record<string, any> = {};
+    if (processedAttachments.length > 0) extraData.piecesJointes = processedAttachments;
+    if (demande.societe) extraData.societe = demande.societe;
+    const donneesFormulaire = Object.keys(extraData).length > 0 ? JSON.stringify(extraData) : null;
 
     const sql = `
       INSERT INTO demandes (
@@ -193,6 +197,7 @@ export function mapRowToDemandeConge(row: any): DemandeConge {
     id: row.id,
     titre: row.titre || 'Demande de congé',
     typeConge: (row.type_conge || 'conge_paye') as DemandeConge['typeConge'],
+    societe: extra.societe || 'T-OIL',
     dateDebut: row.date_debut ? new Date(row.date_debut).toISOString() : '',
     dateFin: row.date_fin ? new Date(row.date_fin).toISOString() : '',
     nombreJours: row.nombre_jours || 1,

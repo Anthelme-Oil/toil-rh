@@ -213,8 +213,8 @@ export function ValidationsN1Tab({
                     </>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs text-teal-900 bg-teal-50 border border-teal-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-teal-600" />
                         Validée au niveau N+1 — Transmise à la DRH
                       </span>
                     </div>

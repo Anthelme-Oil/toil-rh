@@ -111,7 +111,7 @@ export function DemandeAttestationModal({
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95 my-8">
         {/* ── En-tête ── */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-800 p-6 text-white relative">
+        <div className="bg-gradient-to-r from-emerald-800 via-teal-700 to-emerald-900 p-6 text-white relative">
           <button
             onClick={onClose}
             className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
@@ -124,7 +124,7 @@ export function DemandeAttestationModal({
             </div>
             <div>
               <h2 className="text-xl font-bold">Demande d&apos;Attestation de Travail</h2>
-              <p className="text-xs text-blue-100 mt-0.5">
+              <p className="text-xs text-emerald-100 mt-0.5">
                 Complétez les informations pour la délivrance de votre attestation
               </p>
             </div>
@@ -164,7 +164,7 @@ export function DemandeAttestationModal({
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
                   placeholder="Votre nom"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
                 />
               </div>
 
@@ -178,7 +178,7 @@ export function DemandeAttestationModal({
                   value={prenom}
                   onChange={(e) => setPrenom(e.target.value)}
                   placeholder="Votre prénom"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
                 />
               </div>
             </div>
@@ -194,7 +194,7 @@ export function DemandeAttestationModal({
                     key={item}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
                       societe === item
-                        ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 font-bold'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -204,7 +204,7 @@ export function DemandeAttestationModal({
                       value={item}
                       checked={societe === item}
                       onChange={() => setSociete(item)}
-                      className="text-blue-600 focus:ring-blue-500"
+                      className="text-emerald-600 focus:ring-emerald-500"
                     />
                     {item}
                   </label>
@@ -223,7 +223,7 @@ export function DemandeAttestationModal({
                 value={emailPro}
                 onChange={(e) => setEmailPro(e.target.value)}
                 placeholder="nom@togosh.com"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
               />
             </div>
 
@@ -244,7 +244,7 @@ export function DemandeAttestationModal({
                     key={m}
                     className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
                       motif === m
-                        ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 font-bold'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -254,7 +254,7 @@ export function DemandeAttestationModal({
                       value={m}
                       checked={motif === m}
                       onChange={() => setMotif(m as any)}
-                      className="text-blue-600 focus:ring-blue-500"
+                      className="text-emerald-600 focus:ring-emerald-500"
                     />
                     {m}
                   </label>
@@ -289,7 +289,7 @@ export function DemandeAttestationModal({
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-700 via-indigo-700 to-emerald-800 hover:from-blue-800 hover:to-emerald-900 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 bg-gradient-to-r from-emerald-800 via-teal-700 to-emerald-900 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {status === 'loading' ? (
                   <>

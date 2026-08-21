@@ -81,6 +81,7 @@ export interface DemandeConge {
   id?: string;
   titre: string;
   typeConge: TypeConge;
+  societe?: 'T-OIL' | 'STSL' | string;
   dateDebut: string;
   dateFin: string;
   nombreJours: number;

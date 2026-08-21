@@ -121,19 +121,21 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
 
   const isConge = item.typeDemande === 'attestation_conge' || Boolean(item.dateDebut || item.typeConge);
 
+  const societeUpper = (item.societe || 'T-OIL').toUpperCase();
+
   const societeName =
-    item.societe === 'STSL'
+    societeUpper === 'STSL'
       ? 'SOCIÉTÉ TOGOLAISE DE STOCKAGE DE LOMÉ (STSL S.A.)'
-      : item.societe === 'COMPEL'
+      : societeUpper === 'COMPEL'
       ? 'COMPEL S.A.'
       : 'T-OIL S.A.';
 
   const logoSrc =
-    item.societe === 'STSL'
+    societeUpper === 'STSL'
       ? '/images/STSL_TG.png'
-      : item.societe === 'COMPEL'
+      : societeUpper === 'COMPEL'
       ? '/images/E1 STSL.png'
-      : '/images/E1 T-OIL.png';
+      : '/images/ToilTG.png';
 
   const dateDelivrance = item.dateTraitementRH || item.dateValidationRH
     ? new Date(item.dateTraitementRH || item.dateValidationRH!).toLocaleDateString('fr-FR', {
@@ -173,7 +175,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         {/* Header Entête Officielle */}
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-5 mb-8">
           <div className="space-y-1">
-            <div className="relative w-36 h-14">
+            <div className="relative w-44 h-16">
               <Image
                 src={logoSrc}
                 alt={item.societe || 'Société'}

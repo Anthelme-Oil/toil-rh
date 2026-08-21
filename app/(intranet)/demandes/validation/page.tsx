@@ -446,15 +446,15 @@ export default function ValidationDemandesPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => window.open(`/demandes/attestation/${demande.id}`, '_blank')}
-                        className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Printer className="w-4 h-4 text-purple-600" />
+                        <Printer className="w-4 h-4 text-emerald-700" />
                         <span>Imprimer l&apos;Attestation</span>
                       </button>
                     </div>
                   ) : activeTab === 'n1' && !isPendingN1 ? (
-                    <span className="text-xs text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs text-teal-900 bg-teal-50 border border-teal-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600" />
                       Validée par vous — Transmise à la DRH
                     </span>
                   ) : (isPendingN1 || isPendingRH) && ((activeTab === 'n1' && (isManager || isAdmin)) || (activeTab === 'rh' && (isDRH || isRH || isAdmin))) ? (

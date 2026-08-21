@@ -28,6 +28,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
   const currentNom = propNom || contextName || currentEmail.split('@')[0];
 
   const [typeConge, setTypeConge] = useState<TypeConge>('autre');
+  const [societe, setSociete] = useState<'T-OIL' | 'STSL'>('T-OIL');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [nombreJours, setNombreJours] = useState(1);
@@ -158,6 +159,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
         body: JSON.stringify({
           titre: 'Demande de congé',
           typeConge,
+          societe,
           dateDebut,
           dateFin,
           nombreJours,
@@ -228,21 +230,35 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
               </div>
             )}
 
-            {/* 1. Type de congé (EN PREMIER CHAMP DU FORMULAIRE) */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
-              <select
-                value={typeConge}
-                onChange={(e) => setTypeConge(e.target.value as TypeConge)}
-                className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-              >
-                <option value="autre">Autre</option>
-                <option value="conge_paye">Congé Payé</option>
-                <option value="maladie">Arrêt Maladie</option>
-                <option value="maternite_paternite">Maternité / Paternité</option>
-                <option value="evenement_familial">Événement Familial</option>
-                <option value="sans_solde">Congé Sans Solde</option>
-              </select>
+            {/* 1. Type de congé & Société */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
+                <select
+                  value={typeConge}
+                  onChange={(e) => setTypeConge(e.target.value as TypeConge)}
+                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                >
+                  <option value="autre">Autre</option>
+                  <option value="conge_paye">Congé Payé</option>
+                  <option value="maladie">Arrêt Maladie</option>
+                  <option value="maternite_paternite">Maternité / Paternité</option>
+                  <option value="evenement_familial">Événement Familial</option>
+                  <option value="sans_solde">Congé Sans Solde</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Société d&apos;appartenance</label>
+                <select
+                  value={societe}
+                  onChange={(e) => setSociete(e.target.value as 'T-OIL' | 'STSL')}
+                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary font-bold"
+                >
+                  <option value="T-OIL">T-OIL S.A.</option>
+                  <option value="STSL">STSL S.A.</option>
+                </select>
+              </div>
             </div>
 
             {/* 2. Période (Date début congé & Date fin congé) */}

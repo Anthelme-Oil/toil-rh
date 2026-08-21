@@ -37,7 +37,7 @@ const KIT_ITEMS: KitItem[] = [
     titre: 'Guide Mutuelle, Santé & Avantages RH',
     description: 'Détails des garanties de santé, couverture famille et démarches de souscription.',
     icon: CreditCard,
-    color: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
+    color: 'bg-teal-500/10 text-teal-700 border-teal-500/20',
     badge: 'PDF',
     taille: '2.8 Mo',
   },

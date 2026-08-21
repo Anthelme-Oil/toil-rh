@@ -18,11 +18,11 @@ interface UserAutocompleteProps {
 
 // Couleurs de dégradé élégantes pour les avatars
 const AVATAR_GRADIENTS = [
-  'from-blue-500 to-indigo-600',
-  'from-emerald-500 to-teal-600',
-  'from-purple-500 to-pink-600',
+  'from-emerald-600 to-teal-700',
+  'from-teal-600 to-cyan-700',
+  'from-emerald-500 to-green-700',
   'from-amber-500 to-orange-600',
-  'from-cyan-500 to-blue-600',
+  'from-cyan-600 to-teal-800',
 ];
 
 function getInitials(name: string): string {

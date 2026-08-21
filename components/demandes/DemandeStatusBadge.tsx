@@ -24,9 +24,9 @@ export function DemandeStatusBadge({ statut, className = '' }: DemandeStatusBadg
   ) {
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-900 border border-indigo-200/80 flex items-center gap-1.5 shadow-2xs ${className}`}
+        className={`px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-900 border border-teal-200/80 flex items-center gap-1.5 shadow-2xs ${className}`}
       >
-        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+        <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
         <span>EN ATTENTE RH</span>
       </span>
     );
@@ -41,9 +41,9 @@ export function DemandeStatusBadge({ statut, className = '' }: DemandeStatusBadg
   ) {
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200/80 flex items-center gap-1.5 shadow-2xs ${className}`}
+        className={`px-3 py-1 rounded-full text-xs font-bold bg-cyan-50 text-cyan-900 border border-cyan-200/80 flex items-center gap-1.5 shadow-2xs ${className}`}
       >
-        <Printer className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+        <Printer className="w-3.5 h-3.5 text-cyan-600 shrink-0" />
         <span>EN ATTENTE IMPRESSION</span>
       </span>
     );

@@ -76,7 +76,7 @@ function getCatColor(cat: string) {
   const colors: Record<string, string> = {
     HSE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     'IT & Digital': 'bg-blue-50 text-blue-700 border-blue-200',
-    Management: 'bg-purple-50 text-purple-700 border-purple-200',
+    Management: 'bg-teal-50 text-teal-700 border-teal-200',
   };
   return colors[cat] || 'bg-surface-alt text-text-secondary border-border';
 }
