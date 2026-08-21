@@ -270,122 +270,169 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         )}
 
         {isConge ? (
-          /* Document Officiel Congé conformité exacte au modèle image */
-          <div className="space-y-6 text-sm text-slate-900 leading-relaxed px-1">
-            <p className="text-base font-normal pt-2">
-              La Directrice des Ressources Humaines de <strong>{societeShortName}</strong> atteste par la présente que :
-            </p>
+          /* Header et document officiel Attestation de congé selon les modèles Word STSL & T-Oil */
+          <div>
+            <div className="flex justify-between items-start mb-10 border-b border-slate-200 pb-6">
+              {/* Logo à gauche */}
+              <div className="relative w-48 h-20">
+                <Image
+                  src={logoSrc}
+                  alt={item.societe || 'Société'}
+                  fill
+                  className="object-contain object-left"
+                  priority
+                />
+              </div>
 
-            {/* Identité Collaborateur */}
-            <div className="space-y-2 pl-2 sm:pl-4">
-              <div className="flex items-baseline">
-                <span className="font-bold w-40 shrink-0">Mr, Mlle, Mme</span>
-                <span className="font-normal text-slate-900">{item.nomDemandeur.toUpperCase()}</span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="font-bold w-40 shrink-0">Matricule</span>
-                <span>{item.matricule || item.id.slice(0, 8).toUpperCase()}</span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="font-bold w-40 shrink-0">Service</span>
-                <span>{item.service || 'Direction Générale'}</span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="font-bold w-40 shrink-0">Fonction</span>
-                <span>{item.poste || item.fonction || 'Collaborateur'}</span>
+              {/* Coordonnées de l'entreprise à droite */}
+              <div className="text-right text-xs font-serif text-slate-800 leading-snug space-y-0.5 font-medium">
+                {societeUpper === 'STSL' ? (
+                  <>
+                    <p className="font-bold text-slate-900 text-sm">Société Togolaise de Stockage Lomé</p>
+                    <p className="font-bold text-slate-900">STSL</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-slate-900 text-sm">Togo Oil Company SA</p>
+                    <p className="font-bold text-slate-900">T-Oil</p>
+                  </>
+                )}
+                <p>Route d’Aného</p>
+                <p>(Zone Industrielle)</p>
+                <p>B.P. 797 Lomé-Togo</p>
+                <p>Tél. : (228) 22 23 72 00/01</p>
               </div>
             </div>
 
-            {/* Détails du Congé */}
-            <div className="space-y-2 pt-3">
-              <p className="font-bold text-base text-slate-900">Bénéficie d’un congé :</p>
-              <div className="space-y-2 pl-6 sm:pl-10">
-                <div className="flex items-baseline">
-                  <span className="font-bold w-40 shrink-0">Type de congé</span>
-                  <span>{item.typeConge || 'Congé Payé'}</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-40 shrink-0">Durée</span>
-                  <span>{item.nombreJours || 1} jour(s)</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-40 shrink-0">Du</span>
-                  <span>{formatDate(item.dateDebut)}</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-40 shrink-0">Au</span>
-                  <span>{formatDate(item.dateFin)}</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-40 shrink-0">Date de reprise</span>
-                  <span>{item.dateReprise ? formatDate(item.dateReprise) : formatDate(item.dateFin)}</span>
-                </div>
-              </div>
+            {/* Titre central souligné */}
+            <div className="text-center my-8">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-wider uppercase underline underline-offset-8 text-slate-900 font-serif">
+                ATTESTATION DE CONGÉ
+              </h1>
             </div>
 
-            {/* Validation Manager Hiérarchique */}
-            <div className="space-y-2 pt-4">
-              <p className="font-bold text-sm uppercase tracking-wide text-slate-900">
-                VALIDATION DU MANAGER HIÉRARCHIQUE :
+            {/* Corps de l'attestation en format lettre officielle Word */}
+            <div className="space-y-6 text-base font-serif text-slate-900 leading-relaxed px-1">
+              <p className="text-justify">
+                Nous soussignés,{' '}
+                <strong>
+                  {societeUpper === 'STSL'
+                    ? 'STSL'
+                    : 'Togo Oil Company (T-Oil)'}
+                </strong>
+                , attestons par la présente que{' '}
+                <strong>Monsieur / Madame</strong>{' '}
+                <span className="font-bold underline">
+                  {item.nomDemandeur.toUpperCase()}
+                </span>{' '}
+                est employé(e) au sein de notre Société et occupe actuellement le poste de{' '}
+                <span className="font-bold underline">
+                  {item.poste || item.fonction || '....................................................................'}
+                </span>{' '}
+                au sein du service / département{' '}
+                <span className="font-bold underline">
+                  {item.service || '....................................................................'}
+                </span>
+                .
               </p>
-              <div className="space-y-2 pl-6 sm:pl-10">
-                <div className="flex items-baseline">
-                  <span className="font-bold w-44 shrink-0">Validé par</span>
-                  <span className="font-medium">{item.managerNom || 'Manager Hiérarchique (N+1)'}</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-44 shrink-0">Date de validation</span>
-                  <span>{formatDate(item.dateValidationN1 || item.dateCreation)}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Approbation Direction des Ressources Humaines */}
-            <div className="space-y-2 pt-4">
-              <p className="font-bold text-sm uppercase tracking-wide text-slate-900">
-                APPROBATION DE LA DIRECTION DES RESSOURCES HUMAINES :
+              <p className="text-justify">
+                L&apos;intéressé(e) bénéficie d&apos;un congé de type{' '}
+                <span className="font-bold underline">
+                  {item.typeConge || '....................................................................'}
+                </span>
+                , du{' '}
+                <span className="font-bold underline">
+                  {formatDate(item.dateDebut)}
+                </span>{' '}
+                au{' '}
+                <span className="font-bold underline">
+                  {formatDate(item.dateFin)}
+                </span>
+                , soit{' '}
+                <span className="font-bold underline">
+                  {item.nombreJours || '...........'}
+                </span>{' '}
+                jours.
               </p>
-              <div className="space-y-2 pl-6 sm:pl-10">
-                <div className="flex items-baseline">
-                  <span className="font-bold w-44 shrink-0">Approuvé par</span>
-                  <span className="font-medium">{item.drhNom || 'Direction des Ressources Humaines'}</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold w-44 shrink-0">Date d’approbation</span>
-                  <span>{formatDate(item.dateValidationRH || item.dateValidationDRH || item.dateCreation)}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Paragraphe d'attestation final */}
-            <p className="pt-6 text-justify leading-relaxed text-slate-900">
-              La présente attestation confirme que le congé ci-dessus a été régulièrement validé et approuvé conformément à la procédure interne. Elle est délivrée à l’intéressé(e) pour servir et valoir ce que de droit.
-            </p>
-
-            {/* Fait à Lomé */}
-            <div className="text-right pt-4 pr-2">
-              <p className="font-normal text-slate-900">
-                Fait à Lomé, le {formatDate(item.dateValidationRH || item.dateValidationDRH || new Date().toISOString())}
+              <p className="text-justify">
+                La reprise de service est prévue le{' '}
+                <span className="font-bold underline">
+                  {item.dateReprise ? formatDate(item.dateReprise) : formatDate(item.dateFin)}
+                </span>
+                .
               </p>
-            </div>
 
-            {/* Signatures Autorisées (DRH et DG) */}
-            <div className="grid grid-cols-2 gap-8 text-center pt-10 pb-6">
-              <div className="space-y-16">
-                <div>
-                  <p className="font-bold text-slate-900 text-sm">La Directrice des Ressources Humaines</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600">Signature et cachet</p>
+              <p className="text-justify pt-2">
+                En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
+              </p>
+
+              {/* Fait à Lomé */}
+              <div className="pt-4">
+                <p>
+                  Fait à Lomé, le{' '}
+                  <span className="font-bold underline">
+                    {dateDelivranceCourt}
+                  </span>
+                </p>
+              </div>
+
+              {/* Circuit de validation */}
+              <div className="pt-6 space-y-2 font-serif text-sm">
+                <p className="font-bold text-base text-slate-900">Circuit de validation</p>
+
+                <div className="space-y-1.5 pl-2">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-bold">Validé par :</span>
+                    <span className="font-medium underline min-w-[200px]">
+                      {item.managerNom || '................................................................'}
+                    </span>
+                    <span className="italic text-slate-700">(Manager hiérarchique)</span>
+                    <span className="font-bold ml-4">Date :</span>
+                    <span className="underline">
+                      {formatDate(item.dateValidationN1 || item.dateCreation)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline gap-2 pt-1">
+                    <span className="font-bold">Approuvé par :</span>
+                    <span className="font-medium underline min-w-[200px]">
+                      {item.drhNom || '................................................................'}
+                    </span>
+                    <span className="italic text-slate-700">(Directrice des Ressources Humaines)</span>
+                    <span className="font-bold ml-4">Date :</span>
+                    <span className="underline">
+                      {formatDate(item.dateValidationRH || item.dateValidationDRH || item.dateCreation)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-16">
-                <div>
-                  <p className="font-bold text-slate-900 text-sm">Le Directeur Général</p>
+              {/* Signatures autorisées DRH & DG */}
+              <div className="grid grid-cols-2 gap-8 text-center pt-12 pb-6 font-sans">
+                <div className="space-y-12">
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm">La Directrice des Ressources Humaines</p>
+                    <p className="text-xs text-slate-600 italic pt-1">Signature et cachet</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">
+                      Nom : <span className="underline">{item.drhNom || '...................................................'}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-600">Signature et cachet</p>
+
+                <div className="space-y-12">
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm">Le Directeur Général</p>
+                    <p className="text-xs text-slate-600 italic pt-1">Signature et cachet</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">
+                      Nom : <span className="underline">...................................................</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
