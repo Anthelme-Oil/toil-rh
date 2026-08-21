@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, use } from 'react';
-import { Printer, ArrowLeft, Loader2 } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2, FileCheck } from 'lucide-react';
 import Image from 'next/image';
 
 interface AttestationItem {
@@ -27,6 +27,20 @@ interface AttestationItem {
   dateDebut?: string;
   dateFin?: string;
   nombreJours?: number;
+
+  // Circuit de validation & personnes ayant approuvé la demande
+  managerNom?: string;
+  managerEmail?: string;
+  managerPoste?: string;
+  dateValidationN1?: string;
+  statutN1?: string;
+  commentaireN1?: string;
+
+  drhNom?: string;
+  drhPoste?: string;
+  dateValidationRH?: string;
+  statutRH?: string;
+  commentaireRH?: string;
 }
 
 export default function PageAttestationDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -121,8 +135,8 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       ? '/images/E1 STSL.png'
       : '/images/E1 T-OIL.png';
 
-  const dateDelivrance = item.dateTraitementRH
-    ? new Date(item.dateTraitementRH).toLocaleDateString('fr-FR', {
+  const dateDelivrance = item.dateTraitementRH || item.dateValidationRH
+    ? new Date(item.dateTraitementRH || item.dateValidationRH!).toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -155,9 +169,9 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       </div>
 
       {/* Sheet A4 Canvas (Zone imprimable) */}
-      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-sm p-12 sm:p-16 border border-slate-300 print:shadow-none print:border-none print:p-4 print:w-full print:max-w-none text-slate-900 font-serif leading-relaxed">
+      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-sm p-10 sm:p-14 border border-slate-300 print:shadow-none print:border-none print:p-4 print:w-full print:max-w-none text-slate-900 font-serif leading-relaxed">
         {/* Header Entête Officielle */}
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-6 mb-10">
+        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-5 mb-8">
           <div className="space-y-1">
             <div className="relative w-36 h-14">
               <Image
@@ -185,20 +199,20 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         </div>
 
         {/* Titre du document */}
-        <div className="text-center my-10">
+        <div className="text-center my-8">
           <h1 className="text-2xl font-bold font-sans tracking-wider uppercase underline underline-offset-8 text-slate-900">
             {isConge ? 'ATTESTATION DE CONGÉ PAYÉ' : 'ATTESTATION DE TRAVAIL'}
           </h1>
         </div>
 
         {/* Corps de l'attestation */}
-        <div className="space-y-6 text-base text-justify font-serif text-slate-800 leading-8 my-8">
+        <div className="space-y-5 text-base text-justify font-serif text-slate-800 leading-8 my-6">
           <p>
             Je soussigné, <strong>Directeur des Ressources Humaines</strong> de la société{' '}
             <strong>{societeName}</strong>, atteste par la présente que :
           </p>
 
-          <div className="bg-slate-50 p-6 rounded-lg border-l-4 border-slate-800 font-sans my-6 space-y-2 text-sm">
+          <div className="bg-slate-50 p-5 rounded-lg border-l-4 border-slate-800 font-sans my-5 space-y-1.5 text-sm">
             <p>
               <strong>Nom & Prénom :</strong> {item.nomDemandeur.toUpperCase()}
             </p>
@@ -221,7 +235,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
                 bénéficie d&apos;un <strong>{item.typeConge || 'Congé Payé'}</strong> régulièrement accordé et validé par la hiérarchie pour la période suivante :
               </p>
 
-              <div className="bg-emerald-50/70 p-5 rounded-lg border border-emerald-200 font-sans my-4 space-y-1.5 text-sm text-slate-900">
+              <div className="bg-emerald-50/70 p-4 rounded-lg border border-emerald-200 font-sans my-3 space-y-1 text-sm text-slate-900">
                 <p>
                   <strong>• Date de début :</strong> {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : '-'}
                 </p>
@@ -256,9 +270,52 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
           </p>
         </div>
 
+        {/* Personnes ayant approuvé la demande (Circuit d'approbation & Visas) */}
+        {isConge && (
+          <div className="mt-8 pt-5 border-t-2 border-slate-200 font-sans">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
+              <FileCheck className="w-4 h-4 text-emerald-700 inline" />
+              <span>Circuit d&apos;approbation & Visas de validation</span>
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 text-xs text-slate-800">
+              {/* Approbation N+1 (Manager) */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-extrabold uppercase text-[9px] text-slate-500">1. Supérieur Hiérarchique (N+1)</span>
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-100 text-emerald-800">
+                    Visa Accordé
+                  </span>
+                </div>
+                <p className="font-bold text-slate-900 text-xs">{item.managerNom || 'Manager Hiérarchique N+1'}</p>
+                {item.managerPoste && <p className="text-[10px] text-slate-600">{item.managerPoste}</p>}
+                {item.managerEmail && <p className="text-[9px] text-slate-400 font-mono">{item.managerEmail}</p>}
+                <p className="text-[9px] text-slate-500 pt-1 border-t border-slate-200 mt-1.5">
+                  Approuvé le : {item.dateValidationN1 ? new Date(item.dateValidationN1).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date(item.dateCreation).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+
+              {/* Validation RH / DRH */}
+              <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 space-y-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-extrabold uppercase text-[9px] text-emerald-700">2. Direction des Ressources Humaines</span>
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-600 text-white">
+                    Approuvé & Certifié
+                  </span>
+                </div>
+                <p className="font-bold text-slate-900 text-xs">{item.drhNom || 'Direction des Ressources Humaines'}</p>
+                <p className="text-[10px] text-slate-600">{item.drhPoste || 'Directeur des RH'}</p>
+                <p className="text-[9px] text-slate-500 pt-1 border-t border-emerald-200 mt-1.5">
+                  Approuvé le : {item.dateValidationRH || item.dateValidationDRH ? new Date(item.dateValidationRH || item.dateValidationDRH!).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : dateDelivrance}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Zone de Signature Officielle */}
-        <div className="mt-14 pt-6 flex justify-end">
-          <div className="text-center font-sans space-y-14 w-72">
+        <div className="mt-10 pt-4 flex justify-end">
+          <div className="text-center font-sans space-y-12 w-72">
             <div>
               <p className="text-xs font-bold uppercase text-slate-900">Pour la Direction Générale</p>
               <p className="text-[11px] font-semibold text-slate-700">Le Directeur des Ressources Humaines</p>
@@ -271,7 +328,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         </div>
 
         {/* Footer bas de page */}
-        <div className="mt-16 border-t border-slate-200 pt-4 text-center font-sans text-[9px] text-slate-400 space-y-0.5">
+        <div className="mt-12 border-t border-slate-200 pt-3 text-center font-sans text-[9px] text-slate-400 space-y-0.5">
           <p className="font-bold text-slate-600">{societeName}</p>
           <p>Document généré et certifié électroniquement via le Portail Intranet T-OIL/STSL/COMPEL</p>
         </div>

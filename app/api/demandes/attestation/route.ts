@@ -35,6 +35,18 @@ export async function GET(request: NextRequest) {
       }
 
       if (row.type_demande === 'CONGE') {
+        let managerNom = row.email_manager ? row.email_manager.split('@')[0] : 'Supérieur Hiérarchique N+1';
+        let managerPoste = 'Supérieur Hiérarchique (N+1)';
+        if (row.email_manager) {
+          try {
+            const mgrRows = await query<any>('SELECT nom, poste FROM utilisateurs WHERE LOWER(email) = ?', [row.email_manager.toLowerCase().trim()]);
+            if (mgrRows && mgrRows.length > 0) {
+              managerNom = mgrRows[0].nom || managerNom;
+              managerPoste = mgrRows[0].poste || managerPoste;
+            }
+          } catch {}
+        }
+
         const item = {
           id: row.id,
           titre: row.titre || 'Attestation de Congé Payé',
@@ -53,8 +65,20 @@ export async function GET(request: NextRequest) {
           motif: row.motif || extra.motif || 'Congé individuel',
           emailPro: row.email_demandeur || '',
           dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
-          dateValidationDRH: row.date_validation_rh || row.date_validation_n1 ? new Date(row.date_validation_rh || row.date_validation_n1).toISOString() : null,
-          dateTraitementRH: row.date_validation_rh ? new Date(row.date_validation_rh).toISOString() : null,
+
+          // circuit d'approbation pour affichage bas de page PDF
+          managerNom: managerNom,
+          managerEmail: row.email_manager || '',
+          managerPoste: managerPoste,
+          dateValidationN1: row.date_validation_n1 ? new Date(row.date_validation_n1).toISOString() : null,
+          statutN1: row.statut_n1 || (row.date_validation_n1 ? 'APPROUVE' : 'EN_ATTENTE'),
+          commentaireN1: row.commentaire_n1 || '',
+
+          drhNom: 'Direction des Ressources Humaines',
+          drhPoste: 'Directeur des Ressources Humaines',
+          dateValidationRH: row.date_validation_rh ? new Date(row.date_validation_rh).toISOString() : (row.date_validation_n1 ? new Date(row.date_validation_n1).toISOString() : null),
+          statutRH: row.statut_rh || (row.date_validation_rh || row.statut === 'APPROUVE' ? 'APPROUVE' : 'EN_ATTENTE'),
+          commentaireRH: row.commentaire_rh || '',
         };
         return Response.json({ success: true, demande: item, demandes: [item] });
       }
