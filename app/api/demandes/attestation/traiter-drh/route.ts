@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
   }
 
   const perms = await getUserPermissionsByEmail(userEmail);
-  if (!perms.isDRH && !perms.isAdmin && !perms.isRH) {
-    return Response.json({ error: 'Accès réservé au service DRH/RH' }, { status: 403 });
+  if (!perms.isDRH && !perms.isAdmin) {
+    return Response.json({ error: 'Accès réservé au service DRH' }, { status: 403 });
   }
 
   try {

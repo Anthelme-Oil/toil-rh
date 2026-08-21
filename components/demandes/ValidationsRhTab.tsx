@@ -474,7 +474,7 @@ export function ValidationsRhTab({
 
                   {/* Actions Footer */}
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-                    {isPendingRH && (isDRH || isRH || isAdmin) ? (
+                    {isPendingRH && (isDRH || isAdmin) ? (
                       <>
                         <button
                           onClick={() => item.id && onTraiterConge(item.id, 'REFUSER', 'RH', undefined, item)}

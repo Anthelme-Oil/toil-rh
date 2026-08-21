@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // Vérification fine du rôle demandé vs permissions réelles
-    if (role === 'RH' && !callerPerms.isDRH && !callerPerms.isRH && !callerPerms.isAdmin) {
+    if (role === 'RH' && !callerPerms.isDRH && !callerPerms.isAdmin) {
       return NextResponse.json(
         { error: 'Seuls la DRH et les Administrateurs peuvent effectuer la validation finale.' },
         { status: 403 }
