@@ -208,39 +208,8 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
 
       {/* Sheet A4 Canvas (Zone imprimable) */}
       <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-sm p-10 sm:p-14 border border-slate-300 print:shadow-none print:border-none print:p-4 print:w-full print:max-w-none text-slate-900 leading-relaxed font-sans">
-        {/* Header Entête Officielle sous forme d'encadrement */}
-        {isConge ? (
-          <div className="border-2 border-slate-900 mb-8">
-            <div className="grid grid-cols-12 divide-x-2 divide-slate-900 border-b-2 border-slate-900">
-              {/* Colonne 1: Logo */}
-              <div className="col-span-4 p-3 flex items-center justify-center bg-white min-h-[95px]">
-                <div className="relative w-40 h-16">
-                  <Image
-                    src={logoSrc}
-                    alt={item.societe || 'Société'}
-                    fill
-                    className="object-contain object-center"
-                    priority
-                  />
-                </div>
-              </div>
-
-              {/* Colonne 2: Titre central */}
-              <div className="col-span-5 p-3 flex items-center justify-center font-bold text-base sm:text-lg text-slate-900 text-center tracking-wide uppercase bg-white">
-                ATTESTATION DE CONGÉ
-              </div>
-
-              {/* Colonne 3: Métadonnées de référence */}
-              <div className="col-span-3 p-3 text-[11px] text-slate-800 space-y-0.5 flex flex-col justify-center bg-white">
-                <p>Référence : EN__ TGRH __</p>
-                <p>IR : __</p>
-                <p>Date d&apos;application : {dateDelivranceCourt}</p>
-                <p>Page 1 sur 1</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Header classique pour attestation de travail */
+        {/* Header classique uniquement pour attestation de travail */}
+        {!isConge && (
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-5 mb-8">
             <div className="space-y-1">
               <div className="relative w-44 h-16">
