@@ -36,15 +36,24 @@ export default function Navbar() {
     ...(isAdmin ? [{ label: '⚙️ Admin', href: '/admin/roles' }] : []),
   ];
 
-  const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/';
+  const activeHref = (() => {
+    let bestMatch = '';
+    for (const link of navLinks) {
+      const isMatch =
+        link.href === '/'
+          ? pathname === '/'
+          : pathname === link.href || pathname.startsWith(link.href + '/');
+      if (isMatch && link.href.length > bestMatch.length) {
+        bestMatch = link.href;
+      }
     }
-    return pathname === href || pathname.startsWith(href + '/');
-  };
+    return bestMatch;
+  })();
+
+  const isActive = (href: string) => href === activeHref;
 
   return (
-    <header className="sticky top-0 z-50 w-full transition-all duration-200">
+    <header className="sticky top-0 z-50 w-full transition-all duration-200 print:hidden">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4">
         <div
           className="bg-white/95 backdrop-blur-md rounded-2xl border border-border/80 px-3 sm:px-5 shadow-sm transition-all duration-200"

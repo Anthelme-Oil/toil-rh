@@ -1,12 +1,12 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════
-// Page Document Officiel — Attestation de Travail Imprimable
+// Page Document Officiel — Attestation de Travail & Congé Imprimable
 // (Supports T-OIL S.A., STSL S.A., et COMPEL S.A.)
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, use } from 'react';
-import { Printer, ArrowLeft, Loader2, FileCheck, Building2 } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface AttestationItem {
@@ -22,6 +22,11 @@ interface AttestationItem {
   dateCreation: string;
   dateValidationDRH?: string;
   dateTraitementRH?: string;
+  typeDemande?: string;
+  typeConge?: string;
+  dateDebut?: string;
+  dateFin?: string;
+  nombreJours?: number;
 }
 
 export default function PageAttestationDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -33,24 +38,38 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetch(`/api/demandes/attestation?role=collaborateur&_t=${Date.now()}`);
-        if (!res.ok) throw new Error('Erreur de chargement');
-        const data = await res.json();
-        const found = (data.demandes || []).find((d: AttestationItem) => String(d.id) === String(id));
-        if (found) {
-          setItem(found);
-        } else {
-          // Si non trouvé dans collaborateur, tenter en rôle RH
-          const resRh = await fetch(`/api/demandes/attestation?role=rh&_t=${Date.now()}`);
-          if (resRh.ok) {
-            const dataRh = await resRh.json();
-            const foundRh = (dataRh.demandes || []).find((d: AttestationItem) => String(d.id) === String(id));
-            if (foundRh) setItem(foundRh);
-            else setError('Attestation de travail non trouvée.');
-          } else {
-            setError('Attestation de travail non trouvée.');
+        // Tenter par ID directement en premier
+        const resId = await fetch(`/api/demandes/attestation?id=${encodeURIComponent(id)}&_t=${Date.now()}`);
+        if (resId.ok) {
+          const dataId = await resId.json();
+          if (dataId.demande) {
+            setItem(dataId.demande);
+            return;
           }
         }
+
+        const res = await fetch(`/api/demandes/attestation?role=collaborateur&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const found = (data.demandes || []).find((d: AttestationItem) => String(d.id) === String(id));
+          if (found) {
+            setItem(found);
+            return;
+          }
+        }
+
+        // Tenter en rôle RH
+        const resRh = await fetch(`/api/demandes/attestation?role=rh&_t=${Date.now()}`);
+        if (resRh.ok) {
+          const dataRh = await resRh.json();
+          const foundRh = (dataRh.demandes || []).find((d: AttestationItem) => String(d.id) === String(id));
+          if (foundRh) {
+            setItem(foundRh);
+            return;
+          }
+        }
+
+        setError('Document d\'attestation introuvable.');
       } catch (err: any) {
         setError(err.message || 'Erreur lors du chargement de l\'attestation.');
       } finally {
@@ -63,7 +82,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center space-y-4 print:bg-white">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         <p className="text-sm font-semibold text-slate-600">Génération du document officiel en cours...</p>
       </div>
@@ -77,7 +96,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
           <p className="text-red-600 text-sm font-bold">{error || 'Document non disponible.'}</p>
           <button
             onClick={() => window.close()}
-            className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold"
+            className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
           >
             Fermer la fenêtre
           </button>
@@ -85,6 +104,8 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       </div>
     );
   }
+
+  const isConge = item.typeDemande === 'attestation_conge' || Boolean(item.dateDebut || item.typeConge);
 
   const societeName =
     item.societe === 'STSL'
@@ -113,7 +134,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       });
 
   return (
-    <div className="min-h-screen bg-slate-200 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-200 py-8 px-4 sm:px-6 print:bg-white print:py-0 print:px-0">
       {/* Action Bar (Cachée à l'impression) */}
       <div className="max-w-4xl mx-auto mb-6 flex items-center justify-between print:hidden">
         <button
@@ -134,14 +155,14 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       </div>
 
       {/* Sheet A4 Canvas (Zone imprimable) */}
-      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-sm p-12 sm:p-16 border border-slate-300 print:shadow-none print:border-none print:p-8 print:w-full print:max-w-none text-slate-900 font-serif leading-relaxed">
+      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-sm p-12 sm:p-16 border border-slate-300 print:shadow-none print:border-none print:p-4 print:w-full print:max-w-none text-slate-900 font-serif leading-relaxed">
         {/* Header Entête Officielle */}
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-6 mb-10">
           <div className="space-y-1">
             <div className="relative w-36 h-14">
               <Image
                 src={logoSrc}
-                alt={item.societe}
+                alt={item.societe || 'Société'}
                 fill
                 className="object-contain object-left"
                 priority
@@ -157,19 +178,21 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
             <p className="font-bold text-slate-900">RÉPUBLIQUE TOGOLAISE</p>
             <p className="text-[10px]">Travail - Liberté - Patrie</p>
             <p className="text-[10px] text-slate-500 pt-2">Lomé, le {dateDelivrance}</p>
-            <p className="text-[9px] text-slate-400 font-mono">Réf: ATT-{item.id.slice(0, 8).toUpperCase()}</p>
+            <p className="text-[9px] text-slate-400 font-mono">
+              Réf: {isConge ? 'AC' : 'ATT'}-{item.id.slice(0, 8).toUpperCase()}
+            </p>
           </div>
         </div>
 
         {/* Titre du document */}
-        <div className="text-center my-12">
+        <div className="text-center my-10">
           <h1 className="text-2xl font-bold font-sans tracking-wider uppercase underline underline-offset-8 text-slate-900">
-            ATTESTATION DE TRAVAIL
+            {isConge ? 'ATTESTATION DE CONGÉ PAYÉ' : 'ATTESTATION DE TRAVAIL'}
           </h1>
         </div>
 
         {/* Corps de l'attestation */}
-        <div className="space-y-6 text-base text-justify font-serif text-slate-800 leading-8 my-10">
+        <div className="space-y-6 text-base text-justify font-serif text-slate-800 leading-8 my-8">
           <p>
             Je soussigné, <strong>Directeur des Ressources Humaines</strong> de la société{' '}
             <strong>{societeName}</strong>, atteste par la présente que :
@@ -192,21 +215,52 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
             </p>
           </div>
 
-          <p>
-            est bien employé(e) au sein de notre société et exerce ses fonctions en toute régularité.
-          </p>
+          {isConge ? (
+            <>
+              <p>
+                bénéficie d&apos;un <strong>{item.typeConge || 'Congé Payé'}</strong> régulièrement accordé et validé par la hiérarchie pour la période suivante :
+              </p>
+
+              <div className="bg-emerald-50/70 p-5 rounded-lg border border-emerald-200 font-sans my-4 space-y-1.5 text-sm text-slate-900">
+                <p>
+                  <strong>• Date de début :</strong> {item.dateDebut ? new Date(item.dateDebut).toLocaleDateString('fr-FR') : '-'}
+                </p>
+                <p>
+                  <strong>• Date de reprise / Fin :</strong> {item.dateFin ? new Date(item.dateFin).toLocaleDateString('fr-FR') : '-'}
+                </p>
+                <p>
+                  <strong>• Durée totale :</strong> {item.nombreJours || 1} jour(s) ouvrable(s)
+                </p>
+                {item.motif && (
+                  <p>
+                    <strong>• Motif / Précisions :</strong> {item.motif}
+                  </p>
+                )}
+              </div>
+
+              <p>
+                L&apos;intéressé(e) est autorisé(e) à suspendre ses activités professionnelles pendant ladite période et reprendra ses fonctions à l&apos;expiration de ce congé.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                est bien employé(e) au sein de notre société et exerce ses fonctions en toute régularité.
+              </p>
+            </>
+          )}
 
           <p>
-            La présente attestation est délivrée à l&apos;intéressé(e) sur sa demande, pour servir et valoir ce que de droit, notamment dans le cadre de :{' '}
-            <em>« {item.motif} »</em>.
+            La présente attestation est délivrée à l&apos;intéressé(e) sur sa demande, pour servir et valoir ce que de droit
+            {!isConge && item.motif ? `, notamment dans le cadre de : « ${item.motif} »` : '.'}
           </p>
         </div>
 
         {/* Zone de Signature Officielle */}
-        <div className="mt-16 pt-8 flex justify-end">
-          <div className="text-center font-sans space-y-16 w-72">
+        <div className="mt-14 pt-6 flex justify-end">
+          <div className="text-center font-sans space-y-14 w-72">
             <div>
-              <p className="text-xs font-bold uppercase text-slate-900">Pour la Direction Général</p>
+              <p className="text-xs font-bold uppercase text-slate-900">Pour la Direction Générale</p>
               <p className="text-[11px] font-semibold text-slate-700">Le Directeur des Ressources Humaines</p>
             </div>
 
@@ -217,7 +271,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
         </div>
 
         {/* Footer bas de page */}
-        <div className="mt-20 border-t border-slate-200 pt-4 text-center font-sans text-[9px] text-slate-400 space-y-0.5">
+        <div className="mt-16 border-t border-slate-200 pt-4 text-center font-sans text-[9px] text-slate-400 space-y-0.5">
           <p className="font-bold text-slate-600">{societeName}</p>
           <p>Document généré et certifié électroniquement via le Portail Intranet T-OIL/STSL/COMPEL</p>
         </div>

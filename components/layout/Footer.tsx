@@ -21,7 +21,7 @@ export default function Footer() {
   return (
     <footer
       id="site-footer"
-      className="relative text-gray-300 border-t border-emerald-950/60 mt-auto overflow-hidden bg-[#06140b]"
+      className="relative text-gray-300 border-t border-emerald-950/60 mt-auto overflow-hidden bg-[#06140b] print:hidden"
       style={{
         backgroundImage: `
           radial-gradient(at 0% 0%, rgba(26, 107, 60, 0.15) 0px, transparent 50%),

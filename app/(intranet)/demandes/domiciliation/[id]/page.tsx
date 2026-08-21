@@ -50,23 +50,36 @@ export default function DomiciliationDocumentPage({
   useEffect(() => {
     async function fetchDemande() {
       try {
+        const resId = await fetch(`/api/demandes/domiciliation?id=${encodeURIComponent(demandeId)}`);
+        if (resId.ok) {
+          const dataId = await resId.json();
+          if (dataId.demande) {
+            setDemande(dataId.demande);
+            return;
+          }
+        }
+
         const res = await fetch(`/api/demandes/domiciliation?role=collaborateur`);
         if (res.ok) {
           const data = await res.json();
           const found = (data.demandes || []).find((d: any) => d.id === demandeId);
           if (found) {
             setDemande(found);
-          } else {
-            // Réessayer en mode DRH/RH au cas où
-            const resAdmin = await fetch(`/api/demandes/domiciliation?role=drh`);
-            if (resAdmin.ok) {
-              const dataAdmin = await resAdmin.json();
-              const foundAdmin = (dataAdmin.demandes || []).find((d: any) => d.id === demandeId);
-              if (foundAdmin) setDemande(foundAdmin);
-              else setError('Demande de domiciliation introuvable.');
-            }
+            return;
           }
         }
+
+        const resAdmin = await fetch(`/api/demandes/domiciliation?role=drh`);
+        if (resAdmin.ok) {
+          const dataAdmin = await resAdmin.json();
+          const foundAdmin = (dataAdmin.demandes || []).find((d: any) => d.id === demandeId);
+          if (foundAdmin) {
+            setDemande(foundAdmin);
+            return;
+          }
+        }
+
+        setError('Demande de domiciliation introuvable.');
       } catch (err) {
         setError('Erreur lors du chargement du document.');
       } finally {

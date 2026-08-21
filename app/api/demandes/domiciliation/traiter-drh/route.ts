@@ -10,6 +10,7 @@ import {
   getEmailTemplateDomiciliationRefus,
   getEmailTemplateDomiciliationRH,
 } from '@/lib/email';
+import { getUserPermissionsByEmail } from '@/lib/roles';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -17,6 +18,11 @@ export async function POST(request: NextRequest) {
 
   if (!userEmail) {
     return Response.json({ error: 'Non authentifié' }, { status: 401 });
+  }
+
+  const perms = await getUserPermissionsByEmail(userEmail);
+  if (!perms.isDRH && !perms.isAdmin && !perms.isRH) {
+    return Response.json({ error: 'Accès réservé au service DRH/RH' }, { status: 403 });
   }
 
   try {

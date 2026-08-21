@@ -457,7 +457,7 @@ export default function ValidationDemandesPage() {
                       <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                       Validée par vous — Transmise à la DRH
                     </span>
-                  ) : isPendingN1 || isPendingRH ? (
+                  ) : (isPendingN1 || isPendingRH) && ((activeTab === 'n1' && (isManager || isAdmin)) || (activeTab === 'rh' && (isDRH || isRH || isAdmin))) ? (
                     <>
                       <button
                         onClick={() => setRefusingDemande(demande)}

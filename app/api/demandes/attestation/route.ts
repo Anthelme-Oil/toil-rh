@@ -17,9 +17,71 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
+  const idParam = searchParams.get('id');
   const role = searchParams.get('role') || 'collaborateur';
 
   try {
+    if (idParam) {
+      const rows = await query<any>(`SELECT * FROM demandes WHERE id = ?`, [idParam]);
+      if (!rows || rows.length === 0) {
+        return Response.json({ error: 'Attestation introuvable.' }, { status: 404 });
+      }
+      const row = rows[0];
+      let extra: any = {};
+      if (row.donnees_formulaire) {
+        try {
+          extra = typeof row.donnees_formulaire === 'string' ? JSON.parse(row.donnees_formulaire) : row.donnees_formulaire;
+        } catch {}
+      }
+
+      if (row.type_demande === 'CONGE') {
+        const item = {
+          id: row.id,
+          titre: row.titre || 'Attestation de Congé Payé',
+          typeDemande: 'attestation_conge',
+          statut: row.statut,
+          nomDemandeur: row.nom_demandeur || '',
+          emailDemandeur: row.email_demandeur || '',
+          nom: extra.nom || row.nom_demandeur?.split(' ')[0] || '',
+          prenom: extra.prenom || row.nom_demandeur?.split(' ').slice(1).join(' ') || '',
+          societe: extra.societe || 'T-OIL',
+          poste: extra.poste || 'Collaborateur',
+          typeConge: row.type_conge || extra.typeConge || 'Congé Payé',
+          dateDebut: row.date_debut ? new Date(row.date_debut).toISOString() : extra.dateDebut || null,
+          dateFin: row.date_fin ? new Date(row.date_fin).toISOString() : extra.dateFin || null,
+          nombreJours: row.nombre_jours || extra.nombreJours || 1,
+          motif: row.motif || extra.motif || 'Congé individuel',
+          emailPro: row.email_demandeur || '',
+          dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
+          dateValidationDRH: row.date_validation_rh || row.date_validation_n1 ? new Date(row.date_validation_rh || row.date_validation_n1).toISOString() : null,
+          dateTraitementRH: row.date_validation_rh ? new Date(row.date_validation_rh).toISOString() : null,
+        };
+        return Response.json({ success: true, demande: item, demandes: [item] });
+      }
+
+      const item = {
+        id: row.id,
+        titre: row.titre || 'Demande d\'attestation de travail',
+        typeDemande: 'attestation_travail',
+        statut: row.statut,
+        nomDemandeur: row.nom_demandeur,
+        emailDemandeur: row.email_demandeur,
+        nom: extra.nom || row.nom_demandeur?.split(' ')[0] || '',
+        prenom: extra.prenom || row.nom_demandeur?.split(' ').slice(1).join(' ') || '',
+        societe: extra.societe || 'T-OIL',
+        poste: extra.poste || '',
+        motif: row.motif || extra.motif || '',
+        emailPro: extra.emailPro || row.email_demandeur || '',
+        commentaire: extra.commentaire || '',
+        documentFinalUrl: extra.documentFinalUrl || null,
+        motifRefus: row.commentaire_rh || extra.motifRefus || null,
+        dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
+        dateValidationDRH: row.date_validation_n1 ? new Date(row.date_validation_n1).toISOString() : null,
+        dateTraitementRH: row.date_validation_rh ? new Date(row.date_validation_rh).toISOString() : null,
+      };
+      return Response.json({ success: true, demande: item, demandes: [item] });
+    }
+
     let sql = `SELECT * FROM demandes WHERE type_demande = 'ATTESTATION_TRAVAIL'`;
     const params: any[] = [];
 

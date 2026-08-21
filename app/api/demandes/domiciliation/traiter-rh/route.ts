@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { execute, query } from '@/lib/db';
 import { processAndSaveAttachments } from '@/lib/storage';
 import { sendLeaveNotificationEmail, getEmailTemplateDomiciliationDocDispo } from '@/lib/email';
+import { getUserPermissionsByEmail } from '@/lib/roles';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -14,6 +15,11 @@ export async function POST(request: NextRequest) {
 
   if (!userEmail) {
     return Response.json({ error: 'Non authentifié' }, { status: 401 });
+  }
+
+  const perms = await getUserPermissionsByEmail(userEmail);
+  if (!perms.isRH && !perms.isRHPrint && !perms.isDRH && !perms.isAdmin) {
+    return Response.json({ error: 'Accès réservé aux gestionnaires RH' }, { status: 403 });
   }
 
   try {

@@ -388,7 +388,7 @@ export default function PublicationsPage() {
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
+              {/* <Sparkles className="w-5 h-5 text-emerald-600" /> */}
               {activeTab === 'article'
                 ? 'Nouvel Article d\'Actualité'
                 : activeTab === 'video'

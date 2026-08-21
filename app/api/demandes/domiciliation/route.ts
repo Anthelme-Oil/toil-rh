@@ -17,9 +17,55 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
+  const idParam = searchParams.get('id');
   const role = searchParams.get('role') || 'collaborateur';
 
   try {
+    if (idParam) {
+      const rows = await query<any>(
+        `SELECT * FROM demandes WHERE id = ? AND type_demande = 'DOMICILIATION_BANCAIRE'`,
+        [idParam]
+      );
+      if (!rows || rows.length === 0) {
+        return Response.json({ error: 'Demande de domiciliation introuvable.' }, { status: 404 });
+      }
+      const row = rows[0];
+      let extra: any = {};
+      if (row.donnees_formulaire) {
+        try {
+          extra = typeof row.donnees_formulaire === 'string' ? JSON.parse(row.donnees_formulaire) : row.donnees_formulaire;
+        } catch {}
+      }
+      const demande = {
+        id: row.id,
+        titre: row.titre || 'Demande de domiciliation bancaire',
+        typeDemande: 'domiciliation_bancaire',
+        statut: row.statut,
+        nomDemandeur: row.nom_demandeur,
+        emailDemandeur: row.email_demandeur,
+        matricule: extra.matricule || '',
+        nom: extra.nom || row.nom_demandeur?.split(' ')[0] || '',
+        prenom: extra.prenom || row.nom_demandeur?.split(' ').slice(1).join(' ') || '',
+        societe: extra.societe || 'T-Oil',
+        poste: extra.poste || '',
+        departement: extra.departement || '',
+        objetDemande: extra.objetDemande || 'Mise à jour de dossier bancaire',
+        emailPro: extra.emailPro || row.email_demandeur || '',
+        telephone: extra.telephone || '',
+        banque: extra.banque || '',
+        agenceBancaire: extra.agenceBancaire || '',
+        dateSouhaitee: extra.dateSouhaitee || '',
+        commentaire: row.motif || extra.commentaire || '',
+        ribUrl: row.piece_jointe || extra.ribUrl || '',
+        documentFinalUrl: extra.documentFinalUrl || null,
+        motifRefus: row.commentaire_rh || extra.motifRefus || null,
+        dateCreation: row.cree_le ? new Date(row.cree_le).toISOString() : new Date().toISOString(),
+        dateValidationDRH: row.date_validation_n1 ? new Date(row.date_validation_n1).toISOString() : null,
+        dateTraitementRH: row.date_validation_rh ? new Date(row.date_validation_rh).toISOString() : null,
+      };
+      return Response.json({ success: true, demande, demandes: [demande] });
+    }
+
     let sql = `SELECT * FROM demandes WHERE type_demande = 'DOMICILIATION_BANCAIRE'`;
     const params: any[] = [];
 
