@@ -132,4 +132,14 @@ model ReservationSalle {
   @@map("reservations_salles")
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 6. Table des Paramètres Généraux du Système
+// ═══════════════════════════════════════════════════════════════
+model Parametre {
+  cle         String   @id @map("cle") @db.VarChar(100)
+  valeur      String   @map("valeur") @db.Text
+  description String?  @map("description") @db.VarChar(255)
+  misAJourLe  DateTime @default(now()) @updatedAt @map("mis_a_jour_le")
 
+  @@map("parametres")
+}

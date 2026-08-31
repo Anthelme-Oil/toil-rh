@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dump": "node scripts/dump-db.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
