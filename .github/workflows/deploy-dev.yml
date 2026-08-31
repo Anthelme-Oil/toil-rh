@@ -1,0 +1,156 @@
+```yaml
+name: Deploy TOIL RH DEV
+
+on:
+  push:
+    branches:
+      - deploy-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ============================================================
+      # 1. Checkout
+      # ============================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ============================================================
+      # 2. Upload project
+      # ============================================================
+      - name: Upload TOIL RH to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+
+          source: "./"
+          target: "/home/apache/webroot/ROOT/toil-rh"
+
+          strip_components: 0
+
+      # ============================================================
+      # 3. Install dependencies + Build + Restart
+      # ============================================================
+      - name: Build and restart TOIL RH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+
+          timeout: 30m
+
+          script: |
+
+            set -e
+
+            APP_DIR="/home/apache/webroot/ROOT/toil-rh"
+            APP_NAME="toil-rh"
+
+            echo "=========================================="
+            echo "🚀 DEPLOIEMENT TOIL RH DEV"
+            echo "=========================================="
+
+            cd "$APP_DIR"
+
+            echo "📂 Répertoire :"
+            pwd
+
+            # ======================================================
+            # Node / NPM
+            # ======================================================
+
+            echo "🔎 Node.js :"
+            node -v
+
+            echo "🔎 NPM :"
+            npm -v
+
+            # ======================================================
+            # Installation dépendances
+            # ======================================================
+
+            echo "📦 Installation des dépendances..."
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+
+            # ======================================================
+            # Nettoyage ancien build
+            # ======================================================
+
+            echo "🧹 Nettoyage de .next..."
+
+            rm -rf .next
+
+            # ======================================================
+            # Build
+            # ======================================================
+
+            echo "🏗️ Build Next.js..."
+
+            npm run build
+
+            # ======================================================
+            # Vérification
+            # ======================================================
+
+            if [ ! -d ".next" ]; then
+              echo "❌ Le build Next.js a échoué."
+              exit 1
+            fi
+
+            echo "✅ Build terminé."
+
+            # ======================================================
+            # PM2
+            # ======================================================
+
+            echo "🔄 Gestion PM2..."
+
+            if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
+
+              echo "♻️ Redémarrage de $APP_NAME..."
+
+              pm2 restart "$APP_NAME" --update-env
+
+            else
+
+              echo "🆕 Création de $APP_NAME..."
+
+              pm2 start npm \
+                --name "$APP_NAME" \
+                -- start
+
+            fi
+
+            # ======================================================
+            # Sauvegarde PM2
+            # ======================================================
+
+            pm2 save
+
+            # ======================================================
+            # Status
+            # ======================================================
+
+            echo "📊 PM2 status :"
+
+            pm2 status
+
+            echo "=========================================="
+            echo "✅ DEPLOIEMENT TOIL RH TERMINÉ"
+            echo "=========================================="
+```
