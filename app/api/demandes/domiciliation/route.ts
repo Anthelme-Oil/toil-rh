@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       pieceJointe,
     } = body;
 
-    if (!matricule || !nom || !prenom || !societe || !poste || !departement || !objetDemande) {
+    if (!nom || !prenom || !societe || !poste || !departement || !objetDemande) {
       return Response.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
     }
 
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     const titre = `Domiciliation Bancaire (${objetDemande || 'Demande'}) — ${nomComplet} [${societe || 'T-Oil'}]`;
 
     const extraData = {
-      matricule: matricule.trim(),
+      matricule: (matricule || '').trim(),
       nom: nom.trim(),
       prenom: prenom.trim(),
       societe: societe || 'T-Oil',

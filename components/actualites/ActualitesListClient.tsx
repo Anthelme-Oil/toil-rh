@@ -1,7 +1,8 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════
-// Composant Client — Liste des Actualités (Design Inspiré TogoTech/FARI)
+// Composant Client — Actualités & Informations
+// Format Blog Réduit & Équilibré — T-OIL STSL
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useMemo } from 'react';
@@ -10,11 +11,10 @@ import {
   Newspaper,
   Calendar,
   Search,
-  ArrowUpDown,
   ChevronDown,
-  Tag,
   ArrowRight,
-  Filter,
+  X,
+  Tag,
 } from 'lucide-react';
 import type { Actualite } from '@/types';
 
@@ -37,7 +37,7 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
   const [selectedCategory, setSelectedCategory] = useState<string>('TOUTES');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'recent' | 'ancien'>('recent');
-  const [visibleCount, setVisibleCount] = useState<number>(8);
+  const [visibleCount, setVisibleCount] = useState<number>(9);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   const handleImageError = (id: string) => {
@@ -58,7 +58,7 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
     return Object.keys(categoriesWithCount);
   }, [categoriesWithCount]);
 
-  // Filtrer et trier la liste
+  // Filtrage et tri
   const filteredActualites = useMemo(() => {
     return initialActualites
       .filter((actu) => {
@@ -86,43 +86,62 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
   const hasMore = visibleCount < filteredActualites.length;
 
   return (
-    <div className="space-y-8">
-      {/* ── Barre de recherche et filtres ── */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+    <div className="space-y-5">
+      {/* ── Bande Verte : Titre, Recherche & Rubriques sur un seul bandeau épuré ── */}
+      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        {/* Ligne 1 : Rubrique / Titre à gauche, Barre de recherche à droite */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Recherche texte */}
-          <div className="relative flex-1 max-w-lg">
-            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher une actualité par mot-clé..."
-              className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-xs sm:text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-slate-800"
-            />
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Actualités & Informations
+            </h1>
+            <p className="text-xs text-emerald-100/80">
+              Communication interne et vie de l&apos;entreprise
+            </p>
           </div>
 
-          {/* Tri par Date */}
-          <div className="relative flex-1 md:flex-initial">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <ArrowUpDown className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 w-full md:w-auto">
+            {/* Barre de recherche */}
+            <div className="relative flex-1 md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleCount(9);
+                }}
+                placeholder="Rechercher une actualité..."
+                className="w-full pl-10 pr-8 py-2 rounded-xl bg-white text-slate-800 text-xs sm:text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  title="Effacer la recherche"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'recent' | 'ancien')}
-              className="w-full md:w-auto appearance-none pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:border-emerald-500 focus:border-emerald-500 outline-none cursor-pointer transition-all shadow-xs"
-            >
-              <option value="recent">Plus récents en premier</option>
-              <option value="ancien">Plus anciens en premier</option>
-            </select>
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <ChevronDown className="w-4 h-4" />
+
+            {/* Tri */}
+            <div className="relative shrink-0">
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'recent' | 'ancien')}
+                className="appearance-none pl-3 pr-8 py-2 rounded-xl bg-emerald-950/60 border border-emerald-700/60 text-white text-xs font-medium cursor-pointer focus:outline-none hover:bg-emerald-950/80 transition-colors shadow-sm"
+              >
+                <option value="recent" className="text-slate-800 bg-white">Plus récents</option>
+                <option value="ancien" className="text-slate-800 bg-white">Plus anciens</option>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-emerald-200 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </div>
 
-        {/* Pilules de catégories */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-100 scrollbar-none">
+        {/* Ligne 2 : Rubriques (Filtres de catégories) */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-3 border-t border-emerald-700/40 scrollbar-none">
           {categoriesList.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
@@ -130,18 +149,18 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
                 key={cat}
                 onClick={() => {
                   setSelectedCategory(cat);
-                  setVisibleCount(8);
+                  setVisibleCount(9);
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                    ? 'bg-white text-emerald-900 shadow-sm'
+                    : 'bg-white/10 text-emerald-100 hover:bg-white/20 hover:text-white'
                 }`}
               >
                 <span>{cat === 'TOUTES' ? 'Toutes' : cat}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                    isActive ? 'bg-emerald-100 text-emerald-900' : 'bg-black/20 text-emerald-200'
                   }`}
                 >
                   {categoriesWithCount[cat]}
@@ -152,70 +171,82 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
         </div>
       </div>
 
-      {/* ── Compteur ── */}
+      {/* ── Compteur de résultats ── */}
       <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
         <p>
-          Affichage de <span className="font-bold text-slate-800">{displayedArticles.length}</span> sur{' '}
-          <span className="font-bold text-slate-800">{filteredActualites.length}</span> actualité(s)
+          Affichage de <span className="font-bold text-slate-700">{displayedArticles.length}</span> sur{' '}
+          <span className="font-bold text-slate-700">{filteredActualites.length}</span> actualité(s)
         </p>
+
+        {(searchQuery || selectedCategory !== 'TOUTES') && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('TOUTES');
+            }}
+            className="text-emerald-700 hover:text-emerald-800 hover:underline font-semibold cursor-pointer"
+          >
+            Réinitialiser les filtres
+          </button>
+        )}
       </div>
 
-      {/* ── GRILLE DES ARTICLES (2 Colonnes comme sur le Wireframe / Exemple) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* ── Grille des Articles Réduite (3 colonnes, hauteur maîtrisée) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {displayedArticles.map((actu) => {
           const isBroken = brokenImages[actu.id] || !actu.imageUrl;
           return (
             <Link
               key={actu.id}
               href={`/informations/${actu.id}`}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-200/90 border-b-4 border-b-emerald-500 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+              className="bg-white rounded-xl overflow-hidden border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300 hover:-translate-y-0.5 transition-all flex flex-col justify-between group cursor-pointer"
             >
               <div>
-                {/* Couverture 16:9 sans déformation */}
-                <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
+                {/* Couverture avec hauteur maîtrisée (évite les cartes géantes) */}
+                <div className="relative w-full h-40 sm:h-44 bg-slate-100 overflow-hidden">
                   {!isBroken ? (
                     <img
                       src={actu.imageUrl}
                       alt={actu.titre}
                       onError={() => handleImageError(actu.id)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-emerald-900 to-teal-950 flex flex-col items-center justify-center p-6 text-center text-white/50">
-                      <Newspaper className="w-12 h-12 text-emerald-400 mb-1" />
-                      <span className="text-xs font-bold text-emerald-200">T-OIL STSL</span>
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-900 to-teal-950 flex flex-col items-center justify-center p-4 text-center text-white/60">
+                      <Newspaper className="w-8 h-8 text-emerald-400 mb-1" />
+                      <span className="text-[11px] font-bold text-emerald-200">T-OIL STSL</span>
                     </div>
                   )}
 
-                  {/* Badge Catégorie facultatif */}
+                  {/* Badge Catégorie */}
                   {actu.categorie && (
-                    <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider bg-white/90 text-slate-800 backdrop-blur-xs shadow-xs border border-white">
+                    <span className="absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded bg-white/95 text-slate-800 shadow-2xs">
                       {actu.categorie}
                     </span>
                   )}
                 </div>
 
-                {/* Contenu textuel */}
-                <div className="p-6 space-y-3">
-                  <h2 className="text-lg font-bold text-emerald-600 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                {/* Contenu textuel compact */}
+                <div className="p-4 space-y-1.5">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
                     {actu.titre}
                   </h2>
 
-                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                     {actu.description}
                   </p>
                 </div>
               </div>
 
-              {/* Pied de Carte (Date avec icône verte au bas à gauche) */}
-              <div className="px-6 pb-5 pt-1 flex items-center justify-between border-t border-slate-50">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                  <Calendar className="w-4 h-4 text-emerald-500" />
+              {/* Pied de Carte compact */}
+              <div className="px-4 py-2.5 flex items-center justify-between border-t border-slate-100 bg-slate-50/40">
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{formatDate(actu.datePublication)}</span>
                 </div>
 
-                <span className="text-xs font-bold text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all inline-flex items-center gap-1">
-                  Lire <ArrowRight className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold text-emerald-700 group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
+                  Lire <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </Link>
@@ -225,10 +256,10 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
 
       {/* ── Bouton Charger Plus ── */}
       {hasMore && (
-        <div className="text-center pt-6">
+        <div className="text-center pt-4">
           <button
-            onClick={() => setVisibleCount((prev) => prev + 8)}
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all duration-200"
+            onClick={() => setVisibleCount((prev) => prev + 9)}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm transition-colors cursor-pointer"
           >
             <span>Voir plus d&apos;actualités ({filteredActualites.length - visibleCount} restantes)</span>
             <ChevronDown className="w-4 h-4" />
@@ -238,18 +269,18 @@ export default function ActualitesListClient({ initialActualites }: ActualitesLi
 
       {/* ── Aucun résultat ── */}
       {filteredActualites.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-xs">
-          <Tag className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">Aucune actualité trouvée</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Aucun article ne correspond à votre filtre.
+        <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3 shadow-sm">
+          <Tag className="w-10 h-10 text-slate-300 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-800">Aucune actualité trouvée</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Aucun article ne correspond à votre filtre ou à votre recherche.
           </p>
           <button
             onClick={() => {
               setSelectedCategory('TOUTES');
               setSearchQuery('');
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors mt-2"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors mt-1 cursor-pointer"
           >
             Réinitialiser les filtres
           </button>

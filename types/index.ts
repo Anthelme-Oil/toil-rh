@@ -54,8 +54,9 @@ export type PrioriteDemande = 'basse' | 'normale' | 'haute' | 'urgente';
 /** Statut d'une demande générale */
 export type StatutDemande = 'soumis' | 'en_cours' | 'resolu' | 'refuse';
 
-/** Types de congés */
-export type TypeConge = 'autre' | 'conge_paye' | 'maladie' | 'maternite_paternite' | 'sans_solde' | 'evenement_familial';
+/** Types de congés et d'absences */
+export type TypeConge = 'conge' | 'autre' | 'conge_paye' | 'maladie' | 'maternite_paternite' | 'sans_solde' | 'evenement_familial' | string;
+
 
 /** Statuts du workflow de validation des congés */
 export type StatutConge = 

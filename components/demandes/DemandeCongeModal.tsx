@@ -27,7 +27,8 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
   const currentEmail = propEmail || contextEmail || 'employe@togooil.com';
   const currentNom = propNom || contextName || currentEmail.split('@')[0];
 
-  const [typeConge, setTypeConge] = useState<TypeConge>('autre');
+  const [typeAbsenceOption, setTypeAbsenceOption] = useState<'Congé' | 'Autre'>('Congé');
+  const [typeAbsenceAutre, setTypeAbsenceAutre] = useState('');
   const [societe, setSociete] = useState<'T-OIL' | 'STSL'>('T-OIL');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
@@ -144,6 +145,11 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
       return;
     }
 
+    if (typeAbsenceOption === 'Autre' && !typeAbsenceAutre.trim()) {
+      setError("Veuillez préciser votre type d'absence.");
+      return;
+    }
+
     if (!managerEmail || !managerEmail.includes('@')) {
       setError('Veuillez sélectionner un supérieur hiérarchique valide avec une adresse e-mail dans la liste suggérée.');
       return;
@@ -153,17 +159,19 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
     setError(null);
 
     try {
+      const finalTypeAbsence = typeAbsenceOption === 'Autre' ? typeAbsenceAutre.trim() : 'Congé';
+
       const res = await fetch('/api/demandes/conges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titre: 'Demande de congé',
-          typeConge,
+          titre: typeAbsenceOption === 'Autre' ? `Demande d'absence (${finalTypeAbsence})` : 'Demande de congé',
+          typeConge: finalTypeAbsence,
           societe,
           dateDebut,
           dateFin,
           nombreJours,
-          motif: 'Demande de congé',
+          motif: typeAbsenceOption === 'Autre' ? finalTypeAbsence : 'Demande de congé',
           demandeurEmail: currentEmail,
           demandeurNom: currentNom,
           managerEmail,
@@ -230,35 +238,49 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
               </div>
             )}
 
-            {/* 1. Type de congé & Société */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1">Type de congé</label>
-                <select
-                  value={typeConge}
-                  onChange={(e) => setTypeConge(e.target.value as TypeConge)}
-                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
-                >
-                  <option value="autre">Autre</option>
-                  <option value="conge_paye">Congé Payé</option>
-                  <option value="maladie">Arrêt Maladie</option>
-                  <option value="maternite_paternite">Maternité / Paternité</option>
-                  <option value="evenement_familial">Événement Familial</option>
-                  <option value="sans_solde">Congé Sans Solde</option>
-                </select>
+            {/* 1. Type d'absence & Société */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">Type d&apos;absence</label>
+                  <select
+                    value={typeAbsenceOption}
+                    onChange={(e) => setTypeAbsenceOption(e.target.value as 'Congé' | 'Autre')}
+                    className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary font-medium"
+                  >
+                    <option value="Congé">Congé</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">Société d&apos;appartenance</label>
+                  <select
+                    value={societe}
+                    onChange={(e) => setSociete(e.target.value as 'T-OIL' | 'STSL')}
+                    className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary font-bold"
+                  >
+                    <option value="T-OIL">T-Oil</option>
+                    <option value="STSL">STSL S.A.</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1">Société d&apos;appartenance</label>
-                <select
-                  value={societe}
-                  onChange={(e) => setSociete(e.target.value as 'T-OIL' | 'STSL')}
-                  className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary font-bold"
-                >
-                  <option value="T-OIL">T-OIL S.A.</option>
-                  <option value="STSL">STSL S.A.</option>
-                </select>
-              </div>
+              {typeAbsenceOption === 'Autre' && (
+                <div className="animate-in fade-in-50 duration-200">
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    Précisez votre type d&apos;absence <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={typeAbsenceAutre}
+                    onChange={(e) => setTypeAbsenceAutre(e.target.value)}
+                    placeholder="Ex: RTT, Récupération, Événement familial..."
+                    className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+                  />
+                </div>
+              )}
             </div>
 
             {/* 2. Période (Date début congé & Date fin congé) */}

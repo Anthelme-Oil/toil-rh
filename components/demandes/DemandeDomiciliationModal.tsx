@@ -56,9 +56,8 @@ export function DemandeDomiciliationModal({
   const [societe, setSociete] = useState<'T-Oil' | 'STSL' | 'COMPEL'>('T-Oil');
   const [poste, setPoste] = useState('');
   const [departement, setDepartement] = useState('');
-  const [objetDemande, setObjetDemande] = useState<
-    'Ouverture de compte bancaire' | 'Mise à jour de dossier bancaire' | 'Demande de crédit' | 'Autre'
-  >('Mise à jour de dossier bancaire');
+  const [objetDemandeType, setObjetDemandeType] = useState<'Demande de crédit' | 'Autres'>('Demande de crédit');
+  const [objetAutre, setObjetAutre] = useState('');
   const [emailPro, setEmailPro] = useState(userEmail || '');
   const [telephone, setTelephone] = useState('');
   const [banque, setBanque] = useState(LISTE_BANQUES[0]);
@@ -89,8 +88,8 @@ export function DemandeDomiciliationModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!matricule.trim()) {
-      setErrorMsg('Veuillez renseigner votre numéro de matricule.');
+    if (objetDemandeType === 'Autres' && !objetAutre.trim()) {
+      setErrorMsg("Veuillez préciser l'objet de votre demande.");
       return;
     }
     if (!nom.trim() || !prenom.trim()) {
@@ -134,6 +133,8 @@ export function DemandeDomiciliationModal({
         });
       }
 
+      const finalObjet = objetDemandeType === 'Autres' ? (objetAutre.trim() || 'Autres') : 'Demande de crédit';
+
       const payload = {
         matricule: matricule.trim(),
         nom: nom.trim(),
@@ -141,7 +142,7 @@ export function DemandeDomiciliationModal({
         societe,
         poste: poste.trim(),
         departement: departement.trim(),
-        objetDemande,
+        objetDemande: finalObjet,
         emailPro: emailPro.trim(),
         telephone: telephone.trim(),
         banque,
@@ -227,17 +228,16 @@ export function DemandeDomiciliationModal({
               </div>
             )}
 
-            {/* 1. Numéro de matricule */}
+            {/* 1. Numéro de matricule (Optionnel) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                1. Numéro de matricule <span className="text-red-500">*</span>
+                1. Numéro de matricule <span className="text-slate-400 font-normal">(Optionnel)</span>
               </label>
               <input
                 type="text"
-                required
                 value={matricule}
                 onChange={(e) => setMatricule(e.target.value)}
-                placeholder="Ex: EMP-2024-042"
+                placeholder="Ex: EMP-2024-042 (optionnel)"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
               />
             </div>
@@ -355,51 +355,61 @@ export function DemandeDomiciliationModal({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Agence Bancaire <span className="text-red-500">*</span>
+                  Agence Bancaire <span className="text-slate-400 font-normal">(Optionnel)</span>
                 </label>
                 <input
                   type="text"
-                  required
                   value={agenceBancaire}
                   onChange={(e) => setAgenceBancaire(e.target.value)}
-                  placeholder="ex: Agence Principale Lomé / Tokoin..."
+                  placeholder="ex: Agence Principale Lomé / Tokoin... (optionnel)"
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
                 />
               </div>
             </div>
 
             {/* 7. Objet de la demande */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
+            <div className="space-y-2.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 7. Objet de la demande <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {[
-                  'Ouverture de compte bancaire',
-                  'Mise à jour de dossier bancaire',
-                  'Demande de crédit',
-                  'Autre',
-                ].map((obj) => (
+                {(['Demande de crédit', 'Autres'] as const).map((obj) => (
                   <label
                     key={obj}
                     className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
-                      objetDemande === obj
+                      objetDemandeType === obj
                         ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <input
                       type="radio"
-                      name="objetDemande"
+                      name="objetDemandeType"
                       value={obj}
-                      checked={objetDemande === obj}
-                      onChange={() => setObjetDemande(obj as any)}
+                      checked={objetDemandeType === obj}
+                      onChange={() => setObjetDemandeType(obj)}
                       className="text-emerald-600 focus:ring-emerald-500"
                     />
                     {obj}
                   </label>
                 ))}
               </div>
+
+              {objetDemandeType === 'Autres' && (
+                <div className="pt-1 animate-in fade-in-50 duration-200">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Précisez l&apos;objet de votre demande <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={objetAutre}
+                    onChange={(e) => setObjetAutre(e.target.value)}
+                    placeholder="Ex: Demande de découvert, Attestation d'engagement..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800"
+                  />
+                </div>
+              )}
             </div>
 
             {/* 8. Adresse e-mail professionnelle & 9. Numéro de téléphone */}

@@ -2,7 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════════
 // Page Document Officiel — Attestation de Travail & Congé Imprimable
-// (Supports T-OIL S.A., STSL S.A., et COMPEL S.A.)
+// (Supports T-Oil, STSL S.A., et COMPEL S.A.)
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, use } from 'react';
@@ -139,7 +139,7 @@ export default function PageAttestationDetail({ params }: { params: Promise<{ id
       ? 'SOCIÉTÉ TOGOLAISE DE STOCKAGE DE LOMÉ (STSL S.A.)'
       : societeUpper === 'COMPEL'
       ? 'COMPEL S.A.'
-      : 'T-OIL S.A.';
+      : 'T-Oil';
 
   const logoSrc =
     societeUpper === 'STSL'

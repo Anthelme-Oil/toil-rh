@@ -181,7 +181,7 @@ export default function DomiciliationDocumentPage({
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                {demande.societe || 'T-OIL S.A.'}
+                {demande.societe || 'T-Oil'}
               </h1>
               <p className="text-xs text-slate-500 font-medium">
                 Société Togolaise d'Entreposage et de Distribution de Produits Pétroliers
@@ -212,7 +212,7 @@ export default function DomiciliationDocumentPage({
         {/* Corps du texte */}
         <div className="space-y-6 text-sm leading-relaxed text-slate-800">
           <p>
-            La Société <strong>{demande.societe || 'T-OIL S.A.'}</strong> atteste par la présente que le salaire mensuel de son collaborateur :
+            La Société <strong>{demande.societe || 'T-Oil'}</strong> atteste par la présente que le salaire mensuel de son collaborateur :
           </p>
 
           {/* Fiche Employé */}
@@ -298,7 +298,7 @@ export default function DomiciliationDocumentPage({
 
         {/* Pied de page */}
         <div className="pt-8 text-center text-[10px] text-slate-400 border-t border-slate-100">
-          T-OIL S.A. — Siege Social : Lomé Togo — Document généré automatiquement via le Portail Intranet d'Entreprise.
+          T-Oil — Siege Social : Lomé Togo — Document généré automatiquement via le Portail Intranet d'Entreprise.
         </div>
       </div>
     </div>
