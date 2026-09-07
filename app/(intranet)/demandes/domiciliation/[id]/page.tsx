@@ -172,8 +172,14 @@ export default function DomiciliationDocumentPage({
           <div className="flex items-center gap-4">
             <div className="relative w-28 h-14">
               <Image
-                src="/images/ToilTG.png"
-                alt="Logo T-OIL"
+                src={
+                  (demande.societe || '').toUpperCase().includes('STSL')
+                    ? '/images/STSL_TG.png'
+                    : (demande.societe || '').toUpperCase().includes('COMPEL')
+                    ? '/images/E1 STSL.png'
+                    : '/images/logo_officiel_toil.png'
+                }
+                alt={`Logo ${demande.societe || 'T-OIL'}`}
                 fill
                 className="object-contain"
                 priority
@@ -184,7 +190,11 @@ export default function DomiciliationDocumentPage({
                 {demande.societe || 'T-Oil'}
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Société Togolaise d'Entreposage et de Distribution de Produits Pétroliers
+                {(demande.societe || '').toUpperCase().includes('STSL')
+                  ? 'Société Togolaise de Stockage de Lomé'
+                  : (demande.societe || '').toUpperCase().includes('COMPEL')
+                  ? 'COMPEL S.A.'
+                  : "Société Togolaise d'Entreposage et de Distribution de Produits Pétroliers"}
               </p>
               <p className="text-[11px] text-slate-400">Lomé — République Togolaise</p>
             </div>

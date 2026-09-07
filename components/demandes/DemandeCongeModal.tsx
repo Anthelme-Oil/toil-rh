@@ -261,7 +261,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
                     className="w-full px-3 py-2 bg-surface-alt border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary text-text-primary font-bold"
                   >
                     <option value="T-OIL">T-Oil</option>
-                    <option value="STSL">STSL S.A.</option>
+                    <option value="STSL">STSL</option>
                   </select>
                 </div>
               </div>

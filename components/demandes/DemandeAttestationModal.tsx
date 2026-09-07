@@ -25,7 +25,7 @@ interface DemandeAttestationModalProps {
 
 const LISTE_SOCIETES = [
   { id: 'T-OIL', label: 'T-Oil' },
-  { id: 'STSL', label: 'STSL S.A. (Société Togolaise de Stockage de Lomé)' },
+  { id: 'STSL', label: 'STSL' },
   { id: 'COMPEL', label: 'COMPEL S.A.' },
 ];
 

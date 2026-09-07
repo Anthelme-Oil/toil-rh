@@ -39,7 +39,7 @@ function SignInForm() {
       <div className="flex flex-col items-center text-center mb-8">
         <div className="relative mb-4 p-3 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
           <Image
-            src="/images/image.png"
+            src="/images/logo_officiel_toil.png"
             alt="Logo T-OIL"
             width={80}
             height={80}

@@ -16,11 +16,11 @@ export default function Logo({ className = '', size = 40, showText = true }: Log
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       <Image
-        src="/images/image.png"
+        src="/images/logo_officiel_toil.png"
         alt="Logo T-OIL"
         width={size}
         height={size}
-        style={{ width: 'auto', height: 'auto' }}
+        style={{ width: 'auto', height: `${size}px` }}
         className="object-contain flex-shrink-0"
         priority
       />
