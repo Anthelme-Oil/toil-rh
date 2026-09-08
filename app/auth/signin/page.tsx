@@ -72,13 +72,13 @@ function SignInForm() {
       )}
 
       {/* ── Option 1 : Bouton SSO Microsoft 365 (Officiel Production) ── */}
-      <div className="space-y-3">
+      {/* <div className="space-y-3">
         <button
           onClick={() => signIn('azure-ad', { callbackUrl: '/' })}
           className="w-full group flex items-center justify-center gap-3 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-lg shadow-emerald-900/30 hover:shadow-emerald-600/20 hover:-translate-y-0.5"
           id="btn-signin-microsoft"
         >
-          {/* Icône Microsoft */}
+        
           <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
             <rect x="1" y="1" width="9" height="9" fill="#F25022" />
             <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
@@ -92,16 +92,16 @@ function SignInForm() {
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           <span>Authentification sécurisée Entra ID</span>
         </p>
-      </div>
+      </div> */}
 
       {/* Séparateur élégant */}
-      <div className="my-6 flex items-center gap-3">
+      {/* <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-slate-800" />
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           ou
         </span>
         <div className="h-px flex-1 bg-slate-800" />
-      </div>
+      </div> */}
 
       {/* ── Option 2 : Connexion par Email ── */}
       <form onSubmit={handleSignIn} className="space-y-4">
