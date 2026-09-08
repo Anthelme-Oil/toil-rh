@@ -1,56 +1,60 @@
-name: Deploy Production
+name: Deploy Production 
+ 
+on: 
+  push: 
+    branches: 
+      - main 
+ 
+jobs: 
+  deploy: 
+    name: Deploy to Ubuntu 
+    runs-on: ubuntu-latest 
+ 
+    steps: 
+      - name: Checkout repository 
+        uses: actions/checkout@v4 
+ 
+      - name: Copy files to server 
+        uses: appleboy/scp-action@master
+        with: 
+          host: ${{ secrets.TOIL_HOST }} 
+          username: ${{ secrets.TOIL_USER }} 
+          key: ${{ secrets.TOIL_SSH_KEY }} 
+          port: ${{ secrets.TOIL_PORT }} 
+          source: "." 
+          target: "/var/www/toil-portail" 
+ 
+      - name: Build and restart Next.js application 
+        uses: appleboy/ssh-action@master
+        with: 
+          host: ${{ secrets.TOIL_HOST }} 
+          username: ${{ secrets.TOIL_USER }} 
+          key: ${{ secrets.TOIL_SSH_KEY }} 
+          port: ${{ secrets.TOIL_PORT }} 
+          script: | 
+            set -e 
 
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    name: Deploy to Ubuntu
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Copy files to server
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.TOIL_HOST }}
-          username: ${{ secrets.TOIL_USER }}
-          key: ${{ secrets.TOIL_SSH_KEY }}
-          port: ${{ secrets.TOIL_PORT }}
-          source: "."
-          target: "/var/www/toil-portail"
-
-      - name: Build and restart Next.js application
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.TOIL_HOST }}
-          username: ${{ secrets.TOIL_USER }}
-          key: ${{ secrets.TOIL_SSH_KEY }}
-          port: ${{ secrets.TOIL_PORT }}
-          script: |
-            set -e
-
-            cd /var/www/toil-portail
-
-            echo "=== Vérification de l'environnement ==="
-            node -v
-            npm -v
-            pm2 -v
-
-            echo "=== Installation des dépendances ==="
-            npm install
-
-            echo "=== Build Next.js ==="
-            npm run build
-
-            echo "=== Redémarrage de l'application ==="
-            pm2 restart toil-portail || pm2 start npm --name "toil-portail" -- start
-
-            echo "=== Sauvegarde PM2 ==="
-            pm2 save
-
+            # Chargement de l'environnement PATH et NVM (si présent)
+            export PATH=$PATH:/usr/local/bin:~/.nvm/versions/node/$(ls ~/.nvm/versions/node 2>/dev/null | tail -n 1)/bin
+            [ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
+ 
+            cd /var/www/toil-portail 
+ 
+            echo "=== Vérification de l'environnement ===" 
+            node -v 
+            npm -v 
+            pm2 -v 
+ 
+            echo "=== Installation des dépendances ===" 
+            npm install 
+ 
+            echo "=== Build Next.js ===" 
+            npm run build 
+ 
+            echo "=== Redémarrage de l'application ===" 
+            pm2 restart toil-portail || pm2 start npm --name "toil-portail" -- start 
+ 
+            echo "=== Sauvegarde PM2 ===" 
+            pm2 save 
+ 
             echo "=== Déploiement terminé avec succès ==="
