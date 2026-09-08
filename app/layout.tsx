@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { AuthProvider } from '@/components/providers/AuthProvider';
+import { UserProvider } from '@/context/UserContext';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -19,17 +21,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-import { AuthProvider } from '@/components/providers/AuthProvider';
-import { UserProvider } from '@/context/UserContext';
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-surface-alt">
+    <html lang="fr" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-surface-alt" suppressHydrationWarning>
         <AuthProvider>
           <UserProvider>
             {children}
