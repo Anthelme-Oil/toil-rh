@@ -55,7 +55,7 @@ const DEMANDE_CATEGORIES: DemandeCategory[] = [
       },
       {
         id: 'demande_conges' as TypeDemande,
-        label: 'Demande de congés',
+        label: 'Demande d\'absence',
         icon: CalendarDays,
         description: 'Soumission des dates de congés payés ou absences',
       },

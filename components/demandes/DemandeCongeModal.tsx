@@ -210,7 +210,7 @@ export function DemandeCongeModal({ isOpen, onClose, onSuccess, userEmail: propE
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-text-primary">Nouvelle Demande de Congé</h2>
+              <h2 className="text-lg font-bold text-text-primary">Nouvelle demande d’absence</h2>
               <p className="text-xs text-text-muted">Workflow de validation N+1 & RH</p>
             </div>
           </div>

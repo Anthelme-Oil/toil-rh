@@ -156,14 +156,14 @@ export const outilsM365: OutilM365[] = [
     categorie: 'Applications métiers',
   },
   {
-    nom: 'JDE E1 - 10007',
+    nom: 'JDE T-Oil',
     icone: '/images/E1 T-OIL.png',
     url: 'http://192.168.203.15:10007/jde/E1Menu.maf?RENDER_MAFLET=E1Menu&jdeowpBackButtonProtect=PROTECTED',
     couleur: '#DC2626',
     categorie: 'Applications métiers',
   },
   {
-    nom: 'JDE E1 - 10006',
+    nom: 'JDE STSL',
     icone: '/images/E1 STSL.png',
     url: 'http://192.168.203.15:10006/jde/E1Menu.maf?RENDER_MAFLET=E1Menu&jdeowpBackButtonProtect=PROTECTED',
     couleur: '#DC2626',

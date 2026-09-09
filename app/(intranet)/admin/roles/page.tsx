@@ -4,7 +4,7 @@
 // Page Administration — Gestion Utilisateurs, Privilèges & Workflows
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck,
   UserPlus,
@@ -23,11 +23,127 @@ import {
   Check,
   X,
   FileText,
-  Laptop
+  Laptop,
+  UserCheck
 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 import type { UserRoleRecord } from '@/lib/roles';
+
+interface AzureUser {
+  id: string;
+  displayName: string;
+  mail: string;
+  userPrincipalName: string;
+  jobTitle?: string;
+  department?: string;
+}
+
+// ── Composant d'Autocomplétion d'E-mail depuis Azure AD ──
+function UserEmailAutocomplete({
+  value,
+  onChange,
+  onSelectUser,
+  placeholder = "Saisissez un e-mail ou un nom...",
+  required = false,
+  className = "",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onSelectUser?: (user: AzureUser) => void;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+}) {
+  const [suggestions, setSuggestions] = useState<AzureUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const term = value.trim();
+    if (term.length < 2) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/users/azure-search?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data.users || []);
+          setIsOpen(true);
+        }
+      } catch (err) {
+        console.error('Erreur autocomplétion Azure:', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div className="relative flex items-center">
+        <input
+          type="email"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className={className}
+        />
+        {loading && (
+          <Loader2 className="w-4 h-4 animate-spin text-primary absolute right-3 pointer-events-none" />
+        )}
+      </div>
+
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+          {suggestions.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => {
+                onChange(u.mail || u.userPrincipalName);
+                if (onSelectUser) onSelectUser(u);
+                setIsOpen(false);
+              }}
+              className="w-full text-left p-2.5 hover:bg-slate-50 transition-colors flex items-center justify-between group"
+            >
+              <div className="truncate pr-2">
+                <p className="text-xs font-bold text-slate-800 group-hover:text-primary truncate">
+                  {u.displayName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">{u.mail || u.userPrincipalName}</p>
+              </div>
+              {u.department && (
+                <span className="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0">
+                  {u.department}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminRolesPage() {
   const { isAdmin, refreshPermissions } = useUser();
@@ -628,12 +744,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email de la Direction des Ressources Humaines (DRH) :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.drhEmail}
-                      onChange={(e) => setSettings({ ...settings, drhEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, drhEmail: val })}
                       placeholder="ex: drh@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -646,12 +761,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email RH Responsable Impression Attestations :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.rhPrintEmail}
-                      onChange={(e) => setSettings({ ...settings, rhPrintEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, rhPrintEmail: val })}
                       placeholder="ex: rh.attestation@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -673,12 +787,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email RH / DRH Responsable Validation :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.drhDomiciliationEmail}
-                      onChange={(e) => setSettings({ ...settings, drhDomiciliationEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, drhDomiciliationEmail: val })}
                       placeholder="ex: drh@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -691,12 +804,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email RH Responsable Traitement & Impression Document :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.rhPrintDomiciliationEmail}
-                      onChange={(e) => setSettings({ ...settings, rhPrintDomiciliationEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, rhPrintDomiciliationEmail: val })}
                       placeholder="ex: rh.domiciliation@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -718,12 +830,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email DRH Responsable Validation Attestations :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.drhAttestationEmail}
-                      onChange={(e) => setSettings({ ...settings, drhAttestationEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, drhAttestationEmail: val })}
                       placeholder="ex: drh@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -736,12 +847,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email RH Responsable Génération & Impression :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.rhPrintAttestationEmail}
-                      onChange={(e) => setSettings({ ...settings, rhPrintAttestationEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, rhPrintAttestationEmail: val })}
                       placeholder="ex: rh.attestation@compel-toil.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -761,12 +871,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email Responsable IT (Chef de Service) :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.itRespEmail}
-                      onChange={(e) => setSettings({ ...settings, itRespEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, itRespEmail: val })}
                       placeholder="ex: it.responsable@togosh.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -779,12 +888,11 @@ export default function AdminRolesPage() {
                     <label className="block text-xs font-bold text-slate-700">
                       Email Support IT / Techniciens de maintenance :
                     </label>
-                    <input
-                      type="email"
+                    <UserEmailAutocomplete
                       value={settings.itSupportEmail}
-                      onChange={(e) => setSettings({ ...settings, itSupportEmail: e.target.value })}
-                      required
+                      onChange={(val) => setSettings({ ...settings, itSupportEmail: val })}
                       placeholder="ex: it.support@togosh.com"
+                      required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                     <p className="text-[10px] text-slate-400 leading-normal">
@@ -838,12 +946,11 @@ export default function AdminRolesPage() {
                   <label className="block text-xs font-bold text-slate-700">
                     Email Expéditeur Microsoft 365 (SSO) :
                   </label>
-                  <input
-                    type="email"
+                  <UserEmailAutocomplete
                     value={settings.senderEmail}
-                    onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
-                    required
+                    onChange={(val) => setSettings({ ...settings, senderEmail: val })}
                     placeholder="ex: it.helpdesk@togosh.com"
+                    required
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                   />
                   <p className="text-[10px] text-slate-400 leading-normal">
@@ -856,12 +963,11 @@ export default function AdminRolesPage() {
                   <label className="block text-xs font-bold text-slate-700">
                     Email de réception des alertes générales RH :
                   </label>
-                  <input
-                    type="email"
+                  <UserEmailAutocomplete
                     value={settings.rhEmail}
-                    onChange={(e) => setSettings({ ...settings, rhEmail: e.target.value })}
-                    required
+                    onChange={(val) => setSettings({ ...settings, rhEmail: val })}
                     placeholder="ex: rh@compel-toil.com"
+                    required
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                   />
                   <p className="text-[10px] text-slate-400 leading-normal">
@@ -917,14 +1023,15 @@ export default function AdminRolesPage() {
             </div>
 
             <form onSubmit={handleSendTestEmail} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <input
-                type="email"
-                placeholder="Adresse du destinataire (ex: votre.email@togosh.com)..."
-                value={testRecipient}
-                onChange={(e) => setTestRecipient(e.target.value)}
-                required
-                className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-primary"
-              />
+              <div className="flex-1">
+                <UserEmailAutocomplete
+                  value={testRecipient}
+                  onChange={(val) => setTestRecipient(val)}
+                  placeholder="Adresse du destinataire (ex: votre.email@togosh.com)..."
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-primary"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={sendingTestMail || !testRecipient}
@@ -980,6 +1087,24 @@ export default function AdminRolesPage() {
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Adresse Email (Azure AD)</label>
+                  <UserEmailAutocomplete
+                    value={newUser.email}
+                    onChange={(val) => setNewUser({ ...newUser, email: val })}
+                    onSelectUser={(selectedAzureUser) => {
+                      setNewUser((prev) => ({
+                        ...prev,
+                        email: selectedAzureUser.mail || selectedAzureUser.userPrincipalName,
+                        name: prev.name || selectedAzureUser.displayName,
+                      }));
+                    }}
+                    placeholder="Saisissez pour chercher dans Azure AD..."
+                    required
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Nom complet</label>
                   <input
                     type="text"
@@ -987,18 +1112,6 @@ export default function AdminRolesPage() {
                     placeholder="ex: Jean Dupont"
                     value={newUser.name}
                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Adresse Email</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="ex: j.dupont@togosh.com"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                 </div>
