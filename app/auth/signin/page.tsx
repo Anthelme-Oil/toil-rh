@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { User, ArrowRight, AlertCircle, Mail, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 function SignInForm() {
   const searchParams = useSearchParams();
@@ -16,27 +17,34 @@ function SignInForm() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || isSubmitting) return;
+ const router = useRouter();
 
-    setIsSubmitting(true);
+const handleSignIn = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!email || isSubmitting) return;
 
-    try {
-      const res = await signIn('credentials', {
-        email: email.toLowerCase().trim(),
-        callbackUrl: '/',
-        redirect: true,
-      });
+  setIsSubmitting(true);
 
-      if (res?.error) {
-        setIsSubmitting(false);
-      }
-    } catch (err) {
-      console.error('Erreur connexion:', err);
+  try {
+    const res = await signIn('credentials', {
+      email: email.toLowerCase().trim(),
+      callbackUrl: '/',
+      redirect: false, 
+    });
+
+    if (res?.error) {
+      // Une erreur est survenue (ex: mauvais identifiants)
       setIsSubmitting(false);
+    } else if (res?.ok) {
+      // Connexion réussie, redirection manuelle
+      router.push('/');
+      router.refresh();
     }
-  };
+  } catch (err) {
+    console.error('Erreur connexion:', err);
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="bg-slate-900/85 backdrop-blur-2xl rounded-3xl border border-emerald-500/20 p-6 sm:p-8 shadow-2xl shadow-emerald-950/60">
