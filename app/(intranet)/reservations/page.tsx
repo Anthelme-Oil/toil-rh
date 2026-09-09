@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import ReservationsClient from '@/components/reservations/ReservationsClient';
+import DevNotice from '@/components/incoming/DevNotice';
 
 export const metadata: Metadata = {
   title: 'Réservations de Salles — T-OIL Intranet',
@@ -8,4 +9,6 @@ export const metadata: Metadata = {
 
 export default function ReservationsPage() {
   return <ReservationsClient />;
+
+
 }

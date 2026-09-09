@@ -11,16 +11,17 @@ import Logo from '@/components/ui/Logo';
 import { Search, Bell, Settings, HelpCircle, Menu, X, UserCheck } from 'lucide-react';
 import { signIn, signOut } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
+import { BASE_NAV_LINKS } from '@/constants/navigation';
 
-const baseNavLinks = [
-  { label: 'Accueil', href: '/' },
-  { label: 'Informations', href: '/informations' },
-  { label: 'Outils', href: '/outils' },
-  { label: 'Demandes & Services', href: '/demandes' },
-  { label: 'Réservations', href: '/reservations' },
-  { label: 'Formations', href: '/formations' },
-  { label: 'Communautés', href: '/communautes' },
-];
+// const BASE_NAV_LINKS = [
+//   { label: 'Accueil', href: '/' },
+//   { label: 'Informations', href: '/informations' },
+//   { label: 'Outils', href: '/outils' },
+//   { label: 'Demandes & Services', href: '/demandes' },
+//   { label: 'Réservations', href: '/reservations' },
+//   { label: 'Formations', href: '/formations' },
+//   { label: 'Communautés', href: '/communautes' },
+// ];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -30,7 +31,7 @@ export default function Navbar() {
   const { userEmail, userName, userRole, isAdmin, isRH, isDRH, isRHPrint, isManager, isCom, isAuthenticated } = useUser();
 
   const navLinks = [
-    ...baseNavLinks,
+    ...BASE_NAV_LINKS,
     ...(isManager || isRH || isDRH || isRHPrint || isAdmin ? [{ label: '📋 Validation', href: '/demandes/validation' }] : []),
     ...(isAdmin || isCom ? [{ label: '✍️ Publication', href: '/publications' }] : []),
     ...(isAdmin ? [{ label: '⚙️ Admin', href: '/admin/roles' }] : []),
@@ -67,11 +68,11 @@ export default function Navbar() {
 
             {/* ── Navigation Desktop ── */}
             <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 2xl:gap-1.5 min-w-0 overflow-x-auto scrollbar-none py-1 mx-2" id="nav-main">
-              {navLinks.map((link) => {
+              {navLinks.map((link,index) => {
                 const active = isActive(link.href);
                 return (
                   <Link
-                    key={link.href}
+                    key={index}
                     href={link.href}
                     className={`relative px-2 py-1.5 xl:px-2.5 2xl:px-3 text-[11px] xl:text-xs 2xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap flex-shrink-0 focus-ring ${
                       active

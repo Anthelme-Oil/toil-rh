@@ -207,4 +207,9 @@ export interface UserOnboardingProgress {
   dernierAcces?: string;
 }
 
+export interface NavLink {
+  label: string;
+  href: string;
+}
+
 
