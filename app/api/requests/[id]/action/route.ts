@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { computeNextWorkflowStep, WorkflowStatus, WorkflowType } from '@/lib/workflows/engine';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request,  { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { actorEmail, actorName, actorRole, action, commentaire } = await req.json();
     // action: 'VALIDATE' | 'REJECT'
 
