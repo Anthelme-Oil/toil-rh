@@ -1,16 +1,39 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { computeNextWorkflowStep, WorkflowStatus, WorkflowType } from '@/lib/workflows/engine';
 
-export async function POST(req: Request,  { params }: { params: Promise<{ id: string }> }) {
+import { prisma } from '@/lib/prisma';
+
+import {
+  computeNextWorkflowStep,
+  WorkflowStatus,
+  WorkflowType,
+} from '@/lib/workflows/engine';
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
-    const { actorEmail, actorName, actorRole, action, commentaire } = await req.json();
+
+    const {
+      actorEmail,
+      actorName,
+      actorRole,
+      action,
+      commentaire,
+    } = await req.json();
+
     // action: 'VALIDATE' | 'REJECT'
 
-    const demande = await prisma.demande.findUnique({ where: { id } });
+    const demande = await prisma.demande.findUnique({
+      where: { id },
+    });
+
     if (!demande) {
-      return NextResponse.json({ error: 'Demande non trouvée' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Demande non trouvée' },
+        { status: 404 }
+      );
     }
 
     const currentStatus = demande.statut as WorkflowStatus;
@@ -18,13 +41,15 @@ export async function POST(req: Request,  { params }: { params: Promise<{ id: st
 
     // Calcul du statut suivant
     const transition = computeNextWorkflowStep(
-      typeDemande, 
-      currentStatus, 
+      typeDemande,
+      currentStatus,
       action === 'REJECT' ? 'REJECT' : 'VALIDATE'
     );
 
-    // Mise à jour de l'historique JSON (champ correct: historiqueValidations)
-    const historiqueActuel = Array.isArray(demande.historiqueValidations)
+    // Mise à jour de l'historique JSON
+    const historiqueActuel = Array.isArray(
+      demande.historiqueValidations
+    )
       ? (demande.historiqueValidations as Array<any>)
       : [];
 
@@ -49,9 +74,18 @@ export async function POST(req: Request,  { params }: { params: Promise<{ id: st
       },
     });
 
-    return NextResponse.json({ success: true, data: demandeMiseAJour });
+    return NextResponse.json({
+      success: true,
+      data: demandeMiseAJour,
+    });
   } catch (error: any) {
-    console.error("[API_REQUEST_ACTION_ERROR]", error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    console.error('[API_REQUEST_ACTION_ERROR]', error);
+
+    return NextResponse.json(
+      {
+        error: error.message || 'Erreur serveur',
+      },
+      { status: 500 }
+    );
   }
 }
