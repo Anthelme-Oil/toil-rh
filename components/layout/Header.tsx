@@ -1,43 +1,57 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════
-// Navbar — Barre de navigation avec détection de la page active (souligné)
+// Header — Barre de navigation supérieure (Intranet & Accueil)
 // ═══════════════════════════════════════════════════════════════
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
-import { Search, Bell, Settings, HelpCircle, Menu, X, UserCheck } from 'lucide-react';
+import { Search, Bell, Menu, X, UserCheck, LayoutGrid } from 'lucide-react';
 import { signIn, signOut } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
-import { BASE_NAV_LINKS } from '@/constants/navigation';
+import { BASE_NAV_LINKS, DYNAMIC_NAV_LINKS } from '@/config/navigation';
 
-// const BASE_NAV_LINKS = [
-//   { label: 'Accueil', href: '/' },
-//   { label: 'Informations', href: '/informations' },
-//   { label: 'Outils', href: '/outils' },
-//   { label: 'Demandes & Services', href: '/demandes' },
-//   { label: 'Réservations', href: '/reservations' },
-//   { label: 'Formations', href: '/formations' },
-//   { label: 'Communautés', href: '/communautes' },
-// ];
+interface HeaderProps {
+  /** Liste explicite des routes autorisées à afficher ce header */
+  allowedRoutes?: string[];
+  /** Liste des routes exclues de l'affichage */
+  excludedRoutes?: string[];
+}
 
-export default function Navbar() {
+export default function Header({ allowedRoutes, excludedRoutes }: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { userEmail, userName, userRole, isAdmin, isRH, isDRH, isRHPrint, isManager, isCom, isAuthenticated } = useUser();
+  
+  const userPermissions = useUser();
+  const { userEmail, userName, userRole, isAuthenticated } = userPermissions;
 
-  const navLinks = [
-    ...BASE_NAV_LINKS,
-    ...(isManager || isRH || isDRH || isRHPrint || isAdmin ? [{ label: '📋 Validation', href: '/demandes/validation' }] : []),
-    ...(isAdmin || isCom ? [{ label: '✍️ Publication', href: '/publications' }] : []),
-    ...(isAdmin ? [{ label: '⚙️ Admin', href: '/admin/roles' }] : []),
-  ];
+  // 1. Restriction d'affichage selon les routes
+  const shouldRender = useMemo(() => {
+    if (excludedRoutes && excludedRoutes.includes(pathname)) {
+      return false;
+    }
+    if (allowedRoutes && allowedRoutes.length > 0) {
+      return allowedRoutes.some((route) => 
+        route === '/' ? pathname === '/' : pathname.startsWith(route)
+      );
+    }
+    return true;
+  }, [pathname, allowedRoutes, excludedRoutes]);
 
-  const activeHref = (() => {
+  // 2. Filtrage dynamique des liens
+  const navLinks = useMemo(() => {
+    const dynamicLinks = DYNAMIC_NAV_LINKS.filter(
+      (link) => link.hasAccess && link.hasAccess(userPermissions)
+    );
+    return [...BASE_NAV_LINKS, ...dynamicLinks];
+  }, [userPermissions]);
+
+  // 3. Détection du lien actif
+  const activeHref = useMemo(() => {
     let bestMatch = '';
     for (const link of navLinks) {
       const isMatch =
@@ -49,15 +63,17 @@ export default function Navbar() {
       }
     }
     return bestMatch;
-  })();
+  }, [pathname, navLinks]);
 
   const isActive = (href: string) => href === activeHref;
 
+  if (!shouldRender) return null;
+
   return (
     <header className="sticky top-0 z-50 w-full transition-all duration-200 print:hidden">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4">
+      <div className="max-w-full mx-auto">
         <div
-          className="bg-white/95 backdrop-blur-md rounded-2xl border border-border/80 px-3 sm:px-5 shadow-sm transition-all duration-200"
+          className="bg-white/95 backdrop-blur-md p-4 shadow-sm transition-all duration-200"
           style={{ boxShadow: 'var(--shadow-card)' }}
         >
           <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
@@ -67,21 +83,107 @@ export default function Navbar() {
             </Link>
 
             {/* ── Navigation Desktop ── */}
-            <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 2xl:gap-1.5 min-w-0 overflow-x-auto scrollbar-none py-1 mx-2" id="nav-main">
-              {navLinks.map((link,index) => {
+         <nav
+  className="
+    hidden lg:flex
+    flex-1
+    items-center justify-center
+    gap-2 xl:gap-2.5 2xl:gap-3
+    min-w-0
+    overflow-x-auto
+    scrollbar-none
+    py-1
+    mx-4
+  "
+  id="nav-main"
+>  {navLinks.map((link) => {
                 const active = isActive(link.href);
+                const Icon = link.icon;
+                const isEspace = Boolean(link.isEspaceLink);
+
+                // Style spécifique pour les liens vers les Espaces
+              if (isEspace) {
+  return (
+    <Link
+      key={link.href}
+      href={link.href}
+      className={`
+        group relative flex shrink-0 items-center gap-2
+        rounded-xl px-3.5 py-2
+        text-[11px] font-semibold
+        xl:text-xs 2xl:text-sm
+        whitespace-nowrap
+        transition-all duration-200
+        focus-ring
+        border
+        ${
+          active
+            ? `
+              bg-[var(--color-primary)]
+              text-white
+              border-[var(--color-primary)]
+              shadow-md
+              shadow-[var(--color-primary)]/20
+            `
+            : `
+              bg-[var(--color-primary)]/[0.07]
+              text-[var(--color-primary)]
+              border-[var(--color-primary)]/20
+              hover:bg-[var(--color-primary)]/[0.12]
+              hover:border-[var(--color-primary)]/40
+              hover:shadow-sm
+            `
+        }
+      `}
+      id={`nav-link-${link.href.replace('/', '') || 'home'}`}
+    >
+      {/* Icône */}
+      {Icon ? (
+        <Icon className="h-4 w-4 shrink-0" />
+      ) : (
+        <LayoutGrid className="h-4 w-4 shrink-0" />
+      )}
+
+      {/* Nom */}
+      <span>{link.label}</span>
+
+      {/* Badge ESPACE */}
+      <span
+        className={`
+          ml-1 rounded-md
+          px-1.5 py-0.5
+          text-[8px]
+          font-extrabold
+          uppercase
+          tracking-wider
+          transition-colors
+          ${
+            active
+              ? 'bg-white/15 text-white'
+              : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+          }
+        `}
+      >
+        Espace
+      </span>
+    </Link>
+  );
+}
+
+                // Style standard
                 return (
                   <Link
-                    key={index}
+                    key={link.href}
                     href={link.href}
-                    className={`relative px-2 py-1.5 xl:px-2.5 2xl:px-3 text-[11px] xl:text-xs 2xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap flex-shrink-0 focus-ring ${
+                    className={`relative px-2 py-1.5 xl:px-2.5 2xl:px-3 text-[11px] xl:text-xs 2xl:text-sm transition-all duration-200 rounded-lg whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 focus-ring ${
                       active
                         ? 'font-bold text-primary bg-primary-50/80 after:absolute after:bottom-0.5 after:left-1.5 after:right-1.5 after:h-[2.5px] after:bg-primary after:rounded-full'
                         : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'
                     }`}
                     id={`nav-link-${link.href.replace('/', '') || 'home'}`}
                   >
-                    {link.label}
+                    {Icon && <Icon className="w-4 h-4" />}
+                    <span>{link.label}</span>
                   </Link>
                 );
               })}
@@ -108,7 +210,7 @@ export default function Navbar() {
                 />
               </div>
 
-              {/* Icônes d'actions */}
+              {/* Notifications */}
               <button
                 className="relative p-2 text-text-secondary hover:text-primary hover:bg-primary-50 rounded-xl transition-colors focus-ring"
                 title="Notifications"
@@ -118,7 +220,7 @@ export default function Navbar() {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
               </button>
 
-              {/* Avatar & Profil utilisateur avec menu déroulant */}
+              {/* Avatar & Profil */}
               <div className="relative">
                 <button
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
@@ -139,7 +241,7 @@ export default function Navbar() {
                   </div>
                 </button>
 
-                {/* Menu déroulant Profil / Connexion */}
+                {/* Dropdown Menu */}
                 {profileMenuOpen && (
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-border shadow-xl p-4 z-50 animate-fade-in space-y-4">
                     <div className="flex items-center gap-3 pb-3 border-b border-border">
@@ -177,7 +279,7 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Menu mobile toggle */}
+              {/* Toggle mobile */}
               <button
                 className="lg:hidden p-2 text-text-secondary hover:text-primary rounded-xl transition-colors focus-ring ml-1"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -189,13 +291,9 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* ── Menu mobile ── */}
+          {/* ── Menu Mobile ── */}
           {mobileMenuOpen && (
-            <nav
-              className="lg:hidden border-t border-border py-3 space-y-1 animate-slide-down"
-              id="nav-mobile-menu"
-            >
-              {/* Recherche mobile */}
+            <nav className="lg:hidden border-t border-border py-3 space-y-1 animate-slide-down" id="nav-mobile-menu">
               <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl border border-border bg-surface-alt">
                 <Search className="w-4 h-4 text-text-muted" />
                 <input
@@ -208,18 +306,36 @@ export default function Navbar() {
 
               {navLinks.map((link) => {
                 const active = isActive(link.href);
+                const Icon = link.icon;
+                const isEspace = Boolean(link.isEspaceLink);
+
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`block px-3 py-2.5 text-sm transition-colors rounded-xl ${
-                      active
-                        ? 'font-bold text-primary bg-primary-50 border-l-4 border-primary pl-4'
-                        : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'
+                    className={`flex items-center justify-between px-3 py-2.5 text-sm transition-all rounded-xl ${
+                      isEspace
+                        ? active
+                          ? 'font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm'
+                          : 'font-semibold bg-primary-50 text-primary border border-primary/20 hover:bg-primary-100/70'
+                        : active
+                          ? 'font-bold text-primary bg-primary-50 border-l-4 border-primary pl-4'
+                          : 'font-medium text-text-secondary hover:text-primary hover:bg-primary-50'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {link.label}
+                    <div className="flex items-center gap-2">
+                      {Icon ? <Icon className="w-4 h-4" /> : isEspace ? <LayoutGrid className="w-4 h-4" /> : null}
+                      <span>{link.label}</span>
+                    </div>
+
+                    {isEspace && (
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        active ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                      }`}>
+                        Espace
+                      </span>
+                    )}
                   </Link>
                 );
               })}

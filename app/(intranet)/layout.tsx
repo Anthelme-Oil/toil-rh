@@ -1,20 +1,13 @@
-// ═══════════════════════════════════════════════════════════════
-// Layout Intranet — Navbar partagée entre toutes les pages
-// ═══════════════════════════════════════════════════════════════
+'use client';
 
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
+// app/(intranet)/layout.tsx
+import React from 'react';
+import AppLayoutDispatcher from '@/components/layout/AppLayoutDispatcher';
 
 export default function IntranetLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-1">{children}</main>
-      <Footer />
-    </div>
-  );
+  return <AppLayoutDispatcher>{children}</AppLayoutDispatcher>;
 }

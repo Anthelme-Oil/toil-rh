@@ -1,3 +1,6 @@
+
+
+
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -11,17 +14,24 @@ export async function GET(
     const filePath = path.join(process.cwd(), 'public', 'uploads', ...pathSegments);
 
     if (!fs.existsSync(filePath)) {
-      return new NextResponse('Image non trouvée', { status: 404 });
+      return new NextResponse('Fichier non trouvé', { status: 404 });
     }
 
     const fileBuffer = fs.readFileSync(filePath);
     const ext = path.extname(filePath).toLowerCase();
     
-    let contentType = 'image/jpeg';
-    if (ext === '.png') contentType = 'image/png';
-    if (ext === '.webp') contentType = 'image/webp';
-    if (ext === '.gif') contentType = 'image/gif';
-    if (ext === '.svg') contentType = 'image/svg+xml';
+    // Détermination dynamique du type de contenu (Content-Type) selon le format
+    let contentType = 'application/octet-stream';
+    if (ext === '.pdf') contentType = 'application/pdf';
+    else if (ext === '.png') contentType = 'image/png';
+    else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+    else if (ext === '.webp') contentType = 'image/webp';
+    else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.svg') contentType = 'image/svg+xml';
+    else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (ext === '.xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    else if (ext === '.doc') contentType = 'application/msword';
+    else if (ext === '.xls') contentType = 'application/vnd.ms-excel';
 
     return new NextResponse(fileBuffer, {
       headers: {

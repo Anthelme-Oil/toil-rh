@@ -7,7 +7,8 @@
 // modulaires.
 // ═══════════════════════════════════════════════════════════════
 
-import Navbar from '@/components/layout/Navbar';
+import Header from '@/components/layout/Header';
+import {Footer} from '@/components/common/Footer';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import ActualitesSection from '@/components/dashboard/ActualitesSection';
 import AccesRapidesSection from '@/components/dashboard/AccesRapidesSection';
@@ -15,7 +16,7 @@ import MesDemandesSection from '@/components/dashboard/MesDemandesSection';
 import VideosSection from '@/components/dashboard/VideosSection';
 import AnnoncesSection from '@/components/dashboard/AnnoncesSection';
 import EvenementsSection from '@/components/dashboard/EvenementsSection';
-
+import SingleLayout from '@/components/layout/SingleLayout';
 // ── Données statiques (liens d'outils M365 — pas du mock, c'est un catalogue fixe) ──
 import { outilsM365 } from '@/lib/mock-data';
 
@@ -37,9 +38,8 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* ── Navigation ── */}
-      <Navbar />
+    <SingleLayout>
+   
 
       {/* ── Bandeau héro ── */}
       <HeroBanner />
@@ -65,25 +65,7 @@ export default async function DashboardPage() {
         </div>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="relative z-10 bg-white border-t border-border mt-auto">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-text-muted">
-            <p>© {new Date().getFullYear()} COMPEL STSL T-OIL — Tous droits réservés</p>
-            <div className="flex items-center gap-4">
-              <a href="/mentions-legales" className="hover:text-primary transition-colors">
-                Mentions légales
-              </a>
-              <a href="/contact" className="hover:text-primary transition-colors">
-                Contact IT
-              </a>
-              <a href="/aide" className="hover:text-primary transition-colors">
-                Aide
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+    
+    </SingleLayout>
   );
 }

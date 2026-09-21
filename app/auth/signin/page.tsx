@@ -21,27 +21,39 @@ function SignInForm() {
 
 const handleSignIn = async (e: React.FormEvent) => {
   e.preventDefault();
+
   if (!email || isSubmitting) return;
 
   setIsSubmitting(true);
 
   try {
-    const res = await signIn('credentials', {
-      email: email.toLowerCase().trim(),
-      callbackUrl: '/',
-      redirect: false, 
+    // 1. Enregistrer temporairement l'email saisi
+    const prepare = await fetch('/api/auth/prepare-login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email.toLowerCase().trim(),
+      }),
     });
 
-    if (res?.error) {
-      // Une erreur est survenue (ex: mauvais identifiants)
-      setIsSubmitting(false);
-    } else if (res?.ok) {
-      // Connexion réussie, redirection manuelle
-      router.push('/');
-      router.refresh();
+    if (!prepare.ok) {
+      throw new Error('Impossible de préparer la connexion');
     }
-  } catch (err) {
-    console.error('Erreur connexion:', err);
+
+    // 2. Demander l'authentification Microsoft
+    await signIn(
+      'azure-ad',
+      {
+        callbackUrl: '/',
+      },
+      {
+        login_hint: email.toLowerCase().trim(),
+      }
+    );
+  } catch (error) {
+    console.error('Erreur connexion:', error);
     setIsSubmitting(false);
   }
 };

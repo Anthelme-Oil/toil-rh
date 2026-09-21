@@ -32,13 +32,18 @@ model Utilisateur {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 2. Table Unique pour toutes les Demandes (Congés, IT, Salle, RH...)
+// 2. Table Unique pour toutes les Demandes
 // ═══════════════════════════════════════════════════════════════
 model Demande {
   id                String       @id @default(cuid())
   titre             String       @map("titre")
-  typeDemande       String       @map("type_demande") // "CONGE", "IT", "SALLE", "MATERIEL", "DOCUMENT_RH"
-  statut            String       @default("EN_ATTENTE") @map("statut") // EN_ATTENTE, APPROUVE, REFUSE, ANNULE
+  
+  // Types : ABSENCE, DOMICILIATION, RENOUVELLEMENT_IT, GESTION_COMPTE_IT, 
+  // ATTESTATION, CONSOMMABLE, MATERIEL_IT, ACHAT, BESOIN_METIER, ACCES_SITE
+  typeDemande       String       @map("type_demande")
+  
+  // Statuts globaux : PENDING_N1, PENDING_DRH, PENDING_RH_EXEC, PENDING_IT_MGR, PENDING_IT_EXEC, APPROUVE, REFUSE, ANNULE
+  statut            String       @default("PENDING_N1") @map("statut")
 
   // Identité du Demandeur
   utilisateurId     String?      @map("utilisateur_id")
@@ -46,26 +51,38 @@ model Demande {
   emailDemandeur    String       @map("email_demandeur")
   nomDemandeur      String       @map("nom_demandeur")
 
+  // Utilisateur Cible (Optionnel - Pour créations/suppressions de comptes)
+  targetUserId      String?      @map("target_user_id")
+  targetUserName    String?      @map("target_user_name")
+
   // Supérieur N+1 & Validation
   emailManager      String?      @default("") @map("email_manager")
   statutN1          String       @default("EN_ATTENTE") @map("statut_n1")
   dateValidationN1  DateTime?    @map("date_validation_n1")
   commentaireN1     String?      @map("commentaire_n1")
 
-  // Validation RH / Admin
+  // Validation DRH / RH
   statutRH          String       @default("EN_ATTENTE") @map("statut_rh")
   dateValidationRH  DateTime?    @map("date_validation_rh")
   commentaireRH     String?      @map("commentaire_rh")
 
-  // Détails génériques des formulaires
+  // Validation & Exécution IT
+  statutIT          String       @default("EN_ATTENTE") @map("statut_it")
+  dateValidationIT  DateTime?    @map("date_validation_it")
+  commentaireIT     String?      @map("commentaire_it")
+  
+  // Historique complet (horodatage, rôle, action, commentaires pour impression RH)
+  historiqueValidations Json?    @map("historique_validations")
+
+  // Champs spécifiques aux formulaires standards
   dateDebut         DateTime?    @map("date_debut")
   dateFin           DateTime?    @map("date_fin")
   nombreJours       Float?       @map("nombre_jours")
-  typeConge         String?      @map("type_conge") // paye, conge_maladie, sans_solde, etc.
+  typeConge         String?      @map("type_conge")
   motif             String?      @db.Text @map("motif")
   pieceJointe       String?      @map("piece_jointe")
 
-  // Données dynamiques spécifiques aux sous-formulaires (ex: IT, réservation salle, etc.)
+  // Données dynamiques supplémentaires
   donneesFormulaire Json?        @map("donnees_formulaire")
 
   creeLe            DateTime     @default(now()) @map("cree_le")

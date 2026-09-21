@@ -1,14 +1,9 @@
+
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
+
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { UserProvider } from '@/context/UserContext';
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: {
@@ -27,8 +22,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-surface-alt" suppressHydrationWarning>
+    <html lang="fr" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Roboto */}
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+
+      <body
+        className="min-h-full flex flex-col bg-surface-alt"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <UserProvider>
             {children}

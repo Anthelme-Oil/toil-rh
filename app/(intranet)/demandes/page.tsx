@@ -34,6 +34,7 @@ import { RefusalModal } from '@/components/demandes/RefusalModal';
 import { DevNoticeModal } from '@/components/demandes/DevNoticeModal';
 import { useUser } from '@/context/UserContext';
 
+
 const DEMANDE_CATEGORIES: DemandeCategory[] = [
   {
     id: 'administrative',

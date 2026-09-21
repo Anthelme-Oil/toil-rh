@@ -3,6 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 /** Actualité SharePoint */
+
+import { WorkflowStatus,WorkflowType ,workflowDefinitions} from "@/lib/workflows/engine";
 export interface Actualite {
   id: string;
   titre: string;
@@ -211,5 +213,160 @@ export interface NavLink {
   label: string;
   href: string;
 }
+
+export interface RequestItem {
+  // --- Champs originaux de la table Demande Prisma ---
+  id: string;
+  titre: string;
+  typeDemande: string;
+  statut: string;
+  utilisateurId: string | null;
+  emailDemandeur: string;
+  nomDemandeur: string;
+  targetUserId: string | null;
+  targetUserName: string | null;
+  emailManager: string | null;
+  statutN1: string;
+  dateValidationN1: string | null; // ou Date selon la sérialisation API
+  commentaireN1: string | null;
+  statutRH: string;
+  dateValidationRH: string | null;
+  commentaireRH: string | null;
+  statutIT: string;
+  dateValidationIT: string | null;
+  commentaireIT: string | null;
+  historiqueValidations: Array<{
+    stepId: string;
+    valideur?: string;
+    dateValidation?: string;
+    commentaire?: string;
+    [key: string]: any;
+  }> | null;
+  dateDebut: string | null;
+  dateFin: string | null;
+  nombreJours: number | null;
+  typeConge: string | null;
+  motif: string | null;
+  pieceJointe: string | null;
+  donneesFormulaire: any | null;
+  creeLe: string;
+  misAJourLe: string;
+
+  // --- Champs calculés / enrichis pour le workflow ---
+  reference: string;
+  type: WorkflowType;
+  statutActuel: WorkflowStatus;
+  dateCreation: string;
+  nextStep?: {
+    id: string;
+    nom: string;
+    role: string;
+    statusMatcher: WorkflowStatus;
+  } | null;
+  estTerminee?: boolean;
+  estRejetee?: boolean;
+  historique?: Array<{
+    stepId: string;
+    valideur?: string;
+    dateValidation?: string;
+    commentaire?: string;
+  }>;
+}
+
+export type SequenceType = {
+  id: string;
+  nom: string;
+  role: string;
+  statusMatcher: string;
+} ;
+export type WorkflowKey = keyof typeof workflowDefinitions;
+
+export type FilterKey = 'pending' | 'validated' | 'refused' | 'all';
+
+
+export type MailRecipient =
+    | string
+    | string[];
+
+export interface SendMailOptions<TProps = unknown> {
+    to: MailRecipient;
+    cc?: MailRecipient;
+    bcc?: MailRecipient;
+
+    subject: string;
+
+    template: React.ComponentType<TProps>;
+
+    props: TProps;
+
+    replyTo?: string;
+}
+
+
+// types/index.ts
+
+export type ExceptionalAbsenceType =
+  | "DECES_CONJOINT_ASCENDANT_DESCENDANT"
+  | "DECES_FRERE_SOEUR"
+  | "DECES_BEAU_PERE_BELLE_MERE"
+  | "MARIAGE_ENFANT"
+  | "MARIAGE_FRERE_SOEUR"
+  | "MARIAGE_TRAVAILLEUR"
+  | "NAISSANCE_FOYER"
+  | "BAPTEME_ENFANT"
+  | "DEMENAGEMENT";
+
+export const EXCEPTIONAL_ABSENCE_TYPES: Record<
+  ExceptionalAbsenceType,
+  {
+    label: string;
+    duration: number;
+  }
+> = {
+  DECES_CONJOINT_ASCENDANT_DESCENDANT: {
+    label: "Décès d'un conjoint, d'un ascendant ou d'un descendant en ligne directe",
+    duration: 5,
+  },
+
+  DECES_FRERE_SOEUR: {
+    label: "Décès d'un frère ou d'une sœur",
+    duration: 3,
+  },
+
+  DECES_BEAU_PERE_BELLE_MERE: {
+    label: "Décès d'un beau-père ou d'une belle-mère",
+    duration: 3,
+  },
+
+  MARIAGE_ENFANT: {
+    label: "Mariage d'un enfant",
+    duration: 2,
+  },
+
+  MARIAGE_FRERE_SOEUR: {
+    label: "Mariage d'un frère ou d'une sœur",
+    duration: 1,
+  },
+
+  MARIAGE_TRAVAILLEUR: {
+    label: "Mariage du travailleur",
+    duration: 3,
+  },
+
+  NAISSANCE_FOYER: {
+    label: "Naissance au foyer",
+    duration: 2,
+  },
+
+  BAPTEME_ENFANT: {
+    label: "Baptême de l'enfant du travailleur",
+    duration: 1,
+  },
+
+  DEMENAGEMENT: {
+    label: "Déménagement",
+    duration: 2,
+  },
+};
 
 

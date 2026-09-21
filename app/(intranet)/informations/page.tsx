@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 export default async function InformationsPage() {
   const actualites = await getActualites(100);
 
+  // console.log('InformationsPage - actualites:', actualites);
+
   // Tri du plus récent au plus ancien par défaut
   actualites.sort((a, b) => {
     const dateA = a.datePublication ? new Date(a.datePublication).getTime() : 0;

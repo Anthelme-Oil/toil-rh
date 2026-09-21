@@ -5,8 +5,8 @@
 import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import Credentials from 'next-auth/providers/credentials';
-import { query, execute, generateId } from './db';
-import { getUserPermissionsByEmail } from './roles';
+import { query, execute, generateId } from '../db';
+import { getUserPermissionsByEmail } from '../roles';
 
 declare module 'next-auth' {
   interface Session {
@@ -20,6 +20,7 @@ declare module 'next-auth' {
       isRH?: boolean;
       managerEmail?: string;
       departement?: string;
+      profile?: any; // <-- Ajout pour stocker tout le profil Azure AD
     };
   }
 }
@@ -57,17 +58,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const cleanEmail = rawEmail.toLowerCase().trim();
         
-        // 1. Récupérer l'utilisateur depuis la base de données
         const rows = await query<any>('SELECT * FROM utilisateurs WHERE email = ?', [cleanEmail]);
         
-        // 2. Si l'utilisateur n'existe pas, on refuse la connexion
-        // (Sauf si c'est l'email admin par défaut, pour permettre la première connexion et le seed)
         const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesktogo@togosh.com').toLowerCase().trim();
         const isDefaultAdmin = cleanEmail === adminDefaultEmail;
 
         if (rows.length === 0 && !isDefaultAdmin) {
           console.warn(`[Auth] Tentative de connexion avec un e-mail non enregistré : ${cleanEmail}`);
-          return null; // Retourner null indique un échec à NextAuth
+          return null;
         }
 
         const dbUser = rows[0];
@@ -107,66 +105,64 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    /**
-     * Callback signIn : Refuse l'accès si le compte Microsoft (SSO) ne fait pas partie
-     * du Tenant Azure AD de l'entreprise ou d'un domaine / compte utilisateur autorisé.
-     */
     async signIn({ user, account, profile }) {
+      console.log('\n========================================');
+      console.log('[AUTH] SIGN IN');
+      console.log('========================================');
+      console.log('[AUTH] Provider:', account?.provider);
+      console.log('[AUTH] USER:', JSON.stringify(user, null, 2));
+      console.log('[AUTH] PROFILE:', JSON.stringify(profile, null, 2));
+
       const email = user?.email?.toLowerCase().trim();
-      if (!email) {
-        console.warn('[Auth Reject] Tentative de connexion sans e-mail.');
-        return false;
-      }
+      if (!email) return false;
 
-      // Est-ce l'email admin par défaut ?
       const adminDefaultEmail = (process.env.ADMIN_EMAIL_DEFAULT || 'it.helpdesktogo@togosh.com').toLowerCase().trim();
-      if (email === adminDefaultEmail) {
-        return true;
-      }
+      if (email === adminDefaultEmail) return true;
 
-      // Si connexion via Microsoft Entra ID (SSO)
       if (account?.provider === 'azure-ad') {
         const expectedTenantId = process.env.AZURE_AD_TENANT_ID;
         const userTenantId = (profile as any)?.tid || (profile as any)?.tenantId;
 
-        // 1. Si le Tenant ID renvoyé par Microsoft ne correspond pas à celui de l'organisation
         if (expectedTenantId && userTenantId && userTenantId !== expectedTenantId) {
-          console.warn(`[Auth Reject] Connexion refusée pour ${email} : Tenant ID non autorisé (${userTenantId} !== ${expectedTenantId})`);
+          console.warn(`[Auth Reject] Tenant non autorisé pour ${email}`);
           return false;
         }
 
-        // 2. Vérification de l'annuaire MySQL ou des domaines autorisés
         try {
           const rows = await query<any>('SELECT id FROM utilisateurs WHERE email = ?', [email]);
           const existsInDb = rows.length > 0;
-
           const allowedDomains = ['togosh.com', 'togooil.com', 't-oil.tg'];
           const domain = email.split('@')[1];
           const isAllowedDomain = allowedDomains.includes(domain);
 
           if (!existsInDb && !isAllowedDomain) {
-            console.warn(`[Auth Reject] Connexion refusée pour ${email} : Compte hors annuaire entreprise.`);
+            console.warn(`[Auth Reject] Compte hors annuaire: ${email}`);
             return false;
           }
         } catch (err) {
-          console.error('[Auth Reject] Erreur lors de la vérification de l\'annuaire:', err);
+          console.error("[Auth Reject] Erreur vérification annuaire:", err);
         }
       }
 
       return true;
     },
-    /**
-     * Callback JWT : lors de la connexion (SSO ou Credentials), upsert automatique dans MySQL 
-     * et association avec le rôle / N+1 configuré par l'Admin.
-     */
+
     async jwt({ token, account, profile, user }) {
+      console.log('[JWT] Callback JWT exécuté.');
+
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
       }
 
+      // Stocker le profil Microsoft Graph complet dans le token pour inspection
+      if (profile) {
+        token.profile = profile;
+      }
+
       const email = user?.email || token.email;
+
       if (email) {
         try {
           const cleanEmail = email.toLowerCase().trim();
@@ -174,7 +170,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const displayName = user?.name || token.name || cleanEmail.split('@')[0];
           const now = new Date();
 
-          // Upsert dans MySQL sans écraser les rôles et le N+1 définis dans la page admin
           const sql = `
             INSERT INTO utilisateurs (id, nom, email, azure_id, role, est_rh, est_com, cree_le, mis_a_jour_le)
             VALUES (?, ?, ?, ?, 'EMPLOYE', 0, 0, ?, ?)
@@ -183,9 +178,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               azure_id = COALESCE(VALUES(azure_id), azure_id),
               mis_a_jour_le = VALUES(mis_a_jour_le)
           `;
-          await execute(sql, [generateId(), displayName, cleanEmail, azureId || null, now, now]);
+
+          await execute(sql, [
+            generateId(),
+            displayName,
+            cleanEmail,
+            azureId || null,
+            now,
+            now,
+          ]);
 
           const rows = await query<any>('SELECT * FROM utilisateurs WHERE email = ?', [cleanEmail]);
+
           if (rows.length > 0) {
             const dbUser = rows[0];
             token.role = dbUser.role;
@@ -194,30 +198,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.dbUserId = dbUser.id;
           }
         } catch (dbErr) {
-          console.error('[Auth] Erreur de synchronisation MySQL pour', email, dbErr);
+          console.error('[Auth] Erreur MySQL:', dbErr);
         }
       }
 
       return token;
     },
 
-    /**
-     * Callback Session : transmet les rôles, permissions et N+1 à la session utilisateur
-     */
     async session({ session, token }) {
+      console.log('[SESSION] Callback session exécuté.');
+
       session.accessToken = token.accessToken as string;
+
       if (token.sub || token.dbUserId) {
         session.user.id = (token.dbUserId || token.sub) as string;
       }
+
       if (token.role) {
         session.user.role = token.role as 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
       }
+
       if (token.isRH !== undefined) {
         session.user.isRH = Boolean(token.isRH);
       }
+
       if (token.managerEmail) {
         session.user.managerEmail = token.managerEmail as string;
       }
+
+      // Transmettre le profil Azure AD à la session client
+      if (token.profile) {
+        session.user.profile = token.profile;
+      }
+
       return session;
     },
   },
