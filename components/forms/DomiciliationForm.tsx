@@ -8,8 +8,29 @@ import {
   X 
 } from 'lucide-react';
 
-export default function DomiciliationForm({ onCancel, onSuccess }) {
-  const [formData, setFormData] = useState({
+interface AttestationFormProps {
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+interface DomiciliationFormData {
+     matricule: string,
+    lastName: string,
+    firstName: string,
+    company: string,
+    jobTitle: string,
+    department: string,
+    bank: string,
+    bankBranch: string,
+    requestReason: string,
+    email: string,
+    phone: string,
+    effectiveDate: string,
+    comments: string,
+    file: null,
+}
+
+export default function DomiciliationForm({ onCancel, onSuccess }:AttestationFormProps) {
+  const [formData, setFormData] = useState<DomiciliationFormData>({
     matricule: '',
     lastName: '',
     firstName: '',
@@ -28,11 +49,11 @@ export default function DomiciliationForm({ onCancel, onSuccess }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof DomiciliationFormData, value:string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 

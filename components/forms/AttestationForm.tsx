@@ -6,8 +6,22 @@ import {
   X 
 } from 'lucide-react';
 
-export default function AttestationForm({ onCancel, onSuccess }) {
-  const [formData, setFormData] = useState({
+
+interface AttestationFormProps {
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+interface AttestationFormData {
+  lastName: string;
+  firstName: string;
+  company: string;
+  email: string;
+  reason: string;
+  comments: string;
+}
+
+export default function AttestationForm({ onCancel, onSuccess }:AttestationFormProps) {
+  const [formData, setFormData] = useState<AttestationFormData>({
     lastName: '',
     firstName: '',
     company: 'T-Oil',
@@ -18,17 +32,24 @@ export default function AttestationForm({ onCancel, onSuccess }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleChange = (
+    field: keyof AttestationFormData,
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     setIsSubmitting(true);
 
     setTimeout(() => {
       setIsSubmitting(false);
-      if (onSuccess) onSuccess();
+      onSuccess?.();
     }, 600);
   };
 
