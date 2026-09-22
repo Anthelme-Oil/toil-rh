@@ -273,12 +273,19 @@ export interface RequestItem {
   }>;
 }
 
+// export type SequenceType = {
+//   id: string;
+//   nom: string;
+//   role: string;
+//   statusMatcher: string;
+// } ;
+
 export type SequenceType = {
   id: string;
   nom: string;
   role: string;
-  statusMatcher: string;
-} ;
+  statusMatcher: WorkflowStatus;
+};
 export type WorkflowKey = keyof typeof workflowDefinitions;
 
 export type FilterKey = 'pending' | 'validated' | 'refused' | 'all';
