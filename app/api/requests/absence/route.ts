@@ -288,7 +288,7 @@ export async function POST(req: Request) {
         // requestReference:
         //   newRequest.reference ?
         //   newRequest?.reference:
-          requestReference: newRequest.reference || (newRequest.id ? newRequest.id.substring(0, 8).toUpperCase() : ""),                  
+          requestReference:  newRequest.id ? newRequest.id.substring(0, 8).toUpperCase() : "",                  
           
 
         requesterName: applicantName,

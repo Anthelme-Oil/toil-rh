@@ -593,7 +593,7 @@ const validationMessage =
 
           stepName: nextStepName,
 
-          requestReference: demande.reference || (demande.id ? demande.id.substring(0, 8).toUpperCase() : ""),                  
+          requestReference: demande.id ? demande.id.substring(0, 8).toUpperCase() : "",                  
 
           requesterName:
             session.user.name || "Demandeur",
