@@ -1,8 +1,8 @@
 import "server-only";
-
+import React, { type ReactElement } from 'react';
 import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
-import type { ReactElement } from "react";
+// import type { ReactElement } from "react";
 
 import { emailConfig } from "./conf";
 import type { MailRecipient, SendMailOptions } from "./mail.types"
@@ -145,7 +145,9 @@ export const sendMail = async <TProps>({
      * Le template reste totalement indépendant
      * du mécanisme d'envoi.
      */
-    const emailElement = template(props) as ReactElement;
+    // const emailElement = template(props) as ReactElement;
+    // const emailElement = React.createElement(template, props) as ReactElement;
+    const emailElement = template(props);
 
     /**
      * Conversion du composant React Email en HTML.
