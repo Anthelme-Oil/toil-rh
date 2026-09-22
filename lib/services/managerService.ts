@@ -47,7 +47,7 @@ export class ManagerService {
     }
 
     // Aucun N+1 -> Récupération de tous les administrateurs du système
-    const admins = await prisma.user.findMany({
+    const admins = await prisma.utilisateur.findMany({
       where: { role: 'ADMIN' },
       select: { email: true },
     });
