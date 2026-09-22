@@ -1,21 +1,17 @@
 import "server-only";
-import React, { type ReactElement } from 'react';
+
 import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
-// import type { ReactElement } from "react";
 
-// import { emailConfig } from "./conf";
 import { getEmailConfig } from "./conf";
-import type { MailRecipient, SendMailOptions } from "./mail.types"
+import type { MailRecipient, SendMailOptions } from "./mail.types";
 
 /**
  * Transporteur SMTP Microsoft 365.
  *
- * Le transporter est créé une seule fois au niveau du module
- * afin d'éviter de recréer une connexion/configuration SMTP
- * à chaque envoi.
+ * La configuration SMTP est chargée uniquement lorsque
+ * le transporteur est réellement utilisé.
  */
-
 const getTransporter = () => {
   const emailConfig = getEmailConfig();
 
@@ -30,27 +26,9 @@ const getTransporter = () => {
     },
   });
 };
-// const emailConfig = getEmailConfig();
-// const transporter = nodemailer.createTransport({
-//   host: emailConfig.smtp.host,
-//   port: emailConfig.smtp.port,
-//   secure: emailConfig.smtp.secure,
-//   requireTLS: emailConfig.smtp.requireTLS,
-
-//   auth: {
-//     user: emailConfig.smtp.auth.user,
-//     pass: emailConfig.smtp.auth.pass,
-//   },
-// });
-
-const transporter =getTransporter();
 
 /**
  * Normalise les destinataires.
- *
- * Accepte :
- * - une adresse unique
- * - plusieurs adresses sous forme de tableau
  */
 const normalizeRecipients = (
   recipients?: MailRecipient,
@@ -77,8 +55,7 @@ const normalizeRecipients = (
 };
 
 /**
- * Vérifie qu'au moins un destinataire principal
- * est fourni.
+ * Vérifie qu'au moins un destinataire est fourni.
  */
 const validateRecipients = (
   to?: string,
@@ -94,12 +71,11 @@ const validateRecipients = (
 
 /**
  * Vérifie la connexion au serveur SMTP.
- *
- * Utile au démarrage de l'application ou pour un endpoint
- * de health-check.
  */
 export const verifyMailTransport = async (): Promise<void> => {
   try {
+    const transporter = getTransporter();
+
     await transporter.verify();
   } catch (error) {
     console.error(
@@ -115,14 +91,6 @@ export const verifyMailTransport = async (): Promise<void> => {
 
 /**
  * Service générique d'envoi d'e-mails.
- *
- * Le service reçoit :
- * - les destinataires
- * - le sujet
- * - le composant React du template
- * - les données nécessaires au template
- *
- * Il est volontairement indépendant du métier.
  */
 export const sendMail = async <TProps>({
   to,
@@ -159,13 +127,18 @@ export const sendMail = async <TProps>({
 
   try {
     /**
-     * Création du composant React.
-     *
-     * Le template reste totalement indépendant
-     * du mécanisme d'envoi.
+     * Configuration SMTP chargée uniquement au moment de l'envoi.
      */
-    // const emailElement = template(props) as ReactElement;
-    // const emailElement = React.createElement(template, props) as ReactElement;
+    const emailConfig = getEmailConfig();
+
+    /**
+     * Transporteur SMTP créé uniquement au moment de l'envoi.
+     */
+    const transporter = getTransporter();
+
+    /**
+     * Création du composant React Email.
+     */
     const emailElement = template(props);
 
     /**
@@ -178,24 +151,16 @@ export const sendMail = async <TProps>({
      */
     const info = await transporter.sendMail({
       from: emailConfig.from,
-
       to: normalizedTo,
       cc: normalizedCc,
       bcc: normalizedBcc,
-
       replyTo,
-
       subject: subject.trim(),
-
       html,
-
-      /**
-       * Version texte alternative.
-       *
-       * Permet aux clients mail qui ne rendent pas correctement
-       * le HTML d'afficher une version lisible.
-       */
-      text: html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
+      text: html
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
     });
 
     console.info(
