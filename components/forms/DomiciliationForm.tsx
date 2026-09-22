@@ -26,7 +26,7 @@ interface DomiciliationFormData {
     phone: string,
     effectiveDate: string,
     comments: string,
-    file: null,
+   file: File | null;
 }
 
 export default function DomiciliationForm({ onCancel, onSuccess }:AttestationFormProps) {
@@ -49,9 +49,15 @@ export default function DomiciliationForm({ onCancel, onSuccess }:AttestationFor
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof DomiciliationFormData, value:string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+ const handleChange = <K extends keyof DomiciliationFormData>(
+  field: K,
+  value: DomiciliationFormData[K]
+) => {
+  setFormData((prev) => ({
+    ...prev,
+    [field]: value,
+  }));
+};
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
