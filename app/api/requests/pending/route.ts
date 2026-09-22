@@ -510,7 +510,7 @@ const validationMessage =
         where: {
           poste: {
             contains: "IT",
-            mode: "insensitive",
+            // mode: "insensitive",
           },
 
           // actif: true,
