@@ -337,14 +337,14 @@ export default function ValidationDemandesPage() {
       </div>
 
       {/* Modale de validation / rejet */}
-      <ActionModal
+     {selectedDemandeForModal && ( <ActionModal
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig({ isOpen: false, demandeId: null, actionType: null })}
         onConfirm={handleConfirmAction}
         actionType={modalConfig.actionType}
-        requestTitle={selectedDemandeForModal?.titre}
+        requestTitle={selectedDemandeForModal.titre}
         loading={processingId !== null}
-      />
+      />)}
 
       {/* Modale dédiée aux détails de la demande */}
       <RequestDetailsModal
