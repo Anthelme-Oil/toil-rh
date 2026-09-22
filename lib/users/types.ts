@@ -15,7 +15,7 @@ export interface InternalUser {
 }
 
 export interface CreateInternalUserInput {
-  id: string;
+  id?: string;
   nom: string;
   email: string;
   azure_id?: string | null;
