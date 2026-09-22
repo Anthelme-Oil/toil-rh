@@ -2,7 +2,11 @@
 
 import React from "react";
 import { X, FileText, User, Mail, Calendar, Tag, ShieldAlert } from "lucide-react";
-import { PendingRequest } from "./RequestCard";
+// import { PendingRequest } from "./RequestCard";
+
+import { RequestItem as PendingRequest } from "@/types";
+
+
 
 interface RequestDetailsModalProps {
   isOpen: boolean;
