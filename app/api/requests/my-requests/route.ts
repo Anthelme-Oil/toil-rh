@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     const email = session.user.email.toLowerCase().trim();
-    const estDrh = session?.user?.isDRH;
+    // const estDrh = session?.user?.isDRH;
     // console.log("isDRH=>",estDrh,"session=>",session)
     const userRole = (session.user as any)?.role?.toUpperCase() || '';
 
@@ -26,7 +26,7 @@ export async function GET() {
 
     // Exemple : Si l'utilisateur est admin ou DRH, on récupère tout ou les en-cours
     // Adaptez cette condition selon vos rôles Prisma exacts
-    if (userRole.includes('DRH') || estDrh || userRole.includes('ADMIN') || userRole.includes('N+1')) {
+    if (userRole.includes('DRH')  || userRole.includes('ADMIN') || userRole.includes('N+1')) {
       userRequests = await prisma.demande.findMany({
         orderBy: {
           creeLe: 'desc',
