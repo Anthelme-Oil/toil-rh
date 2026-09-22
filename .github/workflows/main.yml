@@ -1,0 +1,49 @@
+name: Deploy Production 
+
+on: 
+  push: 
+    branches: 
+      - main 
+
+jobs: 
+  deploy: 
+    name: Deploy to Local Ubuntu 
+    runs-on: self-hosted 
+
+    steps: 
+      - name: Checkout repository 
+        uses: actions/checkout@v4 
+
+      - name: Copier les fichiers vers le dossier /var/www 
+        run: |
+          mkdir -p /var/www/toil-portail
+          rsync -av --exclude='.git' . /var/www/toil-portail/
+
+      - name: Build et redémarrage de l'application Next.js 
+        run: |
+          set -e 
+
+          # Chargement de l'environnement NVM si utilisé
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+          cd /var/www/toil-portail 
+
+          echo "=== Vérification de l'environnement ===" 
+          node -v 
+          npm -v 
+          pm2 -v 
+
+          echo "=== Installation des dépendances ===" 
+          npm install 
+
+          echo "=== Build Next.js ===" 
+          npm run build 
+
+          echo "=== Redémarrage PM2 ===" 
+          pm2 restart toil-portail || pm2 start npm --name "toil-portail" -- start 
+
+          echo "=== Sauvegarde PM2 ===" 
+          pm2 save 
+
+          echo "=== Déploiement terminé avec succès ==="

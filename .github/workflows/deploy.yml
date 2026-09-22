@@ -1,49 +1,88 @@
-name: Deploy Production 
+name: Deploy Production
 
-on: 
-  push: 
-    branches: 
-      - dev 
+on:
+  push:
+    branches:
+      - dev
 
-jobs: 
-  deploy: 
-    name: Deploy to Local Ubuntu 
-    runs-on: self-hosted 
+jobs:
+  deploy:
+    name: Deploy to Local Ubuntu
+    runs-on: self-hosted
 
-    steps: 
-      - name: Checkout repository 
-        uses: actions/checkout@v4 
+    steps:
+      # ============================================================
+      # 1. Récupération du code
+      # ============================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Copier les fichiers vers le dossier /var/www 
+      # ============================================================
+      # 2. Vérification + installation + build
+      #    Aucune modification de /var/www/toil-portail ici
+      # ============================================================
+      - name: Build et vérification
         run: |
-          mkdir -p /var/www/toil-portail
-          rsync -av --exclude='.git' . /var/www/toil-portail/
+          set -e
 
-      - name: Build et redémarrage de l'application Next.js 
-        run: |
-          set -e 
-
-          # Chargement de l'environnement NVM si utilisé
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-          cd /var/www/toil-portail 
+          echo "=== Vérification de l'environnement ==="
+          node -v
+          npm -v
+          pm2 -v
 
-          echo "=== Vérification de l'environnement ===" 
-          node -v 
-          npm -v 
-          pm2 -v 
+          echo "=== Installation des dépendances ==="
+          npm install
 
-          echo "=== Installation des dépendances ===" 
-          npm install 
+          echo "=== Build Next.js ==="
+          npm run build
 
-          echo "=== Build Next.js ===" 
-          npm run build 
+          echo "=== Build terminé avec succès ==="
 
-          echo "=== Redémarrage PM2 ===" 
-          pm2 restart toil-portail || pm2 start npm --name "toil-portail" -- start 
+      # ============================================================
+      # 3. Déploiement
+      #    Cette étape n'est exécutée que si le build précédent
+      #    est réussi
+      # ============================================================
+      - name: Déployer vers /var/www/toil-portail
+        run: |
+          set -e
 
-          echo "=== Sauvegarde PM2 ===" 
-          pm2 save 
+          echo "=== Préparation du dossier de production ==="
+
+          mkdir -p /var/www/toil-portail
+
+          rsync -av \
+            --delete \
+            --exclude='.git' \
+            --exclude='.env' \
+            --exclude='.env.local' \
+            --exclude='node_modules' \
+            . /var/www/toil-portail/
+
+          echo "=== Fichiers déployés avec succès ==="
+
+      # ============================================================
+      # 4. Installation production + redémarrage
+      # ============================================================
+      - name: Installation et redémarrage de l'application
+        run: |
+          set -e
+
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+          cd /var/www/toil-portail
+
+          echo "=== Installation des dépendances production ==="
+          npm install
+
+          echo "=== Redémarrage PM2 ==="
+          pm2 restart toil-portail || pm2 start npm --name "toil-portail" -- start
+
+          echo "=== Sauvegarde PM2 ==="
+          pm2 save
 
           echo "=== Déploiement terminé avec succès ==="
