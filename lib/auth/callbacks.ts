@@ -187,14 +187,19 @@ export async function jwtCallback({
     }
 
     const dbUser = await findUserByEmail(email);
+//     const azureProfile = normalizeAzureProfile(
+//   profile as AzureUserProfile
+// );
+
+// token.profile = azureProfile;
 
     if (dbUser) {
       token.dbUserId = dbUser.id;
       token.role = dbUser.role;
       token.isRH = dbUser.est_rh;
       token.isCom = dbUser.est_com;
-      token.managerEmail = dbUser.manager_email;
-      token.profile = dbUser.profile;
+      token.managerEmail = dbUser.email_manager;
+      // token.profile = dbUser.profile;
     }
   }
 
