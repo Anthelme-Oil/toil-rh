@@ -8,22 +8,22 @@ import Credentials from 'next-auth/providers/credentials';
 import { query, execute, generateId } from '../db';
 import { getUserPermissionsByEmail } from '../roles';
 
-declare module 'next-auth' {
-  interface Session {
-    accessToken?: string;
-    user: {
-      id?: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      role?: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
-      isRH?: boolean;
-      managerEmail?: string;
-      departement?: string;
-      profile?: any; // <-- Ajout pour stocker tout le profil Azure AD
-    };
-  }
-}
+// declare module 'next-auth' {
+//   interface Session {
+//     accessToken?: string;
+//     user: {
+//       id?: string;
+//       name?: string | null;
+//       email?: string | null;
+//       image?: string | null;
+//       role?: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN' | 'DRH';
+//       isRH?: boolean;
+//       managerEmail?: string;
+//       departement?: string;
+//       profile?: any; // <-- Ajout pour stocker tout le profil Azure AD
+//     };
+//   }
+// }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,

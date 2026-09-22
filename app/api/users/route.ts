@@ -18,7 +18,7 @@ export async function GET() {
 // console.log(session,"session")
   if (
     session.user.role !== 'ADMIN' &&
-    !session.user.isDRH
+    session.user.role !== 'DRH'
   ) {
     return NextResponse.json(
       { error: 'Accès interdit' },
