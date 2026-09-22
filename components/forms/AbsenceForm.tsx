@@ -196,7 +196,7 @@ export default function AbsenceForm({ onCancel, onSuccess }: { onCancel?: () => 
             >
               <option value="" disabled>-- Sélectionner un motif --</option>
               {Object.entries(EXCEPTIONAL_ABSENCE_TYPES).map(([key, item]) => (
-                <option key={key} value={key}>
+                <option key={key} value={item?.label}>
                   {item.label} ({item.duration} j)
                 </option>
               ))}
