@@ -158,7 +158,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Stocker le profil Microsoft Graph complet dans le token pour inspection
       if (profile) {
-        token.profile = profile;
+        token?.profile = profile;
       }
 
       const email = user?.email || token.email;
