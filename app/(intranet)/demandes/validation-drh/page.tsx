@@ -322,14 +322,16 @@ export default function ValidationDRHPage() {
       </div>
 
       {/* Modale d'action (Approuver / Rejeter avec commentaire) */}
-      <ActionModal
-        isOpen={modalConfig.isOpen}
-        onClose={closeActionModal}
-        onConfirm={handleConfirmAction}
-        actionType={modalConfig.actionType}
-        requestTitle={selectedDemandeForModal?.titre}
-        loading={processingId !== null}
-      />
+     {selectedDemandeForModal && (
+  <ActionModal
+    isOpen={modalConfig.isOpen}
+    onClose={closeActionModal}
+    onConfirm={handleConfirmAction}
+    actionType={modalConfig.actionType}
+    requestTitle={selectedDemandeForModal.titre}
+    loading={processingId !== null}
+  />
+)}
 
       {/* Modale de détails de la demande */}
       <RequestDetailsModal
