@@ -41,19 +41,20 @@ const getBoolean = (key: string): boolean => {
   );
 };
 
-export const emailConfig = Object.freeze({
-  smtp: {
-    host: getRequiredEnv("SMTP_HOST"),
-    port: getPort(),
-    secure: getBoolean("SMTP_SECURE"),
+export const getEmailConfig = () =>
+  Object.freeze({
+    smtp: {
+      host: getRequiredEnv("SMTP_HOST"),
+      port: getPort(),
+      secure: getBoolean("SMTP_SECURE"),
 
-    auth: {
-      user: getRequiredEnv("SMTP_USER"),
-      pass: getRequiredEnv("SMTP_PASS"),
+      auth: {
+        user: getRequiredEnv("SMTP_USER"),
+        pass: getRequiredEnv("SMTP_PASS"),
+      },
+
+      requireTLS: true,
     },
 
-    requireTLS: true,
-  },
-
-  from: getRequiredEnv("MAIL_FROM"),
-});
+    from: getRequiredEnv("MAIL_FROM"),
+  });

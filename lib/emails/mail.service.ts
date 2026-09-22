@@ -4,7 +4,8 @@ import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 // import type { ReactElement } from "react";
 
-import { emailConfig } from "./conf";
+// import { emailConfig } from "./conf";
+import { getEmailConfig } from "./conf";
 import type { MailRecipient, SendMailOptions } from "./mail.types"
 
 /**
@@ -14,17 +15,35 @@ import type { MailRecipient, SendMailOptions } from "./mail.types"
  * afin d'éviter de recréer une connexion/configuration SMTP
  * à chaque envoi.
  */
-const transporter = nodemailer.createTransport({
-  host: emailConfig.smtp.host,
-  port: emailConfig.smtp.port,
-  secure: emailConfig.smtp.secure,
-  requireTLS: emailConfig.smtp.requireTLS,
 
-  auth: {
-    user: emailConfig.smtp.auth.user,
-    pass: emailConfig.smtp.auth.pass,
-  },
-});
+const getTransporter = () => {
+  const emailConfig = getEmailConfig();
+
+  return nodemailer.createTransport({
+    host: emailConfig.smtp.host,
+    port: emailConfig.smtp.port,
+    secure: emailConfig.smtp.secure,
+    requireTLS: emailConfig.smtp.requireTLS,
+    auth: {
+      user: emailConfig.smtp.auth.user,
+      pass: emailConfig.smtp.auth.pass,
+    },
+  });
+};
+// const emailConfig = getEmailConfig();
+// const transporter = nodemailer.createTransport({
+//   host: emailConfig.smtp.host,
+//   port: emailConfig.smtp.port,
+//   secure: emailConfig.smtp.secure,
+//   requireTLS: emailConfig.smtp.requireTLS,
+
+//   auth: {
+//     user: emailConfig.smtp.auth.user,
+//     pass: emailConfig.smtp.auth.pass,
+//   },
+// });
+
+const transporter =getTransporter();
 
 /**
  * Normalise les destinataires.
