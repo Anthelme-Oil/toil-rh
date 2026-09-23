@@ -222,6 +222,7 @@ export interface RequestItem {
   statut: string;
   utilisateurId: string | null;
   emailDemandeur: string;
+  // companyName:string;
   nomDemandeur: string;
   targetUserId: string | null;
   targetUserName: string | null;
@@ -313,6 +314,8 @@ export interface SendMailOptions<TProps = unknown> {
 // types/index.ts
 
 export type ExceptionalAbsenceType =
+  | "PERMISSION"
+  | "CONGES_ANNUELS"
   | "DECES_CONJOINT_ASCENDANT_DESCENDANT"
   | "DECES_FRERE_SOEUR"
   | "DECES_BEAU_PERE_BELLE_MERE"
@@ -323,13 +326,28 @@ export type ExceptionalAbsenceType =
   | "BAPTEME_ENFANT"
   | "DEMENAGEMENT";
 
+
+
+  export const INCLUDES_WEEKEND_TYPES: ExceptionalAbsenceType[] = [
+  "CONGES_ANNUELS",
+  // Ajoutez d'autres clés ici si nécessaire
+];
+
 export const EXCEPTIONAL_ABSENCE_TYPES: Record<
   ExceptionalAbsenceType,
   {
     label: string;
-    duration: number;
+    duration?: number;
   }
 > = {
+  PERMISSION: {
+    label: "Permission",
+    // duration: 5,
+  },
+   CONGES_ANNUELS: {
+    label: "Congés annuels",
+    // duration: 5,
+  },
   DECES_CONJOINT_ASCENDANT_DESCENDANT: {
     label: "Décès d'un conjoint, d'un ascendant ou d'un descendant en ligne directe",
     duration: 5,

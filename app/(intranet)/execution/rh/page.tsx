@@ -404,8 +404,11 @@ export default function ValidationRhExecPage() {
         <div className="mb-4">
           <ValidationHistoryPdf
             title="REÇU DE VALIDATION - RH EXÉCUTANT"
-            companyName="T-OIL"
+            companyName="T-OIL / COMPEL / STSL"
             companySubtitle="Gestion des demandes RH"
+            dateDebut={pdfDemande.dateDebut}
+            dateFin={pdfDemande.dateFin}
+            nbreJour={pdfDemande.nombreJours}
             data={{
               reference: pdfDemande.reference || pdfDemande.id.slice(0, 8).toUpperCase(),
               typeDemande: pdfDemande.typeDemande || "AUTRE",

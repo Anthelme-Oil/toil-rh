@@ -108,6 +108,7 @@ const nextStep =
     // 1. Tous les champs bruts de la base de données
     id: item.id,
     titre: item.titre,
+    // companyName:item.company,
     typeDemande: item.typeDemande,
     statut: item.statut,
     utilisateurId: item.utilisateurId ?? null,
