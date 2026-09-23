@@ -400,30 +400,47 @@ export default function ValidationRhExecPage() {
       )}
 
       {/* Générateur PDF masqué / automatisé après validation réussie */}
-      {pdfDemande && (
-        <div className="mb-4">
-          <ValidationHistoryPdf
-            title="REÇU DE VALIDATION - RH EXÉCUTANT"
-            companyName="T-OIL / COMPEL / STSL"
-            companySubtitle="Gestion des demandes RH"
-            dateDebut={pdfDemande.dateDebut}
-            dateFin={pdfDemande.dateFin}
-            nbreJour={pdfDemande.nombreJours}
-            data={{
-              reference: pdfDemande.reference || pdfDemande.id.slice(0, 8).toUpperCase(),
-              typeDemande: pdfDemande.typeDemande || "AUTRE",
-              titre: pdfDemande.titre || "Sans titre",
-              demandeur: pdfDemande.nomDemandeur || pdfDemande.emailDemandeur || "Utilisateur",
-              dateSoumission: pdfDemande.creeLe ? new Date(pdfDemande.creeLe).toISOString() : "",
-              statut: "VALIDÉ & EXÉCUTÉ",
-              historique: Array.isArray(pdfDemande.historique) ? pdfDemande.historique : [],
-            }}
-            fileName={`Recu_Historique_${pdfDemande.reference || pdfDemande.id}`}
-            buttonLabel="Télécharger le reçu PDF"
-            onGenerated={() => setPdfDemande(null)}
-          />
-        </div>
-      )}
+     {pdfDemande && (
+  <div className="mb-4">
+    <ValidationHistoryPdf
+      title="REÇU DE VALIDATION - RH EXÉCUTANT"
+      companyName="T-OIL / COMPEL / STSL"
+      companySubtitle="Gestion des demandes RH"
+      dateDebut={pdfDemande.dateDebut ?? undefined}
+      dateFin={pdfDemande.dateFin ?? undefined}
+      nbreJour={pdfDemande.nombreJours ?? undefined}
+      data={{
+        reference:
+          pdfDemande.reference ||
+          pdfDemande.id.slice(0, 8).toUpperCase(),
+
+        typeDemande: pdfDemande.typeDemande || "AUTRE",
+
+        titre: pdfDemande.titre || "Sans titre",
+
+        demandeur:
+          pdfDemande.nomDemandeur ||
+          pdfDemande.emailDemandeur ||
+          "Utilisateur",
+
+        dateSoumission: pdfDemande.creeLe
+          ? new Date(pdfDemande.creeLe).toISOString()
+          : "",
+
+        statut: "VALIDÉ & EXÉCUTÉ",
+
+        historique: Array.isArray(pdfDemande.historique)
+          ? pdfDemande.historique
+          : [],
+      }}
+      fileName={`Recu_Historique_${
+        pdfDemande.reference || pdfDemande.id
+      }`}
+      buttonLabel="Télécharger le reçu PDF"
+      onGenerated={() => setPdfDemande(null)}
+    />
+  </div>
+)}
 
     </div>
   );
