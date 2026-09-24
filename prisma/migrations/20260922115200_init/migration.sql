@@ -1,5 +1,4 @@
-◇ injected env (25) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
-◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
 -- CreateTable
 CREATE TABLE `utilisateurs` (
     `id` VARCHAR(191) NOT NULL,

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Clock,
   User,
@@ -13,15 +13,17 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { useUser } from '@/context/UserContext';
+import { useUser } from "@/context/UserContext";
 
 import {
   EXCEPTIONAL_ABSENCE_TYPES,
   INCLUDES_WEEKEND_TYPES,
   ExceptionalAbsenceType,
-} from '@/types';
+} from "@/types";
+
+import { DayOff } from "@/types";
 
 export default function AbsenceForm({
   onCancel,
@@ -30,29 +32,26 @@ export default function AbsenceForm({
   onCancel?: () => void;
   onSuccess?: () => void;
 }) {
-  const {
-    userEmail,
-    userName,
-    managerEmail,
-    isLoading,
-  } = useUser();
+  const { userEmail, userName, managerEmail, isLoading } = useUser();
 
   // ------------------------------------------------------------
   // FORMULAIRE
   // ------------------------------------------------------------
 
   const [formData, setFormData] = useState({
-    absenceType: '',
-    company: 'T-Oil',
-    startDate: '',
-    endDate: '',
-    manager: '',
+    absenceType: "",
+    company: "T-Oil",
+    startDate: "",
+    endDate: "",
+    manager: "",
     file: null as File | null,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
+  const [dayOffs, setDayOffs] = useState<DayOff[]>([]);
+  const [isLoadingDayOffs, setIsLoadingDayOffs] = useState(false);
   // ------------------------------------------------------------
   // REMPLISSAGE AUTOMATIQUE DU MANAGER
   // ------------------------------------------------------------
@@ -66,6 +65,92 @@ export default function AbsenceForm({
     }
   }, [managerEmail]);
 
+  const loadedYearsRef = React.useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const loadDayOffs = async () => {
+      const years = new Set<number>();
+
+      if (formData.startDate) {
+        years.add(new Date(`${formData.startDate}T00:00:00`).getFullYear());
+      }
+
+      if (formData.endDate) {
+        years.add(new Date(`${formData.endDate}T00:00:00`).getFullYear());
+      }
+
+      if (years.size === 0) {
+        years.add(new Date().getFullYear());
+      }
+
+      const yearsToLoad = Array.from(years).filter(
+        (year) => !loadedYearsRef.current.has(year),
+      );
+
+      if (yearsToLoad.length === 0) {
+        return;
+      }
+
+      setIsLoadingDayOffs(true);
+
+      try {
+        const responses = await Promise.all(
+          yearsToLoad.map(async (year) => {
+            const response = await fetch(`/api/requests/day-off?year=${year}`, {
+              method: "GET",
+              cache: "no-store",
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+              throw new Error(
+                result.message ||
+                  `Impossible de récupérer les jours fériés de ${year}.`,
+              );
+            }
+
+            return {
+              year,
+              data: Array.isArray(result.data) ? result.data : [],
+            };
+          }),
+        );
+
+        setDayOffs((previous) => {
+          const merged = [...previous];
+
+          for (const response of responses) {
+            for (const dayOff of response.data) {
+              const index = merged.findIndex((item) => item.id === dayOff.id);
+
+              if (index >= 0) {
+                merged[index] = dayOff;
+              } else {
+                merged.push(dayOff);
+              }
+            }
+          }
+
+          return merged;
+        });
+
+        for (const year of yearsToLoad) {
+          loadedYearsRef.current.add(year);
+        }
+      } catch (error) {
+        console.error(
+          "[ABSENCE_FORM] Erreur lors du chargement des jours fériés :",
+          error,
+        );
+      } finally {
+        setIsLoadingDayOffs(false);
+      }
+    };
+
+    loadDayOffs();
+  }, [formData.startDate, formData.endDate]);
+
   // ------------------------------------------------------------
   // SÉLECTION DU TYPE D'ABSENCE ET SONT OPTION WEEKEND
   // ------------------------------------------------------------
@@ -75,7 +160,7 @@ export default function AbsenceForm({
     if (!formData.absenceType) return null;
 
     const entry = Object.entries(EXCEPTIONAL_ABSENCE_TYPES).find(
-      ([, item]) => item.label === formData.absenceType
+      ([, item]) => item.label === formData.absenceType,
     );
 
     return (entry?.[0] as ExceptionalAbsenceType) ?? null;
@@ -96,28 +181,101 @@ export default function AbsenceForm({
   // CALCUL DES JOURS (OUVRÉS OU CALENDAIRES)
   // ------------------------------------------------------------
 
+  const dayOffDates = useMemo(() => {
+    return new Set(
+      dayOffs.map((dayOff) => {
+        const date = new Date(dayOff.date);
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+      }),
+    );
+  }, [dayOffs]);
+
+  // const calculatedDays = useMemo(() => {
+  //   if (!formData.startDate || !formData.endDate) {
+  //     return 0;
+  //   }
+
+  //   const start = new Date(`${formData.startDate}T00:00:00`);
+  //   const end = new Date(`${formData.endDate}T00:00:00`);
+
+  //   // Date de fin antérieure à la date de début
+  //   if (end < start) {
+  //     return 0;
+  //   }
+
+  //   let count = 0;
+  //   const currentDate = new Date(start);
+
+  //   while (currentDate <= end) {
+  //     const day = currentDate.getDay(); // 0 = dimanche, 6 = samedi
+
+  //     // Si le type inclut les week-ends, on compte tous les jours.
+  //     // Sinon, on ignore les samedis et dimanches.
+  //     if (includesWeekend || (day !== 0 && day !== 6)) {
+  //       count++;
+  //     }
+
+  //     currentDate.setDate(currentDate.getDate() + 1);
+  //   }
+
+  //   return count;
+  // }, [formData.startDate, formData.endDate, includesWeekend]);
+
+  // ------------------------------------------------------------
+  // DURÉE AUTORISÉE
+  // ------------------------------------------------------------
+
   const calculatedDays = useMemo(() => {
     if (!formData.startDate || !formData.endDate) {
       return 0;
     }
 
     const start = new Date(`${formData.startDate}T00:00:00`);
+
     const end = new Date(`${formData.endDate}T00:00:00`);
 
-    // Date de fin antérieure à la date de début
     if (end < start) {
       return 0;
     }
 
     let count = 0;
+
     const currentDate = new Date(start);
 
     while (currentDate <= end) {
-      const day = currentDate.getDay(); // 0 = dimanche, 6 = samedi
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+      const day = String(currentDate.getDate()).padStart(2, "0");
 
-      // Si le type inclut les week-ends, on compte tous les jours.
-      // Sinon, on ignore les samedis et dimanches.
-      if (includesWeekend || (day !== 0 && day !== 6)) {
+      const dateKey = `${year}-${month}-${day}`;
+
+      const dayOfWeek = currentDate.getDay();
+
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      const isDayOff = dayOffDates.has(dateKey);
+
+      /*
+       * Un jour férié n'est jamais compté,
+       * quel que soit le type d'absence.
+       */
+      if (isDayOff) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
+
+      /*
+       * Pour les types qui incluent les week-ends,
+       * samedi et dimanche sont comptés.
+       *
+       * Pour les autres types, ils sont ignorés.
+       */
+      if (includesWeekend || !isWeekend) {
         count++;
       }
 
@@ -125,12 +283,27 @@ export default function AbsenceForm({
     }
 
     return count;
-  }, [formData.startDate, formData.endDate, includesWeekend]);
+  }, [formData.startDate, formData.endDate, includesWeekend, dayOffDates]);
 
-  // ------------------------------------------------------------
-  // DURÉE AUTORISÉE
-  // ------------------------------------------------------------
+  const holidaysInRange = useMemo(() => {
+    if (!formData.startDate || !formData.endDate) {
+      return [];
+    }
 
+    const start = new Date(`${formData.startDate}T00:00:00`);
+
+    const end = new Date(`${formData.endDate}T00:00:00`);
+
+    if (end < start) {
+      return [];
+    }
+
+    return dayOffs.filter((dayOff) => {
+      const dayOffDate = new Date(dayOff.date);
+
+      return dayOffDate >= start && dayOffDate <= end;
+    });
+  }, [formData.startDate, formData.endDate, dayOffs]);
   const requiredDuration = useMemo(() => {
     return selectedAbsence?.duration ?? null;
   }, [selectedAbsence]);
@@ -170,17 +343,14 @@ export default function AbsenceForm({
   // GESTION DES CHAMPS
   // ------------------------------------------------------------
 
-  const handleChange = (
-    field: string,
-    value: string | File | null
-  ) => {
+  const handleChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
 
     if (errorMessage) {
-      setErrorMessage('');
+      setErrorMessage("");
     }
   };
 
@@ -197,36 +367,31 @@ export default function AbsenceForm({
     }
 
     if (!formData.startDate || !formData.endDate) {
-      setErrorMessage('Veuillez sélectionner les dates de votre absence.');
+      setErrorMessage("Veuillez sélectionner les dates de votre absence.");
       return;
     }
 
     if (isDateRangeInvalid) {
       setErrorMessage(
-        'La date de fin ne peut pas être antérieure à la date de début.'
+        "La date de fin ne peut pas être antérieure à la date de début.",
       );
       return;
     }
 
     if (calculatedDays === 0) {
-      setErrorMessage(
-        'La période sélectionnée ne contient aucun jour valide.'
-      );
+      setErrorMessage("La période sélectionnée ne contient aucun jour valide.");
       return;
     }
 
-    if (
-      requiredDuration !== null &&
-      calculatedDays > requiredDuration
-    ) {
+    if (requiredDuration !== null && calculatedDays > requiredDuration) {
       setErrorMessage(
-        `La durée sélectionnée (${calculatedDays} jour(s)) dépasse la durée autorisée (${requiredDuration} jour(s)) pour ce motif.`
+        `La durée sélectionnée (${calculatedDays} jour(s)) dépasse la durée autorisée (${requiredDuration} jour(s)) pour ce motif.`,
       );
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
+    setErrorMessage("");
 
     try {
       let fileUrl: string | null = null;
@@ -234,15 +399,15 @@ export default function AbsenceForm({
       // Upload de la pièce jointe
       if (formData.file) {
         const fileData = new FormData();
-        fileData.append('file', formData.file);
+        fileData.append("file", formData.file);
 
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
           body: fileData,
         });
 
         if (!uploadRes.ok) {
-          throw new Error('Impossible de téléverser le fichier.');
+          throw new Error("Impossible de téléverser le fichier.");
         }
 
         const uploadJson = await uploadRes.json();
@@ -255,10 +420,10 @@ export default function AbsenceForm({
       }
 
       // Envoi de la demande
-      const res = await fetch('/api/requests/absence', {
-        method: 'POST',
+      const res = await fetch("/api/requests/absence", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           absenceType: formData.absenceType,
@@ -279,7 +444,7 @@ export default function AbsenceForm({
 
       if (!res.ok || !result.success) {
         setErrorMessage(
-          result.error || "Erreur lors de l'envoi de la demande."
+          result.error || "Erreur lors de l'envoi de la demande.",
         );
         return;
       }
@@ -288,12 +453,12 @@ export default function AbsenceForm({
         onSuccess();
       }
     } catch (err) {
-      console.error('[ABSENCE_FORM] Erreur lors de la soumission :', err);
+      console.error("[ABSENCE_FORM] Erreur lors de la soumission :", err);
 
       setErrorMessage(
         err instanceof Error
           ? err.message
-          : 'Une erreur de connexion au serveur est survenue.'
+          : "Une erreur de connexion au serveur est survenue.",
       );
     } finally {
       setIsSubmitting(false);
@@ -305,10 +470,7 @@ export default function AbsenceForm({
   // ------------------------------------------------------------
 
   const isSubmitDisabled =
-    isSubmitting ||
-    isLoading ||
-    isDurationExceeded ||
-    isDateRangeInvalid;
+    isSubmitting || isLoading || isDurationExceeded || isDateRangeInvalid;
 
   // ------------------------------------------------------------
   // RENDER
@@ -363,9 +525,7 @@ export default function AbsenceForm({
             <select
               required
               value={formData.absenceType}
-              onChange={(e) =>
-                handleChange('absenceType', e.target.value)
-              }
+              onChange={(e) => handleChange("absenceType", e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none"
             >
               <option value="" disabled>
@@ -374,7 +534,9 @@ export default function AbsenceForm({
 
               {Object.entries(EXCEPTIONAL_ABSENCE_TYPES).map(([key, item]) => (
                 <option key={key} value={item.label}>
-                  {item.duration ? `${item.label} (${item.duration} j)` : item.label}
+                  {item.duration
+                    ? `${item.label} (${item.duration} j)`
+                    : item.label}
                 </option>
               ))}
             </select>
@@ -388,9 +550,7 @@ export default function AbsenceForm({
 
             <select
               value={formData.company}
-              onChange={(e) =>
-                handleChange('company', e.target.value)
-              }
+              onChange={(e) => handleChange("company", e.target.value)}
               className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none"
             >
               <option value="T-Oil">T-Oil</option>
@@ -412,9 +572,7 @@ export default function AbsenceForm({
               type="date"
               required
               value={formData.startDate}
-              onChange={(e) =>
-                handleChange('startDate', e.target.value)
-              }
+              onChange={(e) => handleChange("startDate", e.target.value)}
               className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none"
             />
           </div>
@@ -430,9 +588,7 @@ export default function AbsenceForm({
               required
               min={formData.startDate || undefined}
               value={formData.endDate}
-              onChange={(e) =>
-                handleChange('endDate', e.target.value)
-              }
+              onChange={(e) => handleChange("endDate", e.target.value)}
               className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none"
             />
           </div>
@@ -442,8 +598,8 @@ export default function AbsenceForm({
         <div
           className={`flex flex-col gap-1.5 rounded-2xl border p-3.5 transition-all ${
             isDurationExceeded || isDateRangeInvalid
-              ? 'border-red-300 bg-red-50 text-red-800'
-              : 'border-slate-200 bg-slate-50 text-slate-700'
+              ? "border-red-300 bg-red-50 text-red-800"
+              : "border-slate-200 bg-slate-50 text-slate-700"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -451,8 +607,8 @@ export default function AbsenceForm({
               <Clock
                 className={`h-4 w-4 ${
                   isDurationExceeded || isDateRangeInvalid
-                    ? 'text-red-600'
-                    : 'text-emerald-600'
+                    ? "text-red-600"
+                    : "text-emerald-600"
                 }`}
               />
               <span>Nombre de jours :</span>
@@ -468,8 +624,8 @@ export default function AbsenceForm({
               <span
                 className={`text-xs font-bold ${
                   isDurationExceeded || isDateRangeInvalid
-                    ? 'text-red-700'
-                    : 'text-emerald-700'
+                    ? "text-red-700"
+                    : "text-emerald-700"
                 }`}
               >
                 {calculatedDays} jour(s)
@@ -491,7 +647,7 @@ export default function AbsenceForm({
             formData.endDate && (
               <div className="flex items-center justify-between border-t border-slate-200/60 pt-1 text-[11px]">
                 <span>
-                  Durée autorisée pour ce motif :{' '}
+                  Durée autorisée pour ce motif :{" "}
                   <strong>{requiredDuration} jour(s)</strong>
                 </span>
 
@@ -503,6 +659,26 @@ export default function AbsenceForm({
                 )}
               </div>
             )}
+
+          {holidaysInRange.length > 0 && (
+            <div className="border-t border-slate-200/60 pt-2">
+              <div className="flex items-start gap-2 text-[11px] text-slate-500">
+                <Calendar className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+
+                <div>
+                  <p className="font-semibold text-slate-600">
+                    Jours fériés exclus du calcul
+                  </p>
+
+                  <div className="mt-1 space-y-0.5">
+                    {holidaysInRange.map((dayOff) => (
+                      <p key={dayOff.id}>{dayOff.name}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* MESSAGE BLOQUANT */}
@@ -518,13 +694,16 @@ export default function AbsenceForm({
                   Durée d'absence dépassée
                 </p>
                 <p className="mt-1 text-red-700">
-                  La durée sélectionnée est de <strong>{calculatedDays} jour(s)</strong>.
+                  La durée sélectionnée est de{" "}
+                  <strong>{calculatedDays} jour(s)</strong>.
                 </p>
                 <p className="mt-1 text-red-700">
-                  Le motif sélectionné autorise au maximum <strong>{requiredDuration} jour(s)</strong>.
+                  Le motif sélectionné autorise au maximum{" "}
+                  <strong>{requiredDuration} jour(s)</strong>.
                 </p>
                 <p className="mt-1 font-semibold text-red-800">
-                  Veuillez modifier les dates de votre absence avant de pouvoir soumettre la demande.
+                  Veuillez modifier les dates de votre absence avant de pouvoir
+                  soumettre la demande.
                 </p>
               </div>
             </div>
@@ -553,9 +732,7 @@ export default function AbsenceForm({
               type="email"
               placeholder="Saisissez l'e-mail de votre responsable N+1..."
               value={formData.manager}
-              onChange={(e) =>
-                handleChange('manager', e.target.value)
-              }
+              onChange={(e) => handleChange("manager", e.target.value)}
               className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-10 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
             />
 
@@ -570,8 +747,12 @@ export default function AbsenceForm({
                   Aucun responsable N+1 associé à votre compte.
                 </p>
                 <p className="mt-0.5 text-amber-700">
-                  Renseignez l'e-mail de votre N+1 ci-dessus. Si vous laissez ce champ vide, la demande sera{' '}
-                  <strong>directement adressée aux Administrateurs Système</strong>.
+                  Renseignez l'e-mail de votre N+1 ci-dessus. Si vous laissez ce
+                  champ vide, la demande sera{" "}
+                  <strong>
+                    directement adressée aux Administrateurs Système
+                  </strong>
+                  .
                 </p>
               </div>
             </div>
@@ -600,7 +781,7 @@ export default function AbsenceForm({
               type="file"
               className="hidden"
               onChange={(e) =>
-                handleChange('file', e.target.files?.[0] || null)
+                handleChange("file", e.target.files?.[0] || null)
               }
             />
 
@@ -609,9 +790,7 @@ export default function AbsenceForm({
             </div>
 
             <p className="text-center text-xs font-medium text-slate-600">
-              <span className="font-bold text-emerald-700">
-                Cliquez ici
-              </span>{' '}
+              <span className="font-bold text-emerald-700">Cliquez ici</span>{" "}
               pour joindre un justificatif
             </p>
 
@@ -646,8 +825,8 @@ export default function AbsenceForm({
               transition-all
               ${
                 isSubmitDisabled
-                  ? 'cursor-not-allowed bg-slate-300 text-slate-500'
-                  : 'bg-[#006644] text-white hover:bg-emerald-800'
+                  ? "cursor-not-allowed bg-slate-300 text-slate-500"
+                  : "bg-[#006644] text-white hover:bg-emerald-800"
               }
             `}
           >
@@ -658,10 +837,10 @@ export default function AbsenceForm({
             )}
 
             {isSubmitting
-              ? 'Envoi...'
+              ? "Envoi..."
               : isDurationExceeded || isDateRangeInvalid
-                ? 'Envoi verrouillé'
-                : 'Soumettre la demande'}
+                ? "Envoi verrouillé"
+                : "Soumettre la demande"}
           </button>
         </div>
       </form>

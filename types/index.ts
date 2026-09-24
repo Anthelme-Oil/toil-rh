@@ -395,3 +395,15 @@ export const EXCEPTIONAL_ABSENCE_TYPES: Record<
 };
 
 
+ export interface DayOff {
+  id: number
+  date: string
+  name: string
+  description: string | null
+  isRecurring: boolean
+  isActive: boolean
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+

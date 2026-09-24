@@ -16,7 +16,8 @@ import {
   ListFilter,
   Layers,
   CheckCircle2,
-  UserCheck
+  UserCheck,
+  Calendar
 } from 'lucide-react';
 import { NavItem, NavLink } from '@/types/navigation';
 
@@ -98,6 +99,13 @@ export const NAV_ITEMS: NavItem[] = [
         hasAccess: (perms) => perms.isDRH || perms.isAdmin,
       },
     ],
+  },
+
+   {
+    title: 'Jours fériés',
+    href: '/calendrier',
+    icon: Calendar,
+    hasAccess: (perms) => perms.isRH || perms.isDRH || perms.isRHPrint || perms.isAdmin,
   },
 
   // ── ESPACE TRAITEMENT & EXÉCUTION ──
