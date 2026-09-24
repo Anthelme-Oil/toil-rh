@@ -403,12 +403,13 @@ export default function ValidationRhExecPage() {
      {pdfDemande && (
   <div className="mb-4">
     <ValidationHistoryPdf
-      title="REÇU DE VALIDATION - RH EXÉCUTANT"
+      title="DEMANDE D’AUTORISATION D’ABSENCE"
       companyName="T-OIL / COMPEL / STSL"
       companySubtitle="Gestion des demandes RH"
       dateDebut={pdfDemande.dateDebut ?? undefined}
       dateFin={pdfDemande.dateFin ?? undefined}
       nbreJour={pdfDemande.nombreJours ?? undefined}
+      motif={pdfDemande.typeConge ?? undefined}
       data={{
         reference:
           pdfDemande.reference ||

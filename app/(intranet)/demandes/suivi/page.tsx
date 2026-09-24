@@ -1,85 +1,96 @@
 "use client";
 
-import React, { useState, useEffect ,useMemo} from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { getWorkflowStepsSequence, WorkflowType, WorkflowStatus } from "@/lib/workflows/engine";
 import { Clock, CheckCircle2, XCircle, Loader2, FileText, ChevronRight, MessageSquare, ArrowRightCircle } from "lucide-react";
 import { getMyRequests } from "@/lib/services/my-requests";
-import { RequestItem,FilterKey } from "@/types";
+import { RequestItem, FilterKey } from "@/types";
 import RequestFilters from "@/components/RequestFilters";
 import AttachmentCard from "@/components/AttachmentCard";
+
 export default function SuiviDemandesPage() {
   const [demandes, setDemandes] = useState<RequestItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-const [activeFilter, setActiveFilter] =
-    useState<FilterKey>('pending');
-
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('pending');
 
   useEffect(() => {
     fetchMyRequests();
   }, []);
-const filteredRequest = useMemo(() => {
-  return demandes.filter((demande) => {
-    const statut = demande?.statutActuel?.toUpperCase() || "";
 
-    switch (activeFilter) {
-      case "pending":
-        return !["APPROUVE","REFUSE"].includes(statut);
+  // 1. NOUVEAU : Calcul des compteurs absolus pour chaque catégorie
+  const filterCounts = useMemo(() => {
+    const counts = {
+      all: demandes.length,
+      pending: 0,
+      validated: 0,
+      refused: 0,
+    };
 
-      case "validated":
-        return statut.includes("APPROUVE");
+    demandes.forEach((demande) => {
+      const statut = demande?.statutActuel?.toUpperCase() || "";
+      if (statut.includes("APPROUVE")) {
+        counts.validated += 1;
+      } else if (statut.includes("REFUSE")) {
+        counts.refused += 1;
+      } else {
+        counts.pending += 1;
+      }
+    });
 
-      case "refused":
-        return statut.includes("REFUSE");
+    return counts;
+  }, [demandes]);
 
-      case "all":
-        return true;
+  const filteredRequest = useMemo(() => {
+    return demandes.filter((demande) => {
+      const statut = demande?.statutActuel?.toUpperCase() || "";
 
-      default:
-        return true;
+      switch (activeFilter) {
+        case "pending":
+          return !["APPROUVE","REFUSE"].includes(statut);
+        case "validated":
+          return statut.includes("APPROUVE");
+        case "refused":
+          return statut.includes("REFUSE");
+        case "all":
+          return true;
+        default:
+          return true;
+      }
+    });
+  }, [demandes, activeFilter]);
+
+  useEffect(() => {
+    if (filteredRequest.length === 0) {
+      setSelectedId(null);
+      return;
     }
-  });
-}, [demandes, activeFilter]);
 
-useEffect(() => {
-  if (filteredRequest.length === 0) {
-    setSelectedId(null);
-    return;
-  }
+    const selectedStillExists = filteredRequest.some(
+      (demande) => demande.id === selectedId
+    );
 
-  const selectedStillExists = filteredRequest.some(
-    (demande) => demande.id === selectedId
-  );
+    if (!selectedStillExists) {
+      setSelectedId(filteredRequest[0].id);
+    }
+  }, [filteredRequest, selectedId]);
 
-  if (!selectedStillExists) {
-    setSelectedId(filteredRequest[0].id);
-  }
-}, [filteredRequest, selectedId]);
-
-const fetchMyRequests = async () => {
-  try {
-    setLoading(true);
-
-    const data = await getMyRequests();
-
-    setDemandes(data);
-
-    // La sélection sera gérée par filteredRequest
-    setSelectedId(null);
-  } catch (err) {
-    console.error("Erreur chargement demandes:", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-// console.log("filteredREquest=>",filteredRequest)
+  const fetchMyRequests = async () => {
+    try {
+      setLoading(true);
+      const data = await getMyRequests();
+      setDemandes(data);
+      setSelectedId(null);
+    } catch (err) {
+      console.error("Erreur chargement demandes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const selectedDemande = demandes.find((d) => d.id === selectedId);
-  //  console.log("demandes ",selectedDemande)
 
-  // Fusion des commentaires spécifiques du schéma pour s'assurer que le stepper les reçoit
   const enrichedHistorique = selectedDemande ? [
     ...(selectedDemande.historique || []),
     ...(selectedDemande.commentaireN1 ? [{ stepId: 'N1', commentaire: selectedDemande.commentaireN1 }] : []),
@@ -127,8 +138,7 @@ const fetchMyRequests = async () => {
   }
 
   return (
-    <div className="max-w-full mx-auto p-6 md:p-10 space-y-8 bg-slate-50/50  shadow-sm">
-      {/* En-tête */}
+    <div className="max-w-full mx-auto p-6 md:p-10 space-y-8 bg-slate-50/50 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Suivi des Demandes</h1>
@@ -141,10 +151,11 @@ const fetchMyRequests = async () => {
         </div>
       </div>
 
+      {/* 2. MODIFIÉ : On passe les compteurs au composant de filtres */}
       <RequestFilters
-      activeFilter={activeFilter}
-      onFilterChange={setActiveFilter}
-
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        counts={filterCounts}
       />
 
       {filteredRequest.length === 0 ? (
@@ -156,7 +167,6 @@ const fetchMyRequests = async () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* COLONNE GAUCHE : Liste des demandes */}
           <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-0 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Liste des requêtes</h2>
@@ -186,7 +196,6 @@ const fetchMyRequests = async () => {
                       <p className="text-sm font-semibold text-slate-900 truncate">
                         {demande.titre}
                       </p>
-                      {/* Affichage rapide de la prochaine étape dans la liste */}
                       {!demande.estTerminee && !demande.estRejetee && demande.nextStep && (
                         <div className="flex items-center gap-1 text-[11px] text-amber-600 font-medium">
                           <ArrowRightCircle className="w-3 h-3 shrink-0" />
@@ -201,11 +210,9 @@ const fetchMyRequests = async () => {
             </div>
           </div>
 
-          {/* COLONNE DROITE : Panneau de détails & Stepper dynamique */}
           <div className="lg:col-span-8 bg-white border border-slate-200/80 rounded-0 shadow-xs p-6 md:p-8 space-y-8">
             {selectedDemande ? (
               <>
-                {/* En-tête de la demande sélectionnée */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -223,7 +230,6 @@ const fetchMyRequests = async () => {
                   <div>{getStatusBadge(selectedDemande.statutActuel)}</div>
                 </div>
 
-                {/* Indicateur explicite de la prochaine étape */}
                 {!selectedDemande.estTerminee && !selectedDemande.estRejetee && selectedDemande.nextStep && (
                   <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-4 flex items-start gap-3">
                     <ArrowRightCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -236,17 +242,13 @@ const fetchMyRequests = async () => {
                   </div>
                 )}
 
-                {
-                  selectedDemande?.pieceJointe && (
-                     <AttachmentCard
-                     fileUrl={selectedDemande.pieceJointe}
-                     fileName={`${selectedDemande?.typeDemande}_${selectedDemande?.reference}`}
+                {selectedDemande?.pieceJointe && (
+                  <AttachmentCard
+                    fileUrl={selectedDemande.pieceJointe}
+                    fileName={`${selectedDemande?.typeDemande}_${selectedDemande?.reference}`}
+                  />
+                )}
 
-                     />
-                  )
-                }
-
-                {/* Bloc du Stepper dynamique */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Circuit de validation en temps réel
@@ -256,7 +258,6 @@ const fetchMyRequests = async () => {
                   </div>
                 </div>
 
-                {/* Affichage direct global des commentaires si présents (ex: Motif du rejet) */}
                 {(selectedDemande.commentaireN1 || selectedDemande.commentaireRH || selectedDemande.commentaireIT) && (
                   <div className="bg-rose-50/50 border border-rose-200/60 rounded-[5px] p-4 space-y-2">
                     <div className="flex items-center gap-2 text-rose-800 text-xs font-bold uppercase tracking-wider">

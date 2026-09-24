@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { LOGO_COMPEL_TOIL, LOGO_RATIO } from "./logoCompelToil"
 
 /* ============================================================
  * TYPES
@@ -30,6 +31,7 @@ export interface ValidationHistoryPdfData {
 }
 
 interface ValidationHistoryPdfProps {
+  /** Titre affiché au centre de l'en-tête (ex: "DEMANDE D'AUTORISATION D'ABSENCE") */
   title: string;
   data: ValidationHistoryPdfData;
   companyName?: string;
@@ -37,6 +39,17 @@ interface ValidationHistoryPdfProps {
   dateDebut?: string | Date;
   dateFin?: string | Date;
   nbreJour?: string | number;
+  motif?: string ;
+
+  /** Cartouche d'en-tête (cellule de droite) */
+  docCode?: string; // "EN08 TGRH 04"
+  docIndice?: string; // "01"
+  dateApplication?: string; // "30/04/2020"
+
+  /** Logo (data URL PNG). Par défaut : logo COMPEL / STSL / T-Oil */
+  logo?: string;
+  logoRatio?: number; // hauteur / largeur
+
   fileName?: string;
   showButton?: boolean;
   buttonLabel?: string;
@@ -127,7 +140,7 @@ const C = {
   line: [226, 232, 240] as RGB,
   soft: [248, 250, 252] as RGB,
   white: [255, 255, 255] as RGB,
-  brand: [4, 120, 87] as RGB, // vert profond
+  brand: [4, 120, 87] as RGB,
   brandDark: [6, 78, 59] as RGB,
   brandSoft: [236, 253, 245] as RGB,
   amber: [180, 83, 9] as RGB,
@@ -148,14 +161,20 @@ interface BuildArgs {
   dateDebut?: string | Date;
   dateFin?: string | Date;
   nbreJour?: string | number;
+  motif?: string;
+  docCode: string;
+  docIndice: string;
+  dateApplication: string;
+  logo?: string;
+  logoRatio: number;
 }
 
 const buildDoc = (args: BuildArgs, scale: number) => {
   const { title, data, companyName, companySubtitle } = args;
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const W = doc.internal.pageSize.getWidth(); // 210
-  const H = doc.internal.pageSize.getHeight(); // 297
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const ML = 16;
   const MR = 16;
   const CW = W - ML - MR;
@@ -174,41 +193,84 @@ const buildDoc = (args: BuildArgs, scale: number) => {
   fill(C.brandDark);
   doc.rect(0, 0, 60, 4, "F");
 
-  /* ---------- EN-TÊTE ---------- */
-  let y = 17;
+  /* ---------- EN-TÊTE (cartouche 3 cellules) ---------- */
+  let y = 12;
+  const HH = 34; // hauteur du cartouche
+  const logoCellW = 34;
+  const rightCellW = 68;
+  const centerCellW = CW - logoCellW - rightCellW;
+  const xCenter = ML + logoCellW;
+  const xRight = xCenter + centerCellW;
 
-  // Monogramme
-  fill(C.brand);
-  doc.roundedRect(ML, y - 7, 11, 11, 2.5, 2.5, "F");
-  font("bold", 10);
-  ink(C.white);
-  doc.text(companyName.charAt(0).toUpperCase(), ML + 5.5, y - 0.2, {
-    align: "center",
+  // Cadre
+  fill(C.white);
+  stroke(C.brandDark);
+  doc.setLineWidth(0.1);
+  doc.roundedRect(ML, y, CW, HH, 0.5, 0.5, "FD");
+
+  // Séparateurs verticaux
+  doc.setLineWidth(0.3);
+  doc.line(xCenter, y, xCenter, y + HH);
+  doc.line(xRight, y, xRight, y + HH);
+
+  // Logo
+  if (args.logo) {
+    const lh = HH - 6;
+    const lw = lh / args.logoRatio;
+    try {
+      doc.addImage(
+        args.logo,
+        "PNG",
+        ML + (logoCellW - lw) / 2,
+        y + 3,
+        lw,
+        lh,
+        undefined,
+        "FAST"
+      );
+    } catch {
+      /* logo ignoré si illisible */
+    }
+  }
+
+  // Titre central
+  font("bold", 11.5);
+  ink(C.ink);
+  const headTitle: string[] = doc
+    .splitTextToSize(normalizeText(title).toUpperCase(), centerCellW - 12)
+    .slice(0, 3);
+  const lineH = 5.4;
+  const ty = y + HH / 2 - ((headTitle.length - 1) * lineH) / 2 + 1.4;
+  doc.text(headTitle, xCenter + centerCellW / 2, ty, { align: "center" });
+
+  // Cellule droite : 4 lignes
+  const rows: [string, string][] = [
+    ["Référence :", args.docCode],
+    ["IR :", args.docIndice],
+    ["Date d'application :", args.dateApplication],
+    ["Page :", "1 sur 1"],
+  ];
+  const rowH = HH / rows.length;
+  rows.forEach(([label, value], i) => {
+    const ry = y + i * rowH;
+    if (i > 0) {
+      stroke(C.line);
+      doc.setLineWidth(0.25);
+      doc.line(xRight, ry, ML + CW, ry);
+    }
+    const baseY = ry + rowH / 2 + 1.2;
+    font("normal", 7.8);
+    ink(C.muted);
+    doc.text(label, xRight + 4, baseY);
+    const lw = doc.getTextWidth(label + " ");
+    font("bold", 8.2);
+    ink(C.ink);
+    doc.text(value, xRight + 4 + lw, baseY);
   });
 
-  font("bold", 15);
-  ink(C.ink);
-  doc.text(companyName, ML + 15, y - 1);
-  font("normal", 8);
-  ink(C.muted);
-  doc.text(companySubtitle, ML + 15, y + 3.5);
+  y += HH + 11;
 
-  // Référence (droite)
-  font("bold", 7);
-  ink(C.muted);
-  doc.text("RÉFÉRENCE", W - MR, y - 3, { align: "right" });
-  font("bold", 11);
-  ink(C.ink);
-  doc.text(normalizeText(data.reference), W - MR, y + 2.5, { align: "right" });
-
-  y += 10;
-  stroke(C.line);
-  doc.setLineWidth(0.3);
-  doc.line(ML, y, W - MR, y);
-
-  /* ---------- TITRE + STATUT ---------- */
-  y += 12;
-
+  /* ---------- N° DE DEMANDE + STATUT ---------- */
   const statut = normalizeText(data.statut);
   const su = statut.toUpperCase();
   const isOk = su.includes("VALID") || su.includes("APPROUV") || su.includes("APPROVED");
@@ -219,32 +281,26 @@ const buildDoc = (args: BuildArgs, scale: number) => {
     ? { bg: C.redSoft, fg: C.red }
     : { bg: C.amberSoft, fg: C.amber };
 
-  // Pill statut
-  font("bold", 7.5);
-  const pillLabel = statut.toUpperCase();
-  const pillW = doc.getTextWidth(pillLabel) + 13;
-  const pillX = W - MR - pillW;
-
   font("bold", 7);
   ink(C.muted);
-  doc.text("FICHE DE VALIDATION", ML, y - 6);
-
+  // doc.text("FICHE DE VALIDATION — N° DE DEMANDE", ML, y - 3.5);
+  doc.text("FICHE DE VALIDATION", ML, y - 3.5);
   font("bold", 16);
   ink(C.ink);
-  const titleLines: string[] = doc
-    .splitTextToSize(normalizeText(title), CW - pillW - 8)
-    .slice(0, 2);
-  doc.text(titleLines, ML, y + 1);
+  // doc.text(normalizeText(data.reference), ML, y + 4);
 
-  fill(st.bg);
-  doc.roundedRect(pillX, y - 5, pillW, 8, 4, 4, "F");
-  fill(st.fg);
-  doc.circle(pillX + 4.5, y - 1, 1.2, "F");
-  font("bold", 7.5);
-  ink(st.fg);
-  doc.text(pillLabel, pillX + 8, y + 0.1);
+  // font("bold", 7.5);
+  // const pillLabel = statut.toUpperCase();
+  // const pillW = doc.getTextWidth(pillLabel) + 13;
+  // const pillX = W - MR - pillW;
+  // fill(st.bg);
+  // doc.roundedRect(pillX, y - 3, pillW, 8, 4, 4, "F");
+  // fill(st.fg);
+  // doc.circle(pillX + 4.5, y + 1, 1.2, "F");
+  // ink(st.fg);
+  // doc.text(pillLabel, pillX + 8, y + 2.1);
 
-  y += (titleLines.length - 1) * 6.5 + 12;
+  y += 12;
 
   /* ---------- BLOC INFORMATIONS ---------- */
   const cardH = 40;
@@ -252,8 +308,6 @@ const buildDoc = (args: BuildArgs, scale: number) => {
   stroke(C.line);
   doc.setLineWidth(0.25);
   doc.roundedRect(ML, y, CW, cardH, 3, 3, "FD");
-
-  // Liseré vert à gauche
   fill(C.brand);
   doc.roundedRect(ML, y, 1.6, cardH, 0.8, 0.8, "F");
 
@@ -284,7 +338,6 @@ const buildDoc = (args: BuildArgs, scale: number) => {
     1
   );
 
-  // Séparateur horizontal interne
   stroke(C.line);
   doc.line(ML + 8, y + cardH / 2, ML + CW - 8, y + cardH / 2);
 
@@ -293,11 +346,11 @@ const buildDoc = (args: BuildArgs, scale: number) => {
   /* ---------- OBJET ---------- */
   font("bold", 7);
   ink(C.muted);
-  doc.text("OBJET DE LA DEMANDE", ML, y);
+  doc.text("MOTIF", ML, y);
   y += 3;
 
   const objLines: string[] = doc
-    .splitTextToSize(normalizeText(data.titre), CW - 12)
+    .splitTextToSize(normalizeText(args.motif), CW - 12)
     .slice(0, 2);
   const objH = 6 + objLines.length * 4.6;
   fill(C.white);
@@ -317,18 +370,14 @@ const buildDoc = (args: BuildArgs, scale: number) => {
   const historique = Array.isArray(data.historique) ? data.historique : [];
   font("normal", 7.5);
   ink(C.muted);
-  doc.text(
-    `${historique.length} étape(s) enregistrée(s)`,
-    W - MR,
-    y,
-    { align: "right" }
-  );
+  doc.text(`${historique.length} étape(s) enregistrée(s)`, W - MR, y, {
+    align: "right",
+  });
 
   y += 4;
 
-  const SIGN_H = 34; // hauteur bloc signatures
   const FOOTER_H = 16;
-  const tableLimit = H - FOOTER_H - SIGN_H - 6;
+  const tableLimit = H - FOOTER_H - 4;
 
   if (historique.length === 0) {
     fill(C.soft);
@@ -391,14 +440,12 @@ const buildDoc = (args: BuildArgs, scale: number) => {
         const v = String(h.cell.raw || "");
         if (v === "Validé" || v === "Approuvé") {
           h.cell.styles.textColor = C.brand;
-          h.cell.styles.fontStyle = "bold";
         } else if (v === "Refusé" || v === "Rejeté") {
           h.cell.styles.textColor = C.red;
-          h.cell.styles.fontStyle = "bold";
         } else {
           h.cell.styles.textColor = C.muted;
-          h.cell.styles.fontStyle = "bold";
         }
+        h.cell.styles.fontStyle = "bold";
       },
     });
 
@@ -407,28 +454,6 @@ const buildDoc = (args: BuildArgs, scale: number) => {
 
   const overflow = doc.getNumberOfPages() > 1 || y > tableLimit;
 
-  /* ---------- SIGNATURES (ancrées en bas de page) ---------- */
-  const signY = H - FOOTER_H - SIGN_H;
-  const boxW = (CW - 8) / 2;
-  const signBox = (x: number, label: string) => {
-    fill(C.white);
-    stroke(C.line);
-    doc.setLineWidth(0.25);
-    doc.roundedRect(x, signY, boxW, SIGN_H, 2.5, 2.5, "FD");
-    font("bold", 7);
-    ink(C.muted);
-    doc.text(label.toUpperCase(), x + 5, signY + 7);
-    stroke(C.line);
-    doc.setLineDashPattern([1, 1], 0);
-    doc.line(x + 5, signY + SIGN_H - 7, x + boxW - 5, signY + SIGN_H - 7);
-    doc.setLineDashPattern([], 0);
-    font("normal", 6.5);
-    ink(C.muted);
-    doc.text("Nom, date et signature", x + 5, signY + SIGN_H - 3.5);
-  };
-  signBox(ML, "Visa du responsable RH");
-  signBox(ML + boxW + 8, "Cachet de l'entreprise");
-
   /* ---------- PIED DE PAGE ---------- */
   const fy = H - 9;
   stroke(C.line);
@@ -436,13 +461,17 @@ const buildDoc = (args: BuildArgs, scale: number) => {
   doc.line(ML, fy - 4.5, W - MR, fy - 4.5);
   font("normal", 6.8);
   ink(C.muted);
-  doc.text(`${companyName}  •  ${companySubtitle}`, ML, fy);
-  doc.text("Document généré automatiquement — sans signature manuscrite non contractuel", W / 2, fy, {
-    align: "center",
-  });
-  doc.text(`Édité le ${formatDateTime(new Date())}`, W - MR, fy, {
-    align: "right",
-  });
+  // doc.text(
+  //   `${companyName}  •  ${companySubtitle}  •  Document généré automatiquement`,
+  //   ML,
+  //   fy
+  // );
+
+  // doc.text(`Édité le ${formatDateTime(new Date())}`, W - MR, fy, {
+  //   align: "right",
+  // });
+
+  
 
   return { doc, overflow };
 };
@@ -454,7 +483,7 @@ const buildDoc = (args: BuildArgs, scale: number) => {
 export default function ValidationHistoryPdf({
   title,
   data,
-  companyName = "T-OIL",
+  companyName = "T-OIL / COMPEL / STSL",
   companySubtitle = "Gestion des demandes RH",
   fileName,
   showButton = true,
@@ -463,6 +492,12 @@ export default function ValidationHistoryPdf({
   dateDebut,
   dateFin,
   nbreJour,
+  motif,
+  docCode = "EN08 TGRH 04",
+  docIndice = "01",
+  dateApplication = "30/04/2020",
+  logo = LOGO_COMPEL_TOIL,
+  logoRatio = LOGO_RATIO,
 }: ValidationHistoryPdfProps) {
   const [generating, setGenerating] = useState(false);
 
@@ -479,17 +514,21 @@ export default function ValidationHistoryPdf({
         companySubtitle,
         dateDebut,
         dateFin,
+        motif,
         nbreJour,
+        docCode,
+        docIndice,
+        dateApplication,
+        logo,
+        logoRatio,
       };
 
-      // On réduit progressivement la taille du tableau jusqu'à tenir sur 1 page
       const scales = [1, 0.92, 0.84, 0.76, 0.68, 0.6];
       let result = buildDoc(args, scales[0]);
       for (let i = 1; i < scales.length && result.overflow; i++) {
         result = buildDoc(args, scales[i]);
       }
 
-      // Sécurité : jamais plus d'une page
       const { doc } = result;
       while (doc.getNumberOfPages() > 1) {
         doc.deletePage(doc.getNumberOfPages());

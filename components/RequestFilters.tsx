@@ -9,10 +9,11 @@ import {
 } from 'lucide-react';
 import { FilterKey } from '@/types';
 
-
 interface RequestFiltersProps {
   activeFilter: FilterKey;
   onFilterChange: (filter: FilterKey) => void;
+  // Ajout du paramètre counts pour les valeurs absolues
+  counts: Record<FilterKey, number>;
 }
 
 interface Filter {
@@ -35,7 +36,7 @@ const filters: Filter[] = [
     icon: CheckCircle2,
     color: 'green',
   },
-   {
+  {
     key: 'refused',
     label: 'Demandes rejetées',
     icon: Ban,
@@ -52,6 +53,7 @@ const filters: Filter[] = [
 export default function RequestFilters({
   activeFilter,
   onFilterChange,
+  counts,
 }: RequestFiltersProps) {
   return (
     <div className="w-full rounded-[2px] border-0 border-slate-200 bg-white p-2 shadow-sm">
@@ -59,27 +61,28 @@ export default function RequestFilters({
         {filters.map((filter) => {
           const Icon = filter.icon;
           const isActive = activeFilter === filter.key;
+          const count = counts?.[filter.key] ?? 0;
 
           const colorClasses = {
             amber: {
-              active:
-                'bg-amber-50 text-amber-700 border-amber-200',
+              active: 'bg-amber-50 text-amber-700 border-amber-200',
               icon: 'text-amber-600',
+              badge: 'bg-amber-200/60 text-amber-800',
             },
             green: {
-              active:
-                'bg-green-50 text-green-700 border-green-200',
+              active: 'bg-green-50 text-green-700 border-green-200',
               icon: 'text-green-600',
+              badge: 'bg-green-200/60 text-green-800',
             },
             blue: {
-              active:
-                'bg-blue-50 text-blue-700 border-blue-200',
+              active: 'bg-blue-50 text-blue-700 border-blue-200',
               icon: 'text-blue-600',
+              badge: 'bg-blue-200/60 text-blue-800',
             },
-             red: {
-              active:
-                'bg-red-50 text-red-700 border-red-200',
+            red: {
+              active: 'bg-red-50 text-red-700 border-red-200',
               icon: 'text-red-600',
+              badge: 'bg-red-200/60 text-red-800',
             },
           };
 
@@ -109,6 +112,17 @@ export default function RequestFilters({
               />
 
               <span>{filter.label}</span>
+
+              {/* Badge affichant le nombre absolu de demandes */}
+              <span
+                className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold transition-colors ${
+                  isActive
+                    ? colors.badge
+                    : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+                }`}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
