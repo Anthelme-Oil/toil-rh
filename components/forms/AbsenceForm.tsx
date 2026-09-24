@@ -615,11 +615,11 @@ export default function AbsenceForm({
             </div>
 
             <div className="flex items-center gap-2">
-              {includesWeekend && (
+              {/* {includesWeekend && (
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                   Week-ends inclus
                 </span>
-              )}
+              )} */}
 
               <span
                 className={`text-xs font-bold ${
