@@ -131,3 +131,10 @@ export type EntityWithGreffe<T = CommunityEntity> =
     authorName: string;
     authorEmail: string;
     }
+
+
+    export interface ApiResponse<T = unknown> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}

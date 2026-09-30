@@ -14,7 +14,7 @@ import {
 
 import type {
   MediaDocument,
-} from '@/types/media';
+} from '@/types';
 
 interface MediaDeleteModalProps {
   media: MediaDocument;

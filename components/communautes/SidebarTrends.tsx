@@ -11,7 +11,7 @@ export default function SidebarTrends({ activeChannel, trends }: SidebarTrendsPr
     <aside className="hidden w-[360px] shrink-0 xl:block">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-[13px] font-extrabold text-[#26324c]">
-          Tendances {activeChannel !== "Accueil" && `— ${activeChannel}`}
+          Tendances {activeChannel !== "Standard" && `— ${activeChannel}`}
         </h2>
         <Flame className="h-4 w-4 text-[#e96556]" />
       </div>

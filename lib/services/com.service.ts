@@ -7,6 +7,8 @@ import {
   CommunityEntity
 } from '@/lib/communautes/types';
 
+
+
 const API_PATH = '/api/requests/com';
 
 /**
