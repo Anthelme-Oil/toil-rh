@@ -12,6 +12,8 @@ import { Search, Bell, Menu, X, UserCheck, LayoutGrid } from 'lucide-react';
 import { signIn, signOut } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 import { BASE_NAV_LINKS, DYNAMIC_NAV_LINKS } from '@/config/navigation';
+import Image from 'next/image'
+const companyLogo = '/images/logo_officiel_toil.png'
 
 interface HeaderProps {
   /** Liste explicite des routes autorisées à afficher ce header */
@@ -70,17 +72,39 @@ export default function Header({ allowedRoutes, excludedRoutes }: HeaderProps) {
   if (!shouldRender) return null;
 
   return (
-    <header className="sticky top-0 z-50 w-full transition-all duration-200 print:hidden">
-      <div className="max-w-full mx-auto">
+<header className="fixed inset-x-0 top-0 z-50 w-full transition-all duration-200 print:hidden">
+      <div className="max-w-full mx-auto  relative z-10  ">
         <div
-          className="bg-white/95 backdrop-blur-md p-4 shadow-sm transition-all duration-200"
+          className="bg-white/95 backdrop-blur-md p-2 shadow-sm transition-all duration-200"
           style={{ boxShadow: 'var(--shadow-card)' }}
         >
           <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
             {/* ── Logo ── */}
-            <Link href="/" className="flex-shrink-0 focus-ring" id="nav-logo">
+            {/* <Link href="/" className="flex-shrink-0 focus-ring" id="nav-logo">
               <Logo />
-            </Link>
+            </Link> */}
+
+             <Link
+          href="/"
+          className="flex items-center gap-3"
+          aria-label="PORTAIL INTRANET, accueil"
+        >
+          <Image
+            src={companyLogo}
+            width={500}
+            height={500}
+            alt="Logo COMPEL STSL T-Oil"
+            className="size-11 object-contain"
+          />
+          <div>
+            <p className="text-[15px] font-extrabold tracking-[-0.02em]">
+              PORTAIL <span className="text-[#079bc2]">INTRANET</span>
+            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a96ab]">
+              Votre espace collaboratif
+            </p>
+          </div>
+        </Link>
 
             {/* ── Navigation Desktop ── */}
          <nav

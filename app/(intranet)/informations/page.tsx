@@ -29,7 +29,7 @@ export default async function InformationsPage() {
   });
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6">
+    <div className="max-w-full mx-auto px-4 sm:px-6 py-5 sm:py-6">
       {/* ── Fil d'Ariane épuré ── */}
       <nav aria-label="Fil d'Ariane" className="flex items-center gap-2 text-xs text-text-muted mb-4">
         <Link

@@ -1,24 +1,24 @@
-// ═══════════════════════════════════════════════════════════════
-// Configuration des Layouts par Route
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Liste des routes statiques qui utilisent SingleLayout (sans Sidebar).
- * Toutes les autres routes utiliseront MainLayout (avec Sidebar).
- */
 export const SINGLE_LAYOUT_ROUTES: string[] = [
   '/',
   '/informations',
   '/outils',
   '/reservations',
+  '/formations',
   '/communautes',
   '/contact',
   '/aide',
+  '/mediatheque',
+  '/mediatheque/[id]/consultation', // ou '/mediatheque/{id}/consultation'
 ];
 
-/**
- * Helper pour vérifier si la route actuelle doit utiliser SingleLayout
- */
 export function isSingleLayoutRoute(pathname: string): boolean {
-  return SINGLE_LAYOUT_ROUTES.includes(pathname);
+  return SINGLE_LAYOUT_ROUTES.some((route) => {
+    // Transforme [id] ou {id} en wildcard regex ([^/]+)
+    const regexPattern = route
+      .replace(/\[[^\]]+\]/g, '[^/]+')
+      .replace(/\{[^}]+\}/g, '[^/]+');
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(pathname);
+  });
 }

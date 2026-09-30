@@ -131,6 +131,19 @@ export async function getAllUsers(): Promise<InternalUser[]> {
   return findAllUsers();
 }
 
+export async function findUserWithEmail(email:string): Promise<InternalUser | null> {
+ return findUserByEmail(email);
+}
+
+
+export async function findUsersByEmails(emails: string[]) {
+  const emailSet = new Set(emails.map((email) => email.toLowerCase()));
+
+  const users = await getAllUsers();
+
+  return users.filter((user) => emailSet.has(user.email.toLowerCase()));
+}
+
 
 
 

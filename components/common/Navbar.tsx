@@ -12,7 +12,8 @@ import {
   Newspaper, 
   Wrench, 
   Users,
-  CalendarCheck
+  CalendarCheck,
+  Radio
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 
@@ -106,6 +107,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
           >
             <CalendarCheck className="h-4 w-4" />
             <span>Reservations</span>
+          </Link>
+
+            <Link
+            href="/mediatheque"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <Radio className="h-4 w-4" />
+            <span>Médiathèque</span>
           </Link>
         </nav>
       </div>

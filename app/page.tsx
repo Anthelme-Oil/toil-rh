@@ -1,562 +1,495 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowUpRight,
+  ArrowRight,
   Bell,
-  CalendarDays,
-  CheckCircle2,
+  BookOpen,
   ChevronRight,
-  Clock3,
   FileText,
-  GraduationCap,
-  Menu,
+  HelpCircle,
+  LayoutGrid,
+  Mail,
+  MessageSquareText,
   MoreHorizontal,
   Search,
   Settings2,
-  Sparkles,
+  ShieldCheck,
   Users,
   Video,
-  X,
+  ExternalLink,
 } from "lucide-react";
-import { getMyRequests } from "@/lib/services/my-requests";
-import { RequestItem ,Actualite} from "@/types";
-import Loader from "@/components/Loader";
-import {getStatutColor,getStatutText} from "@/utils/statutRequest";
-import Image from 'next/image'
-import { DateFormat } from "@/utils/dateUtils";
 
 import SingleLayout from "@/components/layout/SingleLayout";
 import Link from "next/link";
+
+import { useUser } from "@/context/UserContext";
+import { getActualites } from "@/lib/services/actualites.service";
+import { getDayOffs } from "@/lib/services/calendars.service";
+import { EventsAndCalendarSection } from "@/components/EventsAndCalendarSection";
+
+import { ActualitesResponse, Actualite, Evenement, DayOff } from "@/types";
+import { DateFormat } from "@/utils/dateUtils";
+import { getNewsColor } from "@/utils/newsUtils";
+import Loader from "@/components/Loader";
+const heroImage = "/images/banner2.png";
+
 import { apps } from "@/utils/dataUtils";
-import { getActualites, getAnnonces, getEvenementsDuJour } from '@/lib/sharepoint';
-import NewsCard from "@/components/ActuCard";
-// import { auth } from '@/lib/auth';
-const newss = [
-  {
-    title: "La sécurité, notre priorité à tous",
-    desc: "Retrouvez les nouveaux réflexes à adopter au quotidien dans nos espaces de travail.",
-    date: "18 sept. 2026",
-    label: "Groupe",
-    color: "bg-amber-100 text-amber-700",
-    icon: ShieldIcon,
-  },
-  {
-    title: "STSL inaugure son nouvel espace collaboratif",
-    desc: "Un lieu pensé pour mieux se retrouver, partager et faire grandir nos idées.",
-    date: "15 sept. 2026",
-    label: "STSL",
-    color: "bg-cyan-100 text-cyan-700",
-    icon: Users,
-  },
-  {
-    title: "T-Oil : cap sur une énergie plus responsable",
-    desc: "Découvrez les engagements et les initiatives qui font avancer notre transition.",
-    date: "11 sept. 2026",
-    label: "T-Oil",
-    color: "bg-emerald-100 text-emerald-700",
-    icon: Sparkles,
-  },
-];
+import Image from "next/image";
+import { removeFirstWord } from "@/utils/utils";
 
-// const apps = [
-//   {
-//     name: "PowerPoint",
-//     desc: "Présentations",
-//     icon: "P",
-//     color: "bg-orange-100 text-orange-600",
-//   },
-//   {
-//     name: "OneDrive",
-//     desc: "Vos fichiers",
-//     icon: "☁",
-//     color: "bg-blue-100 text-blue-600",
-//   },
-//   {
-//     name: "SharePoint",
-//     desc: "Sites & équipes",
-//     icon: "S",
-//     color: "bg-teal-100 text-teal-600",
-//   },
-//   {
-//     name: "Outlook",
-//     desc: "Messagerie",
-//     icon: "O",
-//     color: "bg-sky-100 text-sky-600",
-//   },
-// ];
-
-const requests = [
-  {
-    title: "Demande de congé annuel",
-    ref: "#REQ-2481",
-    status: "En cours",
-    statusColor: "bg-amber-50 text-amber-700",
-    date: "18 sept. 2026",
-  },
-  {
-    title: "Accès au dossier Finance",
-    ref: "#REQ-2476",
-    status: "Validée",
-    statusColor: "bg-emerald-50 text-emerald-700",
-    date: "12 sept. 2026",
-  },
-  {
-    title: "Nouveau badge d’accès",
-    ref: "#REQ-2464",
-    status: "Traitée",
-    statusColor: "bg-slate-100 text-slate-600",
-    date: "04 sept. 2026",
-  },
-];
-
-function ShieldIcon({ className }: { className?: string }) {
-  return <CheckCircle2 className={className} />;
-}
-
-export default  function Page() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeApp, setActiveApp] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const filteredNews = newss.filter(
-    (item) =>
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.desc.toLowerCase().includes(search.toLowerCase()),
+export function IntranetHome() {
+  const [query, setQuery] = useState("");
+  const [notice, setNotice] = useState("");
+  const visibleApps = useMemo(
+    () =>
+      apps.filter((app) =>
+        `${app.name} ${app.desc}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query],
   );
+  const announce = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 2800);
+  };
 
-  const [mesDemandes, setMesDemandes]=useState<RequestItem[]>([]);
-  const [news, setNews]=useState<Actualite[]>([]);
-  const [loading, setLoading]=useState<boolean>(false);
-  const [newLoading, setNewLoading]=useState<boolean>(false);
+  const { userEmail, userName } = useUser();
 
-  useEffect(()=>{
-  fetchMyRequests();
-  // fetchNews();
-  },[])
+  const [infos, setInfos] = useState<ActualitesResponse>({
+    actualites: [],
+    videos: [],
+    evenements: [],
+  });
 
+  const [dataLoader, setDataLoader] = useState(true);
+  const [offDays, setOffDays] = useState<DayOff[]>([]);
 
-    // const session = await auth();
-    // const userEmail = session?.user?.email || '';
-  
-    // // Récupération en parallèle des données réelles
-    // const [actualites, annonces, evenements] = await Promise.all([
-    //   getActualites(3),
-    //   getAnnonces(),
-    //   getEvenementsDuJour(),
-    //   // userEmail ? getCompteursDemandesParType(userEmail) : Promise.resolve({ materiel: 0, acces: 0, it: 0, rh: 0 }),
-    // ]);
+  // Chargement des actualités et événements
+  const fetchActus = async () => {
+    setDataLoader(true);
 
-
-  const fetchMyRequests = async () => {
     try {
-      setLoading(true);
-  
-      const data = await getMyRequests();
-  
-      setMesDemandes(data);
-  
-      // La sélection sera gérée par filteredRequest
-      // setSelectedId(null);
-    } catch (err) {
-      console.error("Erreur chargement demandes:", err);
+      const infoData = await getActualites(3);
+      setInfos(infoData);
+    } catch (error) {
+      console.error("Erreur lors du chargement des actualités :", error);
     } finally {
-      setLoading(false);
+      setDataLoader(false);
     }
   };
 
-  //  const fetchNews = async () => {
-  //   try {
-  //     setNewLoading(true);
-  
-  //     const data = await getActualites(3);
-  
-  //     setNews(data);
-  
-  //     // La sélection sera gérée par filteredRequest
-  //     // setSelectedId(null);
-  //   } catch (err) {
-  //     console.error("Erreur chargement demandes:", err);
-  //   } finally {
-  //     setNewLoading(false);
-  //   }
-  // };
+  // Chargement des jours fériés avec l'année en cours
+  const fetchDayOffs = async () => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const daysOffData = await getDayOffs(currentYear);
+      setOffDays(daysOffData || []);
+    } catch (error) {
+      console.error("Erreur lors du chargement des jours fériés :", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchActus();
+    fetchDayOffs();
+  }, []);
+
+  const actus = infos.actualites;
+  const events = infos.evenements;
 
   return (
     <SingleLayout>
-    <main className="min-h-screen  text-slate-900">
-      {/* <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-[76px] max-w-[1440px] items-center gap-8 px-5 lg:px-10">
-          <button
-            aria-label="Ouvrir le menu"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
-          >
-            {menuOpen ? <X /> : <Menu />}
-          </button>
-          <div className="flex items-center gap-3.5">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#123b42] text-lg font-bold text-white shadow-sm">
-              S
-            </div>
-            <div className="hidden leading-tight sm:block">
-              <p className="text-[17px] font-semibold tracking-tight">
-                STSL · COMPEL · T-Oil
-              </p>
-              <p className="text-[11px] font-medium uppercase tracking-[.16em] text-slate-400">
-                Espace collaboratif
-              </p>
-            </div>
-          </div>
-          <nav
-            className={`absolute left-0 top-[76px] w-full border-b border-slate-200 bg-white p-5 shadow-lg lg:static lg:ml-8 lg:flex lg:w-auto lg:items-center lg:gap-7 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${menuOpen ? "block" : "hidden lg:flex"}`}
-            aria-label="Navigation principale"
-          >
-            <a
-              className="flex items-center gap-2 border-b-2 border-[#127c80] py-3 text-sm font-semibold text-[#127c80] lg:py-7"
-              href="#accueil"
+      <main className="overflow-hidden text-[#17223b] w-full">
+        <section
+          id="accueil"
+          className="relative z-10 mx-auto grid max-w-[1320px] gap-8 px-5 pb-9 pt-8 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:px-12 lg:pb-14 lg:pt-16"
+        >
+          <div className="relative isolate overflow-hidden">
+            {/* Background SVG décoratif */}
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-20 -top-24 -z-10 h-[520px] w-[520px] text-[#079bc2]/10"
+              viewBox="0 0 500 500"
+              fill="none"
             >
-              Accueil
-            </a>
-            <a
-              className="flex items-center gap-2 py-3 text-sm font-medium text-slate-500 hover:text-slate-900 lg:py-7"
-              href="#actualites"
-            >
-              Actualités
-            </a>
-            <a
-              className="flex items-center gap-2 py-3 text-sm font-medium text-slate-500 hover:text-slate-900 lg:py-7"
-              href="#formations"
-            >
-              Formations
-            </a>
-            <a
-              className="flex items-center gap-2 py-3 text-sm font-medium text-slate-500 hover:text-slate-900 lg:py-7"
-              href="#demandes"
-            >
-              Mes demandes
-            </a>
-          </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 md:flex">
-              <Search className="size-4 text-slate-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher"
-                className="w-32 bg-transparent text-sm outline-none placeholder:text-slate-400"
-                aria-label="Rechercher"
+              <circle
+                cx="250"
+                cy="250"
+                r="190"
+                stroke="currentColor"
+                strokeWidth="1"
               />
-            </div>
-            <button
-              aria-label="Notifications"
-              className="relative rounded-full p-2.5 text-slate-500 hover:bg-slate-100"
-            >
-              <Bell className="size-[19px]" />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#e18e45]" />
-            </button>
-            <button
-              aria-label="Paramètres"
-              className="hidden rounded-full p-2.5 text-slate-500 hover:bg-slate-100 sm:block"
-            >
-              <Settings2 className="size-[19px]" />
-            </button>
-            <div className="ml-1 flex size-9 items-center justify-center rounded-full bg-[#e8c7a3] text-xs font-bold text-[#68452d]">
-              MA
-            </div>
-          </div>
-        </div>
-      </header> */}
+              <circle
+                cx="250"
+                cy="250"
+                r="135"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+              <circle
+                cx="250"
+                cy="250"
+                r="80"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
 
-      <div
-        id="accueil"
-        className="mx-auto max-w-[1440px] px-5 pb-16 pt-7 lg:px-10 lg:pt-10"
-      >
-        <section className="relative mb-[175px] min-h-[360px] overflow-visible rounded-[24px] bg-[#123b42] shadow-[0_14px_40px_rgba(18,59,66,.12)]">
-          <img
-            src="/images/banner2.png"
-            alt="Les trois sociétés du groupe : T-Oil, STSL et COMPEL"
-            className="absolute inset-0 size-full rounded-[24px] object-cover"
-          />
-          <div className="absolute inset-0 rounded-[24px] bg-gradient-to-t from-[#123b42]/80 via-transparent to-black/10" />
-          <div className="relative flex min-h-[360px] items-end px-7 py-7 sm:px-10">
+              <path
+                d="M250 20V480M20 250H480"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+
+              <path
+                d="M88 88L412 412M412 88L88 412"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+            </svg>
+
+            {/* Petites formes décoratives */}
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-10 bottom-0 -z-10 h-48 w-48 text-[#5670b9]/10"
+              viewBox="0 0 200 200"
+              fill="none"
+            >
+              <path
+                d="M20 150C55 110 80 105 110 120C140 135 160 120 180 80"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+
+              <path
+                d="M10 175C55 125 90 125 120 140C150 155 170 140 195 100"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+
+              <circle cx="42" cy="150" r="4" fill="currentColor" />
+
+              <circle cx="155" cy="126" r="3" fill="currentColor" />
+            </svg>
+
+            {/* Points décoratifs */}
             <div
-              className="absolute bottom-[-145px] left-7 z-10 w-[calc(100%-3.5rem)] max-w-md overflow-hidden rounded-2xl border border-white/70  bg-cover bg-center p-5 text-white shadow-[0_18px_35px_rgba(18,59,66,.22)] sm:left-10 sm:w-[calc(100%-5rem)]"
-              style={{
-                backgroundImage:
-                  "url('/images/inter-rmbg.png')",
-              }}
+              aria-hidden="true"
+              className="pointer-events-none absolute right-[18%] top-20 -z-10 grid grid-cols-5 gap-3 opacity-30"
             >
-              <div className="absolute inset-0 bg-emerald-300/45" />
-              <div className="relative">
-                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-red-700">
-                  <Sparkles className="size-3.5" /> Espace collaboratif
+              {Array.from({ length: 25 }).map((_, index) => (
+                <span
+                  key={index}
+                  className="size-1 rounded-full bg-[#079bc2]"
+                />
+              ))}
+            </div>
+
+            {/* Contenu */}
+            <div className="flex flex-col justify-center animate-[fadeUp_.7s_ease-out_both]">
+              {/* Badge */}
+              <div className="mb-5 flex w-fit items-center gap-2 rounded-full bg-white/80 px-3.5 py-2 text-xs font-bold text-[#5670b9] ring-1 ring-[#e8edf6] backdrop-blur-sm">
+                <span className="size-2 rounded-full bg-[#5fc5a2]" />
+                Tout est là, au même endroit
+              </div>
+
+              {/* Titre */}
+              <h1 className="max-w-[620px] text-3xl font-extrabold leading-[1.08] tracking-[-0.055em] text-[#16233b] sm:text-5xl">
+                Bonjour{" "}
+                <span className="text-[#5670b9]">
+                  {removeFirstWord(userName)}
                 </span>
-                <h1 className="mt-2 text-xl font-semibold leading-tight text-black tracking-[-.03em] sm:text-2xl">
-                  Ensemble, faisons avancer nos idées.
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-black/85">
-                  Bienvenue dans l&apos;intranet de STSL, COMPEL et T-Oil.
-                  Retrouvez vos outils, vos actualités et vos ressources au même
-                  endroit.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <a
-                    href="#actualites"
-                    className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#123b42] transition hover:bg-[#f4eee7]"
-                  >
-                    Actualités <ArrowUpRight className="size-3.5" />
-                  </a>
-                  <a
-                    href="#formations"
-                    className="flex items-center gap-2 rounded-full border border-white/50 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
-                  >
-                    Formations
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* <div className="absolute bottom-7 right-8 hidden items-center gap-3 rounded-2xl border border-white/20 bg-black/15 px-4 py-3 backdrop-blur-md md:flex">
-            <div className="flex -space-x-2">
-              <div className="flex size-8 items-center justify-center rounded-full border-2 border-[#568283] bg-[#d5a47d] text-[10px] font-bold text-white">
-                JD
-              </div>
-              <div className="flex size-8 items-center justify-center rounded-full border-2 border-[#568283] bg-[#8ca9a4] text-[10px] font-bold text-white">
-                SK
-              </div>
-              <div className="flex size-8 items-center justify-center rounded-full border-2 border-[#568283] bg-[#f0c497] text-[10px] font-bold text-white">
-                +8
-              </div>
-            </div>
-            <span className="text-xs text-white/80">
-              Votre réseau est actif aujourd&apos;hui
-            </span>
-          </div> */}
-        </section>
+                ,
+                <br />
+                <span className="text-[#079bc2]">on avance ensemble.</span>
+              </h1>
 
-        <section className="mt-10" id="actualites">
-          <div className="mb-5 flex items-end justify-between">
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#127c80]">
-                Restez informé
+              {/* Description */}
+              <p className="mt-6 max-w-[530px] text-base leading-7 text-[#748097]">
+                Votre espace pour rester informée, trouver vos outils et faire
+                avancer vos projets simplement.
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight">
-                Les actualités du groupe
-              </h2>
+
+              {/* Recherche */}
+              <div className="relative mt-8 max-w-[500px]">
+                <Search
+                  aria-hidden="true"
+                  className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#98a4b9]"
+                />
+
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Rechercher une ressource, une personne..."
+                  className="h-14 w-full rounded-2xl border border-[#e9edf5] bg-white/90 pl-12 pr-4 text-sm text-[#16233b] outline-none placeholder:text-[#a5afc0] backdrop-blur-sm transition focus:border-[#079bc2]/40 focus:ring-2 focus:ring-[#079bc2]/15"
+                />
+              </div>
             </div>
-            <Link href="/informations" className="hidden items-center gap-1 text-sm font-semibold text-[#127c80] sm:flex">
-              Toutes les actualités <ChevronRight className="size-4" />
-            </Link>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {filteredNews.map((item) => {
-              const Icon = item.icon;
-              return (
-                <article
-                  key={item.title}
-                  className="group rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
+
+          <div className="group relative min-h-[320px] overflow-hidden rounded-0 bg-[#102d4f] shadow-[0_20px_55px_rgba(26,61,96,.2)] animate-[fadeUp_.7s_.12s_ease-out_both] lg:min-h-[390px]">
+            {/* Image */}
+            <Image
+              src={heroImage}
+              width={800}
+              height={600}
+              alt="Les activités de COMPEL, STSL et T-Oil"
+              className="absolute inset-0 size-full object-cover object-center opacity-80 transition duration-700 group-hover:scale-105"
+            />
+
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#102d4f]/20 via-[#102d4f]/20 to-[#102d4f]/95" />
+
+            {/* Contenu */}
+            <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-6 sm:p-8 lg:min-h-[390px] lg:p-10">
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-white/90 px-3.5 py-1.5 text-xs font-bold text-[#167c97] shadow-sm backdrop-blur-sm">
+                  T-Oil / STSL / COMPEL
+                </span>
+              </div>
+
+              <div className="max-w-[430px] text-white">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#a6e6e5]">
+                  Notre groupe, notre énergie
+                </p>
+
+                <h2 className="text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-4xl">
+                  Ensemble, construisons la suite.
+                </h2>
+
+                <Link
+                  href="/informations"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-[#102d4f] transition-all hover:gap-3 hover:bg-[#a6e6e5]"
                 >
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={`flex size-10 items-center justify-center rounded-xl ${item.color}`}
-                    >
-                      <Icon className="size-5" />
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${item.color}`}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                  <h3 className="mt-5 text-[16px] font-semibold leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                    {item.desc}
-                  </p>
-                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <CalendarDays className="size-3.5" /> {item.date}
-                    </span>
-                    <button className="font-semibold text-[#127c80] opacity-0 transition group-hover:opacity-100">
-                      Lire <ArrowUpRight className="ml-1 inline size-3.5" />
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-
-            {/* {(newLoading && news.length ===0) ?
-              
-            (  <Loader/>):
-
-          news.map((item, index) => (
-      <NewsCard
-        key={item.id || index} // Privilégiez une vraie ID si disponible plutôt que l'index
-        title={item.titre}
-        description={ item.description} // S'adapte selon votre structure de données
-        imageUrl={item.imageUrl }
-        publishDate={item.datePublication}
-      />
-    ))
-  
-          } */}
+                  Découvrir l’actualité
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="mt-12">
+        {/* Accès rapides */}
+        <section className="relative z-10 mx-auto max-w-[1320px] px-5 pb-10 sm:px-8 lg:px-12">
           <div className="mb-5 flex items-end justify-between">
             <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#127c80]">
+              <p className="text-xs font-bold uppercase tracking-[.17em] text-[#98a4b9]">
                 Votre quotidien
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight">
+              <h2 className="mt-2 text-2xl font-extrabold tracking-[-.04em]">
                 Accès rapides
               </h2>
             </div>
-            <Link href="/outils" className="flex items-center gap-1 text-sm font-semibold text-[#127c80]">
+            <Link
+              href="/outils"
+              className="hidden items-center gap-1 text-sm font-bold text-[#079bc2] sm:flex"
+            >
               Voir toutes les applications <ChevronRight className="size-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {apps.map((app,key) => (
-              <Link
-              href={app.href}
-                key={key}
-                onClick={() => setActiveApp(app.name)}
-                className={`flex items-center gap-3 rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${activeApp === app.name ? "border-[#127c80] ring-2 ring-[#127c80]/10" : "border-slate-200/80"}`}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+            {visibleApps.map((app, index) => (
+              <a
+                key={app.name}
+                href={app.href}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => announce(`Ouverture de ${app.name}`)}
+                className="group flex min-h-[125px] flex-col items-start justify-between rounded-2xl bg-white p-4 text-left shadow-[0_8px_25px_rgba(41,62,110,.05)] ring-1 ring-[#edf0f6] transition duration-300 hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(41,62,110,.12)] animate-[fadeUp_.5s_ease-out_both]"
+                style={{ animationDelay: `${index * 55}ms` }}
               >
-                <Image
-                  className={`flex size-11 items-center justify-center rounded-xl text-lg font-bold ${app.color}`}
-                  alt="app"
-                  src={app.logo}
-                  width={500}
-                  height={500}
-                />
-                  {/* {app.icon}
-                </span> */}
+                <span className="flex size-11 items-center justify-center rounded-xl bg-[#f5f8fc] p-2 transition group-hover:scale-110">
+                  <img
+                    src={app.logo}
+                    alt=""
+                    className="size-full object-contain"
+                  />
+                </span>
                 <span>
-                  <span className="block text-sm font-semibold">
+                  <span className="block text-sm font-bold text-[#27344f]">
                     {app.name}
                   </span>
-                  <span className="text-xs text-slate-400">{app.desc}</span>
+                  <span className="mt-1 block text-[11px] font-medium text-[#9aa5b7]">
+                    {app.desc}
+                  </span>
                 </span>
-                <ArrowUpRight className="ml-auto hidden size-4 text-slate-300 sm:block" />
-              </Link>
+                <ExternalLink
+                  className="absolute hidden size-3 text-[#079bc2]"
+                  aria-hidden="true"
+                />
+              </a>
             ))}
           </div>
         </section>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
-          <section
-            id="demandes"
-            className="rounded-2xl border border-slate-200/80 bg-white p-6"
-          >
-            <div className="flex items-start justify-between">
+        {/* SECTION ÉVÉNEMENTS & CALENDRIER */}
+        <EventsAndCalendarSection events={events} offDays={offDays} />
+
+        {/* Actualités [0_8px_25px_rgba(41,62,110,.05)] */}
+        <section
+          className="relative z-10 mx-auto grid max-w-[1320px] gap-6 px-5 pb-12 sm:px-8 lg:grid-cols-[1.35fr_.65fr] lg:px-12"
+          id="actualites"
+        >
+          <div className="rounded-0 bg-white p-5 shadow-0 ring-1 ring-[#edf0f6] sm:p-7">
+            <div className="mb-6 flex items-center justify-between">
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#127c80]">
-                  Suivi personnel
+                <p className="text-xs font-bold uppercase tracking-[.17em] text-[#98a4b9]">
+                  Restez au courant
                 </p>
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Mes demandes
+                <h2 className="mt-2 text-2xl font-extrabold tracking-[-.04em]">
+                  Actualités & communications
                 </h2>
               </div>
-              <button
-                className="rounded-full border border-slate-200 p-2 text-slate-400 hover:bg-slate-50"
-                aria-label="Plus d'options"
+              <Link
+                href={"/informations"}
+                className="rounded-xl p-2 text-[#9ca8ba] transition hover:bg-[#f4f6fb] hover:text-[#079bc2]"
+                aria-label="Plus d’actualités"
               >
-                <MoreHorizontal className="size-5" />
-              </button>
+                <ArrowRight className="size-5" />
+              </Link>
             </div>
-            <div className="mt-5 divide-y divide-slate-100">
-              {
-                (loading && mesDemandes?.length ==0) ?
-                (
-                <div className="">
-                <Loader/>
+            <div className="grid gap-3 md:grid-cols-3">
+              {dataLoader ? (
+                <div className="col-span-full flex min-h-40 items-center justify-center">
+                  <Loader />
                 </div>
-
-
-                ):
-
-            (  mesDemandes.map((request,key) => (
-                <div
-                  key={key}
-                  className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-                    <FileText className="size-[18px]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                    {`${request.typeDemande} : ${request.typeConge}`}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                       {request.titre}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getStatutColor(request.statutActuel)}`}
+              ) : (
+                actus.map((item, index) => (
+                  <article
+                    key={index}
+                    className={`group relative min-h-[220px] overflow-hidden rounded-2xl bg-${getNewsColor(
+                      index,
+                    )}-50 transition duration-300 hover:-translate-y-1`}
                   >
-                    {getStatutText(request.statutActuel)}
-                  </span>
-                  <ChevronRight className="hidden size-4 text-slate-300 sm:block" />
-                </div>
-              )))
-              
-              }
+                    {/* Image de fond */}
+                    {item.imageUrl && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+                        style={{
+                          backgroundImage: `url("${item.imageUrl}")`,
+                        }}
+                      />
+                    )}
+
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071a2d]/95 via-[#071a2d]/45 to-transparent" />
+
+                    {/* Date */}
+                    <div className="absolute right-4 top-4 z-10">
+                      <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#52627a] shadow-sm backdrop-blur-sm">
+                        {String(DateFormat(item.datePublication, false))}
+                      </span>
+                    </div>
+
+                    {/* Contenu */}
+                    <div className="relative z-10 flex min-h-[220px] flex-col justify-end p-4">
+                      <p className="line-clamp-3 font-bold text-sm leading-5 text-white/90">
+                        {item.titre}
+                      </p>
+                      <p className="line-clamp-3 text-xs leading-5 text-white/90">
+                        {item.description}
+                      </p>
+
+                      <button
+                        onClick={() => announce("Lecture de l’article")}
+                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/25"
+                      >
+                        Lire la suite
+                        <ArrowRight className="size-3" />
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
-            <Link href={'/demandes/suivi'} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-50 py-3 text-sm font-semibold text-[#127c80] hover:bg-[#edf6f5]">
-              Suivez votre demande<ArrowUpRight className="size-4" />
-            </Link>
-          </section>
-          <section id="formations" className="rounded-2xl bg-[#e9f2f0] p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#127c80]">
-                  Mon espace d&apos;apprentissage
-                </p>
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Formations à la une
-                </h2>
-              </div>
-              <div className="flex size-10 items-center justify-center rounded-xl bg-white text-[#127c80]">
-                <GraduationCap className="size-5" />
-              </div>
-            </div>
-            <div className="mt-5 overflow-hidden rounded-2xl bg-white shadow-sm">
-              <div className="relative h-28 overflow-hidden bg-[#15484b]">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#15484b] to-[#2a7771]" />
-                <div className="relative flex h-full items-center gap-4 px-5">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur">
-                    <Video className="ml-0.5 size-5" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-white/70">
-                      Guide pratique · 08 min
-                    </p>
-                    <h3 className="mt-1 text-sm font-semibold text-white">
-                      Bien démarrer avec SharePoint
-                    </h3>
-                  </div>
+          </div>
+          <aside
+            id="formations"
+            className="relative isolate flex min-h-[330px] flex-col justify-between overflow-hidden rounded-[0.75rem] bg-[#102d4f] p-7 text-white shadow-[0_15px_35px_rgba(16,45,79,.18)] before:absolute before:-right-16 before:-top-16 before:-z-10 before:size-56 before:rounded-full before:border-[24px] before:border-[#4fc1c5]/20 after:absolute after:-bottom-24 after:-left-16 after:-z-10 after:size-48 after:rounded-full after:bg-[#079bc2]/15 sm:p-8"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-white/10">
+                  <BookOpen className="size-5 text-[#9ce2df]" />
                 </div>
-              </div>
-              <div className="flex items-center justify-between p-4">
-                <span className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <Clock3 className="size-3.5" /> À voir cette semaine
+                <span className="rounded-full bg-[#1e5572] px-3 py-1.5 text-[10px] font-bold">
+                  À découvrir
                 </span>
-                <button className="flex items-center gap-1 text-xs font-semibold text-[#127c80]">
-                  Regarder <ArrowUpRight className="size-3.5" />
-                </button>
               </div>
+              <h2 className="mt-8 text-2xl font-extrabold leading-tight">
+                Développez vos talents.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[#b4c9d9]">
+                Formations, ateliers et ressources pour progresser ensemble.
+              </p>
             </div>
-            <button className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#127c80]">
-              Explorer le catalogue <ChevronRight className="size-4" />
-            </button>
-          </section>
-        </div>
-      </div>
-    
-    </main>
+            <Link
+              href="/formations"
+              className="mt-8 flex items-center gap-2 text-sm font-bold text-[#9ce2df]"
+            >
+              Voir le catalogue <ArrowRight className="size-4" />
+            </Link>
+          </aside>
+        </section>
+
+        {/* Section Collectif */}
+        <section
+          id="collectif"
+          className="relative z-10 mx-auto flex max-w-[1320px] flex-wrap gap-3 px-5 pb-12 sm:px-8 lg:px-12"
+        >
+          <Link
+            href="/demandes/catalogue"
+            className="flex flex-1 items-center gap-4 rounded-2xl bg-[#fff0e6] p-4 text-left transition hover:-translate-y-1 sm:min-w-[220px]"
+          >
+            <div className="flex size-10 items-center justify-center rounded-xl bg-white text-[#e58c62]">
+              <MessageSquareText className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold">Faire une demande</p>
+              <p className="mt-1 text-xs text-[#b07c67]">IT, RH, matériel...</p>
+            </div>
+            <ArrowRight className="ml-auto size-4 text-[#ce8b6c]" />
+          </Link>
+          <button
+            onClick={() => announce("Annuaire ouvert")}
+            className="flex flex-1 items-center gap-4 rounded-2xl bg-[#eaf7f2] p-4 text-left transition hover:-translate-y-1 sm:min-w-[220px]"
+          >
+            <div className="flex size-10 items-center justify-center rounded-xl bg-white text-[#4aaf8c]">
+              <Users className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold">Trouver un collègue</p>
+              <p className="mt-1 text-xs text-[#78a993]">
+                Annuaire de l’entreprise
+              </p>
+            </div>
+            <ArrowRight className="ml-auto size-4 text-[#64ae94]" />
+          </button>
+          <button
+            onClick={() => announce("Bibliothèque ouverte")}
+            className="flex flex-1 items-center gap-4 rounded-2xl bg-[#f0edff] p-4 text-left transition hover:-translate-y-1 sm:min-w-[220px]"
+          >
+            <div className="flex size-10 items-center justify-center rounded-xl bg-white text-[#8175d4]">
+              <BookOpen className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold">Bibliothèque</p>
+              <p className="mt-1 text-xs text-[#8b86b8]">Ressources communes</p>
+            </div>
+            <ArrowRight className="ml-auto size-4 text-[#8278c8]" />
+          </button>
+        </section>
+
+        {notice && (
+          <div
+            role="status"
+            className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#102d4f] px-5 py-3 text-sm font-semibold text-white shadow-xl animate-[fadeUp_.25s_ease-out_both]"
+          >
+            <ShieldCheck className="size-4 text-[#9ce2df]" /> {notice}
+          </div>
+        )}
+      </main>
     </SingleLayout>
   );
 }
+
+export default IntranetHome;

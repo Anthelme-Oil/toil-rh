@@ -16,21 +16,55 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+// export async function GET() {
+//   try {
+//     const [actualites, videos, evenements] = await Promise.all([
+//       getActualites(100),
+//       getVideosFromSharePoint(),
+//       getEvenementsDuJour(),
+//     ]);
+
+//     return NextResponse.json(
+//       { actualites, videos, evenements },
+//       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+//     );
+//   } catch (error: unknown) {
+//     const msg = error instanceof Error ? error.message : 'Erreur récupération actualités & événements.';
+//     return NextResponse.json({ error: msg }, { status: 500 });
+//   }
+// }
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    const topParam = searchParams.get('top');
+    const top = topParam ? Number(topParam) : 100;
+
     const [actualites, videos, evenements] = await Promise.all([
-      getActualites(100),
+      getActualites(top),
       getVideosFromSharePoint(),
       getEvenementsDuJour(),
     ]);
 
     return NextResponse.json(
       { actualites, videos, evenements },
-      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
     );
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Erreur récupération actualités & événements.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const msg =
+      error instanceof Error
+        ? error.message
+        : 'Erreur récupération actualités & événements.';
+
+    return NextResponse.json(
+      { error: msg },
+      { status: 500 }
+    );
   }
 }
 

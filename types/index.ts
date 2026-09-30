@@ -406,4 +406,354 @@ export const EXCEPTIONAL_ABSENCE_TYPES: Record<
   updatedAt: string | null
 }
 
+export interface News {
+  actualite: Actualite;
+  videos: Evenement;
+}
 
+export interface ActualitesResponse {
+  actualites: Actualite[];
+  videos: Array<{
+    id: string;
+    titre: string;
+    categorie: string;
+    duree: string;
+    date: string;
+    thumbnailUrl: string;
+    videoUrl: string;
+    description: string;
+  }>;
+  evenements: Evenement[];
+}
+
+export type NewsColor = "peach" | "lavender" | "mint";
+
+
+
+/**
+ * Départements disponibles dans la médiathèque.
+ *
+ * Les valeurs sont volontairement courtes :
+ * IT, FINANCE, COMMERCIAL, etc.
+ */
+export const DOCUMENT_DEPARTMENTS = [
+  'IT',
+  'COMMERCIAL',
+  'FINANCE',
+  'OPERATION',
+  'RH',
+  'DIRECTION',
+  'JURIDIQUE',
+] as const;
+
+export type DocumentDepartment =
+  (typeof DOCUMENT_DEPARTMENTS)[number];
+
+
+/**
+ * Formats de documents pris en charge.
+ */
+export const DOCUMENT_FORMATS = [
+  'PDF',
+  'DOC',
+  'DOCX',
+  'XLS',
+  'XLSX',
+  'PPT',
+  'PPTX',
+  'TXT',
+  'CSV',
+  'IMAGE',
+  'VIDEO',
+  'OTHER',
+] as const;
+
+export type DocumentFormat =
+  (typeof DOCUMENT_FORMATS)[number];
+
+
+/**
+ * Catégories fonctionnelles des documents.
+ *
+ * Elles permettent de mieux organiser la médiathèque
+ * à l'intérieur d'un département.
+ */
+export const DOCUMENT_CATEGORIES = [
+  'PROCEDURE',
+  'GUIDE',
+  'FORMULAIRE',
+  'POLITIQUE',
+  'NOTE',
+  'RAPPORT',
+  'MANUEL',
+  'INSTRUCTION',
+  'REGLEMENT',
+  'PRESENTATION',
+  'MODELE',
+  'REFERENCE',
+  'AUTRE',
+] as const;
+
+export type DocumentCategory =
+  (typeof DOCUMENT_CATEGORIES)[number];
+
+
+/**
+ * Statut du document.
+ */
+export const DOCUMENT_STATUSES = [
+  'DRAFT',
+  'PUBLISHED',
+  'ARCHIVED',
+] as const;
+
+export type DocumentStatus =
+  (typeof DOCUMENT_STATUSES)[number];
+
+
+/**
+ * Niveau de visibilité du document.
+ *
+ * PUBLIC :
+ * accessible à tous les utilisateurs de l'intranet.
+ *
+ * DEPARTMENT :
+ * accessible uniquement aux utilisateurs du département concerné.
+ *
+ * RESTRICTED :
+ * accès limité selon les droits/permissions.
+ */
+export const DOCUMENT_VISIBILITIES = [
+  'PUBLIC',
+  'DEPARTMENT',
+  'RESTRICTED',
+] as const;
+
+export type DocumentVisibility =
+  (typeof DOCUMENT_VISIBILITIES)[number];
+
+
+/**
+ * Informations sur l'auteur / responsable du document.
+ */
+export interface MediaDocumentAuthor {
+  id?: string;
+  name: string;
+  email?: string;
+};
+
+
+/**
+ * Statistiques du document.
+ */
+export interface MediaDocumentStats {
+  views: number;
+  downloads: number;
+};
+
+
+/**
+ * Document de la médiathèque.
+ */
+export interface MediaDocument {
+  /**
+   * Identifiant unique du document.
+   */
+  id: string;
+
+  /**
+   * Titre principal affiché dans la médiathèque.
+   */
+  title: string;
+
+  /**
+   * Description générale du document.
+   */
+  description?: string;
+
+  /**
+   * Objectif du document.
+   *
+   * Permet de comprendre rapidement pourquoi
+   * le document existe et à quoi il sert.
+   */
+  objective?: string;
+
+  /**
+   * Département auquel appartient le document.
+   *
+   * Exemple : IT, FINANCE, COMMERCIAL...
+   */
+  department: DocumentDepartment;
+
+  /**
+   * Catégorie fonctionnelle du document.
+   *
+   * Exemple : PROCEDURE, GUIDE, FORMULAIRE...
+   */
+  category?: DocumentCategory;
+
+  /**
+   * Format logique du fichier.
+   *
+   * Exemple : PDF, DOCX, XLSX...
+   */
+  format: DocumentFormat;
+
+  /**
+   * Extension réelle du fichier.
+   *
+   * Exemple : .pdf, .docx, .xlsx
+   */
+  extension: string;
+
+  /**
+   * Nom physique du fichier.
+   */
+  fileName: string;
+
+  /**
+   * URL permettant de consulter/télécharger
+   * le fichier.
+   */
+  fileUrl: string;
+
+  /**
+   * Taille du fichier en octets.
+   */
+  fileSize?: number;
+
+  /**
+   * Version du document.
+   *
+   * Exemple : "1.0", "2.1", "2026.1"
+   */
+  version?: string;
+
+  /**
+   * Mots-clés permettant d'améliorer la recherche.
+   *
+   * Exemple :
+   * ["vpn", "securite", "connexion", "informatique"]
+   */
+  tags?: string[];
+
+  /**
+   * Auteur ou responsable du document.
+   */
+  author?: MediaDocumentAuthor;
+
+  /**
+   * Nom de la personne ayant publié le document.
+   */
+  publishedBy?: MediaDocumentAuthor;
+
+  /**
+   * Date de publication.
+   */
+  publishedAt?: string | Date;
+
+  /**
+   * Date de dernière modification.
+   */
+  updatedAt: string | Date;
+
+  /**
+   * Date de création du document.
+   */
+  createdAt: string | Date;
+
+  /**
+   * Nombre total de consultations.
+   */
+  views: number;
+
+  /**
+   * Nombre total de téléchargements.
+   */
+  downloads: number;
+
+  /**
+   * Statut actuel du document.
+   */
+  status: DocumentStatus;
+
+  /**
+   * Indique si le document est actuellement publié.
+   *
+   * Peut être conservé pour faciliter certains traitements
+   * ou requêtes rapides.
+   */
+  isPublished: boolean;
+
+  /**
+   * Niveau de visibilité du document.
+   */
+  visibility: DocumentVisibility;
+
+  /**
+   * Date à laquelle le document doit éventuellement
+   * être archivé.
+   */
+  archivedAt?: string | Date;
+
+  /**
+   * Identifiant du document ayant remplacé celui-ci,
+   * lorsqu'une nouvelle version existe.
+   */
+  replacedById?: string;
+
+  /**
+   * Identifiant du document précédent lorsque celui-ci
+   * constitue une nouvelle version.
+   */
+  previousVersionId?: string;
+}
+
+export interface MediaDocumentFilters {
+  search?: string;
+
+  department?: DocumentDepartment | 'ALL';
+
+  category?: DocumentCategory | 'ALL';
+
+  format?: DocumentFormat | 'ALL';
+
+  status?: DocumentStatus | 'ALL';
+
+  visibility?: DocumentVisibility | 'ALL';
+
+  tag?: string;
+
+  dateFrom?: string | Date;
+
+  dateTo?: string | Date;
+}
+
+
+export type MediaDocumentSort =
+  | 'LATEST'
+  | 'OLDEST'
+  | 'MOST_VIEWED'
+  | 'MOST_DOWNLOADED'
+  | 'TITLE_ASC'
+  | 'TITLE_DESC';
+
+
+export interface MediaDocumentQuery {
+  page?: number;
+
+  limit?: number;
+
+  filters?: MediaDocumentFilters;
+
+  sort?: MediaDocumentSort;
+}
+
+export interface MediaDocumentsResponse {
+  documents: MediaDocument[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

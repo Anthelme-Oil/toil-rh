@@ -384,6 +384,10 @@ export default function FormationsPage() {
     //     }}
     //   />
     // </div>
-    <DevNotice />
+    // <DevNotice />
+    <main className='w-full max-w-full items-center justify-center text-red-500 text-5xl'>
+
+      <DevNotice />
+    </main>
   );
 }

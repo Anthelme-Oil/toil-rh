@@ -175,3 +175,142 @@ model CalendarDayOff {
   @@index([date, isActive])
   @@map("calendarDayOff")
 }
+
+
+//Mediatheque
+
+
+
+model MediaDocument {
+  id          Int     @id @default(autoincrement())
+
+  // Identification
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  objective   String? @db.Text
+
+  // Classement
+  department String  @db.VarChar(50)
+  category   String? @db.VarChar(50)
+  format     String  @db.VarChar(20)
+  extension  String  @db.VarChar(20)
+
+  // Fichier
+  fileName String @db.VarChar(255)
+  fileUrl  String @db.Text
+  fileSize BigInt?
+
+  // Version
+  version           String? @db.VarChar(30)
+  previousVersionId Int?
+  replacedById      Int?
+
+  // Publication
+  status       String  @default("DRAFT") @db.VarChar(20)
+  isPublished  Boolean @default(false)
+  visibility   String  @default("PUBLIC") @db.VarChar(20)
+
+  // Auteur
+  authorId    String? @db.VarChar(255)
+  authorName  String? @db.VarChar(255)
+  authorEmail String? @db.VarChar(255)
+
+  // Publication par
+  publishedById    String? @db.VarChar(255)
+  publishedByName  String? @db.VarChar(255)
+  publishedByEmail String? @db.VarChar(255)
+
+  // Dates
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Statistiques
+  views     Int @default(0)
+  downloads Int @default(0)
+
+  // Tags
+  tags Json?
+
+  // Relations de version
+  previousVersion  MediaDocument?  @relation("MediaDocumentPreviousVersion", fields: [previousVersionId], references: [id])
+  nextVersions     MediaDocument[] @relation("MediaDocumentPreviousVersion")
+
+  replacedBy       MediaDocument?  @relation("MediaDocumentReplacement", fields: [replacedById], references: [id])
+  replacedDocuments MediaDocument[] @relation("MediaDocumentReplacement")
+
+  @@index([department])
+  @@index([category])
+  @@index([format])
+  @@index([status])
+  @@index([visibility])
+  @@index([isPublished])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@index([views])
+  @@index([downloads])
+  @@index([department, isPublished])
+  @@index([status, isPublished])
+
+  @@map("mediaDocument")
+}
+
+
+
+enum ChannelType {
+  ARTICLE
+  VIDEO
+  MEDIA
+  INFO
+  CHAT
+  GROUP
+  UPC
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+model InteractionGreffe {
+  id          String      @id @default(cuid())
+  referId     String      // ID de l'élément (ex: ID Média, ID Article...)
+  typeRefer   ChannelType
+  comments    Comment[]
+  reactions   Reaction[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([referId, typeRefer])
+  @@index([referId, typeRefer])
+}
+
+model Comment {
+  id                  String            @id @default(cuid())
+  interactionGreffeId String
+  interactionGreffe   InteractionGreffe @relation(fields: [interactionGreffeId], references: [id], onDelete: Cascade)
+  authorName          String
+  authorEmail         String?
+  text                String
+  createdAt           DateTime          @default(now())
+
+  @@index([interactionGreffeId])
+}
+
+model Reaction {
+  id                  String            @id @default(cuid())
+  interactionGreffeId String
+  interactionGreffe   InteractionGreffe @relation(fields: [interactionGreffeId], references: [id], onDelete: Cascade)
+  type                ReactionType      // LIKE ou DISLIKE
+  authorName          String
+  authorEmail         String            // Utilisé pour identifier de manière unique l'auteur
+  createdAt           DateTime          @default(now())
+
+  @@unique([interactionGreffeId, authorEmail]) // Un utilisateur ne peut avoir qu'une seule réaction par greffe
+  @@index([interactionGreffeId])
+}
+
+
+
+
