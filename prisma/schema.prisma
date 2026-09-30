@@ -224,7 +224,7 @@ model MediaDocument {
   publishedAt DateTime?
   archivedAt  DateTime?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime  @default(now()) @updatedAt
 
   // Statistiques
   views     Int @default(0)
