@@ -13,6 +13,9 @@ export default function ReactionModal({ post, kind, onClose }: ReactionModalProp
       ? ["Marie A.", "Thomas K.", "Sonia M.", "David P."]
       : ["Anonyme collaborateur"];
 
+
+const reactions = post.interactions.dislikesAuthors;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172033]/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
@@ -34,15 +37,15 @@ export default function ReactionModal({ post, kind, onClose }: ReactionModalProp
           </button>
         </div>
 
-        <p className="mb-4 text-[12px] text-[#7d879b]">{post.title}</p>
+        <p className="mb-4 text-[12px] text-[#7d879b]">{post ? post.interactions.typeRefer :''}</p>
 
         <div className="max-h-60 space-y-2 overflow-y-auto">
-          {users.map((name, index) => (
-            <div key={name} className="flex items-center gap-3 rounded-xl bg-[#f8f9fc] p-3">
+          {reactions.map((user, index) => (
+            <div key={index} className="flex items-center gap-3 rounded-xl bg-[#f8f9fc] p-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#dce8ff] text-[10px] font-bold text-[#3764b4]">
-                {name.slice(0, 2).toUpperCase()}
+                {user.name.slice(0, 2).toUpperCase()}
               </div>
-              <span className="text-[12px] font-bold text-[#3b4760]">{name}</span>
+              <span className="text-[12px] font-bold text-[#3b4760]">{user.email}</span>
               <span className="ml-auto text-[10px] text-[#a2aabc]">{index + 1}e</span>
             </div>
           ))}
