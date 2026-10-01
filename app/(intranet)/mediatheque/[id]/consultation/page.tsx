@@ -19,7 +19,7 @@ export default async function MediaConsultPage({
   // L'appel reste exactement le même qu'avant !
   const media = await getMediaById(id);
 
-  console.log("media=>",media)
+  // console.log("media=>",media)
 
   if (!media) {
     return (

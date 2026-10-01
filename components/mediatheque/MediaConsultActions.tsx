@@ -1,376 +1,298 @@
-'use client';
+'use client'
 
-import { useEffect, useRef, useState } from 'react';
-import { 
-  Download, 
-  Loader2, 
-  FileText, 
-  Calendar, 
-  User, 
-  Building2, 
-  Tag, 
-  Eye, 
-  HardDrive, 
-  ShieldCheck, 
-  Info,
-  Clock,
-  CheckCircle2,
-  Lock,
-  FileSpreadsheet,
-  FileCode
-} from 'lucide-react';
-import { MediaDocument } from '@/types';
-import { consultMedia, downloadMedia } from '@/lib/services/media.service';
+import { useEffect, useRef, useState } from 'react'
+import { CalendarDays, Check, Clock3, Download, Expand, Eye, FileText, Link2, Lock, UserRound, X } from 'lucide-react'
+import { MediaDocument } from '@/types'
+import { consultMedia, downloadMedia } from '@/lib/services/media.service'
+
+// Dépendances à installer : npm i xlsx mammoth
+const PREVIEW_SIZE = 550
 
 interface MediaConsultActionsProps {
-  mediaId: string;
-  downloads: number;
-  media: MediaDocument;
+  mediaId: string
+  downloads: number
+  media: MediaDocument
 }
 
-export default function MediaConsultActions({
-  mediaId,
-  downloads,
-  media,
-}: MediaConsultActionsProps) {
-  const consultationRegistered = useRef(false);
-  const [downloadCount, setDownloadCount] = useState(downloads);
-  const [isDownloading, setIsDownloading] = useState(false);
+type Kind = 'image' | 'pdf' | 'xlsx' | 'docx' | 'text' | 'video' | 'audio' | 'file'
 
-  // Enregistrement de la consultation
+function getKind(media: MediaDocument): Kind {
+  const ext = (media.extension ?? '').toLowerCase().replace('.', '')
+  const format = media.format?.toLowerCase()
+  if (format === 'image' || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) return 'image'
+  if (format === 'pdf' || ext === 'pdf') return 'pdf'
+  if (['xls', 'xlsx', 'xlsm'].includes(ext)) return 'xlsx'
+  if (ext === 'docx') return 'docx'
+  if (['txt', 'csv', 'md', 'json', 'log'].includes(ext)) return 'text'
+  if (format === 'audio' || ['mp3', 'wav'].includes(ext)) return 'audio'
+  if (format === 'video' || ['mp4', 'webm', 'ogg'].includes(ext)) return 'video'
+  return 'file'
+}
+
+function formatFileSize(bytes?: number) {
+  if (!bytes) return 'Taille inconnue'
+  const units = ['o', 'Ko', 'Mo', 'Go']
+  let size = bytes
+  let i = 0
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024
+    i += 1
+  }
+  return `${size.toFixed(size >= 10 || i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+function Notice({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 bg-[#E9F1FB] p-8 text-center">
+      <FileText className="h-9 w-9 text-[#4A7DB8]" strokeWidth={1.5} />
+      <p className="text-sm font-semibold text-[#1B2B3A]">{title}</p>
+      <p className="text-xs leading-5 text-[#5C7288]">{text}</p>
+    </div>
+  )
+}
+
+/** Lit réellement le fichier dans le navigateur (pas de service externe) */
+function Preview({ media, kind }: { media: MediaDocument; kind: Kind }) {
+  const [state, setState] = useState<
+    | { type: 'loading' }
+    | { type: 'error' }
+    | { type: 'text'; text: string }
+    | { type: 'html'; html: string }
+    | { type: 'sheets'; sheets: { name: string; rows: string[][] }[] }
+  >({ type: 'loading' })
+  const [sheetIndex, setSheetIndex] = useState(0)
+  const url = media.fileUrl
+
   useEffect(() => {
-    if (consultationRegistered.current) return;
-    consultationRegistered.current = true;
-
-    const registerConsultation = async () => {
+    if (!['xlsx', 'docx', 'text'].includes(kind)) return
+    let cancelled = false
+    async function load() {
       try {
-        await consultMedia(mediaId);
-      } catch (error) {
-        console.error('Erreur lors de la consultation :', error);
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(String(res.status))
+        if (kind === 'text') {
+          const text = await res.text()
+          if (!cancelled) setState({ type: 'text', text: text.slice(0, 200_000) })
+        } else if (kind === 'docx') {
+          // @ts-ignore - build navigateur de mammoth
+          const mammoth: any = await import('mammoth/mammoth.browser')
+          const { value } = await mammoth.convertToHtml({ arrayBuffer: await res.arrayBuffer() })
+          if (!cancelled) setState({ type: 'html', html: value })
+        } else {
+          const XLSX = await import('xlsx')
+          const wb = XLSX.read(await res.arrayBuffer(), { type: 'array' })
+          const sheets = wb.SheetNames.map((name) => ({
+            name,
+            rows: (XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', raw: false }) as string[][])
+              .slice(0, 200)
+              .map((r) => r.slice(0, 20)),
+          }))
+          if (!cancelled) setState({ type: 'sheets', sheets })
+        }
+      } catch {
+        if (!cancelled) setState({ type: 'error' })
       }
-    };
-
-    registerConsultation();
-  }, [mediaId]);
-
-  // Gestion du téléchargement
-  const handleDownload = async () => {
-    if (isDownloading) return;
-    setIsDownloading(true);
-
-    try {
-      await downloadMedia(mediaId);
-      setDownloadCount((current) => current + 1);
-    } catch (error) {
-      console.error('Erreur lors du téléchargement :', error);
-    } finally {
-      setIsDownloading(false);
     }
-  };
-
-  // Formater la taille de fichier
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return 'Inconnu';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
+    load()
+    return () => {
+      cancelled = true
     }
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
-  };
+  }, [url, kind])
 
-  // Composant d'aperçu universel (Images, PDF, Office Word/Excel, Vidéo, Audio)
-  const renderPreview = () => {
-    const ext = media.extension?.toLowerCase() || '';
-    const format = media.format?.toLowerCase() || '';
-    const fileUrl = media.fileUrl;
-
-    // 1. IMAGES
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext) || format === 'image') {
-      return (
-        <div className="flex justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
-          <img
-            src={fileUrl}
-            alt={media.title}
-            className="max-h-[600px] w-auto rounded-lg object-contain shadow-sm"
-          />
-        </div>
-      );
-    }
-
-    // 2. PDF (Utilise le mode FitH et sans barres grises/noires)
-    if (ext === 'pdf' || format === 'pdf') {
-      return (
-        <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-          <iframe
-            src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-            className="h-[700px] w-full border-0 bg-white"
-            title={media.title}
-          />
-        </div>
-      );
-    }
-
-    // 3. DOCUMENTS MICROSOFT OFFICE (Word, Excel, PowerPoint)
-    const isOfficeDoc = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
-    if (isOfficeDoc) {
-      // Visionneuse Microsoft Office Web Viewer
-      const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
-
-      return (
-        <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-          <iframe
-            src={officeViewerUrl}
-            className="h-[700px] w-full border-0 bg-white"
-            title={media.title}
-          />
-        </div>
-      );
-    }
-
-    // 4. VIDÉOS
-    if (['mp4', 'webm', 'ogg'].includes(ext) || format === 'video') {
-      return (
-        <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-slate-900 p-1 shadow-sm">
-          <video controls className="max-h-[600px] w-full rounded-lg">
-            <source src={fileUrl} />
-            Votre navigateur ne supporte pas la lecture vidéo.
-          </video>
-        </div>
-      );
-    }
-
-    // 5. AUDIO
-    if (['mp3', 'wav', 'ogg'].includes(ext) || format === 'audio') {
-      return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50/80 p-10">
-          <FileText className="mb-4 h-16 w-16 text-slate-400" />
-          <audio controls className="w-full max-w-md">
-            <source src={fileUrl} />
-            Votre navigateur ne supporte pas l'élément audio.
-          </audio>
-        </div>
-      );
-    }
-
-    // 6. FICHIERS AUTRES (Archives, Code, etc.)
+  if (kind === 'image') return <img src={url} alt={media.title} className="h-full w-full object-contain" />
+  if (kind === 'pdf') return <iframe src={`${url}#toolbar=0&navpanes=0&view=FitH`} title={media.title} className="h-full w-full border-0" />
+  if (kind === 'video') return <video controls src={url} className="h-full w-full bg-black object-contain" />
+  if (kind === 'audio')
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-        <FileText className="mb-4 h-16 w-16 text-slate-300" />
-        <p className="text-base font-medium text-slate-700">
-          Aperçu direct non disponible pour l'extension ({ext.toUpperCase()})
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          Veuillez télécharger le document pour en consulter l'intégralité.
-        </p>
+      <div className="flex h-full items-center justify-center bg-[#E6F4EC] p-6">
+        <audio controls src={url} className="w-full" />
       </div>
-    );
-  };
+    )
+  if (kind === 'file')
+    return <Notice title="Aperçu indisponible pour ce format" text="Téléchargez le fichier pour l’ouvrir dans son application." />
+
+  if (state.type === 'loading') return <div className="flex h-full items-center justify-center text-xs text-[#5C7288]">Chargement de l’aperçu…</div>
+  if (state.type === 'error')
+    return <Notice title="Aperçu impossible" text="Le fichier n’est pas accessible depuis le navigateur. Téléchargez-le pour le consulter." />
+  if (state.type === 'text') return <pre className="h-full overflow-auto whitespace-pre-wrap p-4 font-mono text-xs leading-5 text-[#1B2B3A]">{state.text}</pre>
+  if (state.type === 'html')
+    return (
+      <iframe
+        sandbox=""
+        title={media.title}
+        className="h-full w-full border-0 bg-white"
+        srcDoc={`<style>body{font:14px/1.6 system-ui,sans-serif;color:#1B2B3A;padding:20px;margin:0}table{border-collapse:collapse}td,th{border:1px solid #d5e0ec;padding:4px 8px}img{max-width:100%}</style>${state.html}`}
+      />
+    )
+
+  const sheet = state.sheets[Math.min(sheetIndex, state.sheets.length - 1)]
+  return (
+    <div className="flex h-full flex-col bg-white">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="w-full border-collapse text-xs text-[#1B2B3A]">
+          <tbody>
+            {sheet.rows.map((row, r) => (
+              <tr key={r} className={r === 0 ? 'bg-[#E9F1FB] font-semibold' : 'odd:bg-white even:bg-[#F6F9FD]'}>
+                {row.map((cell, c) => (
+                  <td key={c} className="whitespace-nowrap px-3 py-1.5">{String(cell)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {state.sheets.length > 1 && (
+        <div className="flex gap-1 overflow-x-auto bg-[#E6F4EC] px-2 py-1.5">
+          {state.sheets.map((s, i) => (
+            <button key={s.name} type="button" onClick={() => setSheetIndex(i)} className={`px-3 py-1 text-xs ${i === sheetIndex ? 'bg-white font-semibold text-[#2E7D58]' : 'text-[#4F6F5F]'}`}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Row({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-6 py-3 text-sm">
+      <dt className="flex items-center gap-2.5 text-[#5C7288]"><Icon className="h-4 w-4" strokeWidth={1.75} />{label}</dt>
+      <dd className="font-medium text-[#1B2B3A]">{value}</dd>
+    </div>
+  )
+}
+
+export default function MediaConsultActions({ mediaId, downloads, media }: MediaConsultActionsProps) {
+  const registered = useRef(false)
+  const [downloadCount, setDownloadCount] = useState(downloads)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [open, setOpen] = useState(false)
+  const kind = getKind(media)
+  const extension = media.extension?.replace('.', '').toUpperCase() || media.format?.toUpperCase() || 'FICHIER'
+  const published = media.status?.toUpperCase() === 'PUBLISHED'
+
+  useEffect(() => {
+    if (registered.current) return
+    registered.current = true
+    void consultMedia(mediaId).catch((e) => console.error('Erreur lors de la consultation :', e))
+  }, [mediaId])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  async function handleDownload() {
+    if (isDownloading) return
+    setIsDownloading(true)
+    try {
+      await downloadMedia(mediaId)
+      setDownloadCount((v) => v + 1)
+      setDownloaded(true)
+      window.setTimeout(() => setDownloaded(false), 2200)
+    } catch (e) {
+      console.error('Erreur lors du téléchargement :', e)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7DB8] focus-visible:ring-offset-2'
 
   return (
-    <div className="space-y-6">
-      {/* ------------------------------------------------------------------ */}
-      {/* HEADER : Titre & Badges                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-200/60">
-                {media.department || 'Général'}
-              </span>
-              {media.category && (
-                <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                  {media.category}
-                </span>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900">{media.title}</h1>
-          </div>
+    <main className=" bg-[#F4F8FC] px-5 py-10 text-[#1B2B3A] antialiased sm:px-8">
+      <div className="mx-auto max-w-[920px]">
+        <div className="mb-8 flex items-center justify-between gap-4 text-sm text-[#5C7288]">
+          <nav className="flex min-w-0 items-center gap-2" aria-label="Fil d’Ariane">
+            <span className="font-semibold text-[#2F5F9E]">Médiathèque</span>
+            <span>/</span>
+            <span className="truncate">{media.department || 'Documents'}</span>
+          </nav>
+          <button type="button" onClick={handleCopy} className={`flex shrink-0 items-center gap-2 bg-white px-3 py-1.5 text-[#2F5F9E] transition hover:bg-[#E9F1FB] ${focus}`}>
+            {copied ? <Check className="h-4 w-4 text-[#2E7D58]" /> : <Link2 className="h-4 w-4" />}
+            {copied ? 'Lien copié' : 'Copier le lien'}
+          </button>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                media.status === 'PUBLISHED'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200/60'
-              }`}
+        <article className="grid bg-white md:grid-cols-[400px_minmax(0,1fr)]">
+          {/* Aperçu 400 x 400 */}
+          <div className="relative bg-[#E9F1FB]">
+            <div className="mx-auto h-full w-full max-h-full max-w-[400px] overflow-hidden" style={{ height: PREVIEW_SIZE }}>
+              <Preview media={media} kind={kind} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Agrandir l’aperçu"
+              className={`absolute bottom-3 right-3 bg-white/95 p-2 text-[#2F5F9E] shadow-sm transition hover:bg-white ${focus}`}
             >
-              {media.status === 'PUBLISHED' ? (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              ) : (
-                <Clock className="h-3.5 w-3.5" />
-              )}
-              {media.status || 'DRAFT'}
-            </span>
-
-            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              <Lock className="h-3 w-3" />
-              {media.visibility || 'PUBLIC'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* MAIN CONTENT : Preview (Gauche) + Metadonnées & Action (Droite)    */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        
-        {/* Colonne Gauche : Aperçu & Description */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Zone d'aperçu du fichier */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Aperçu du document</h2>
-            {renderPreview()}
+              <Expand className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* Description & Objectif */}
-          {(media.description || media.objective) && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-              {media.description && (
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900 mb-1">Description</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{media.description}</p>
-                </div>
-              )}
-
-              {media.objective && (
-                <div className="border-t border-slate-100 pt-4">
-                  <h3 className="text-sm font-semibold text-slate-900 mb-1">Objectifs</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{media.objective}</p>
-                </div>
-              )}
+          {/* Détails */}
+          <div className="flex flex-col p-7 sm:p-9">
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-medium">
+              <span className={`px-2.5 py-1 ${published ? 'bg-[#E6F4EC] text-[#2E7D58]' : 'bg-[#FFF4DF] text-[#9A6A1F]'}`}>{published ? 'Publié' : media.status || 'Brouillon'}</span>
+              {media.category && <span className="bg-[#E9F1FB] px-2.5 py-1 text-[#2F5F9E]">{media.category}</span>}
+              <span className="flex items-center gap-1 text-[#5C7288]"><Lock className="h-3 w-3" />{media.visibility || 'PUBLIC'}</span>
             </div>
-          )}
-        </div>
 
-        {/* Colonne Droite : Métadonnées & Actions */}
-        <div className="space-y-6">
-          
-          {/* Card d'action Principale */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-[#10243a]">{media.title}</h1>
+            {media.description && <p className="mt-3 text-[15px] leading-7 text-[#4D6277]">{media.description}</p>}
+            {media.objective && <p className="mt-3 text-sm leading-6 text-[#5C7288]"><span className="font-semibold text-[#1B2B3A]">Objectif : </span>{media.objective}</p>}
+
+            <dl className="mt-6 divide-y divide-[#E3ECF5] border-y border-[#E3ECF5]">
+              <Row icon={UserRound} label="Auteur" value={media.author?.name || 'Anonyme'} />
+              {media.createdAt && <Row icon={CalendarDays} label="Ajouté le" value={new Date(media.createdAt).toLocaleDateString('fr-FR')} />}
+              <Row icon={Clock3} label="Version" value={`v${media.version || '1.0'}`} />
+              <Row icon={Eye} label="Vues" value={(media.views || 0).toLocaleString('fr-FR')} />
+              <Row icon={Download} label="Téléchargements" value={downloadCount.toLocaleString('fr-FR')} />
+            </dl>
+
+            {media.tags?.length ? (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {media.tags.map((t) => <span key={t} className="bg-[#E6F4EC] px-2.5 py-1 text-xs font-medium text-[#2E7D58]">{t}</span>)}
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={handleDownload}
               disabled={isDownloading}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`mt-auto flex w-full items-center justify-center gap-2 bg-[#2E7D58] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#256849] disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}
             >
-              {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {isDownloading ? 'Téléchargement...' : 'Télécharger le document'}
+              {isDownloading ? 'Téléchargement…' : downloaded ? <><Check className="h-4 w-4" /> Téléchargé</> : <><Download className="h-4 w-4" /> Télécharger · {extension} · {formatFileSize(media.fileSize)}</>}
             </button>
-
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <Download className="h-3.5 w-3.5 text-slate-400" />
-                {downloadCount.toLocaleString('fr-FR')} téléchargement{downloadCount > 1 ? 's' : ''}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5 text-slate-400" />
-                {media.views ? media.views.toLocaleString('fr-FR') : 0} vue{media.views && media.views > 1 ? 's' : ''}
-              </span>
-            </div>
           </div>
-
-          {/* Card de détails / Fiche technique */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Informations sur le fichier
-            </h3>
-
-            <dl className="space-y-3.5 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-slate-500">
-                  <User className="h-4 w-4 text-slate-400" />
-                  Auteur
-                </dt>
-                <dd className="font-medium text-slate-800">
-                  {media.author?.name || 'Anonyme'}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-slate-500">
-                  <Info className="h-4 w-4 text-slate-400" />
-                  Version
-                </dt>
-                <dd className="font-medium text-slate-800">
-                  v{media.version || '1.0'}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-slate-500">
-                  <HardDrive className="h-4 w-4 text-slate-400" />
-                  Format / Ext.
-                </dt>
-                <dd className="font-medium text-slate-800 uppercase">
-                  {media.format} ({media.extension})
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-slate-500">
-                  <FileText className="h-4 w-4 text-slate-400" />
-                  Taille
-                </dt>
-                <dd className="font-medium text-slate-800">
-                  {formatFileSize(media.fileSize)}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-slate-500">
-                  <Building2 className="h-4 w-4 text-slate-400" />
-                  Département
-                </dt>
-                <dd className="font-medium text-slate-800">
-                  {media.department}
-                </dd>
-              </div>
-
-              {media.createdAt && (
-                <div className="flex items-center justify-between">
-                  <dt className="flex items-center gap-2 text-slate-500">
-                    <Calendar className="h-4 w-4 text-slate-400" />
-                    Ajouté le
-                  </dt>
-                  <dd className="font-medium text-slate-800">
-                    {new Date(media.createdAt).toLocaleDateString('fr-FR')}
-                  </dd>
-                </div>
-              )}
-            </dl>
-
-            {/* Section Tags */}
-            {media.tags && media.tags.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-slate-100">
-                <dt className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-2">
-                  <Tag className="h-3.5 w-3.5 text-slate-400" />
-                  Mots-clés / Tags
-                </dt>
-                <div className="flex flex-wrap gap-1.5">
-                  {media.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
+        </article>
       </div>
-    </div>
-  );
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10243a]/50 p-4" role="dialog" aria-modal="true" aria-label={`Aperçu de ${media.title}`} onClick={() => setOpen(false)}>
+          <div className="relative h-[88vh] w-full max-w-5xl bg-white" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className={`absolute right-3 top-3 z-10 bg-white p-2 text-[#2F5F9E] shadow transition hover:bg-[#E9F1FB] ${focus}`}>
+              <X className="h-4 w-4" />
+            </button>
+            <Preview media={media} kind={kind} />
+          </div>
+        </div>
+      )}
+    </main>
+  )
 }

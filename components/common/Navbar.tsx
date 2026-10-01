@@ -101,13 +101,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
             <span>communautés</span>
           </Link>
 
-           <Link
+           {/* <Link
             href="/reservations"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <CalendarCheck className="h-4 w-4" />
             <span>Reservations</span>
-          </Link>
+          </Link> */}
 
             <Link
             href="/mediatheque"

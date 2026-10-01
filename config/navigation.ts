@@ -35,7 +35,7 @@ export const BASE_NAV_LINKS: readonly NavLink[] = [
   { label: 'Outils', href: '/outils', icon: Wrench, isPublicForUser: true },
   { label: 'Communautés', href: '/communautes', icon: Users, isPublicForUser: true },
   { label: 'Formations', href: '/formations', icon: Users, isPublicForUser: true },
-  { label: 'Reservations', href: '/reservations', icon: CalendarCheck, isPublicForUser: true },
+  // { label: 'Reservations', href: '/reservations', icon: CalendarCheck, isPublicForUser: true },
   { label: 'Médiathèque', href: '/mediatheque', icon: Radio, isPublicForUser: true },
   { label: 'Mes Demandes', href: '/demandes/suivi', icon: FileQuestion, isPublicForUser: true,isEspaceLink:true },
 ] as const;

@@ -1,0 +1,12 @@
+export NODE_OPTIONS="--max-old-space-size=8192"
+npm run build
+
+connexion à hosteur : ssh -i ~/.ssh/id_ed25519 -p 3022 2686@gate.rag-control.hosteur.com
+
+connexion vps contabo : ssh -i ~/.ssh/contabo_ed25519 root@169.58.23.54
+
+ssh -i ~/.ssh/id_ed25519 -p 3022 30207-2686@gate.rag-control.hosteur.com
+
+
+
+file hach: Get-FileHash -Algorithm SHA256 "C:\Users\TSAKP2\Downloads\du 1er au 09 juillet 2026.xlsx"
