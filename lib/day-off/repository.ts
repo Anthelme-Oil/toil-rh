@@ -1,4 +1,4 @@
-import { execute, query } from '../db'
+import { prisma, withRetry } from '@/lib/prisma'
 import type {
   CreateDayOffInput,
   DayOff,
@@ -6,142 +6,95 @@ import type {
 } from './types'
 
 /**
- * Récupère tous les jours fériés actifs d'une année.
+ * Transforme le modèle Prisma en objet DayOff applicatif.
  */
-export async function findDayOffsByYear(
-  year: number
-): Promise<DayOff[]> {
-  const rows = await query<any>(
-    `
-      SELECT
-        id,
-        date,
-        name,
-        description,
-        isRecurring,
-        isActive,
-        createdAt,
-        updatedAt
-      FROM calendarDayOff
-      WHERE YEAR(date) = ?
-        AND isActive = 1
-      ORDER BY date ASC
-    `,
-    [year]
-  )
-
-  return rows.map(mapDatabaseDayOff)
+function mapDatabaseDayOff(doc: any): DayOff {
+  return {
+    id: Number(doc.id),
+    date: doc.date,
+    name: doc.name ?? '',
+    description: doc.description ?? null,
+    isRecurring: Boolean(doc.isRecurring),
+    isActive: Boolean(doc.isActive),
+    createdAt: doc.createdAt ?? null,
+    updatedAt: doc.updatedAt ?? null,
+  }
 }
 
 /**
- * Recherche un jour férié par sa date.
- *
- * On recherche également les jours désactivés afin de pouvoir
- * les réactiver depuis le service.
+ * Récupère tous les jours fériés actifs d'une année.
  */
-export async function findDayOffByDate(
-  date: string
-): Promise<DayOff | null> {
-  const rows = await query<any>(
-    `
-      SELECT
-        id,
-        date,
-        name,
-        description,
-        isRecurring,
-        isActive,
-        createdAt,
-        updatedAt
-      FROM calendarDayOff
-      WHERE DATE(date) = ?
-      LIMIT 1
-    `,
-    [date]
-  )
+export async function findDayOffsByYear(year: number): Promise<DayOff[]> {
+  return withRetry(async () => {
+    const startOfYear = new Date(year, 0, 1)
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999)
 
-  if (rows.length === 0) {
-    return null
-  }
+    const rows = await prisma.calendarDayOff.findMany({
+      where: {
+        date: {
+          gte: startOfYear,
+          lte: endOfYear,
+        },
+        isActive: true,
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    })
 
-  return mapDatabaseDayOff(rows[0])
+    return rows.map(mapDatabaseDayOff)
+  })
+}
+
+/**
+ * Recherche un jour férié par sa date (ISO ou YYYY-MM-DD).
+ */
+export async function findDayOffByDate(dateStr: string): Promise<DayOff | null> {
+  return withRetry(async () => {
+    const targetDate = new Date(dateStr)
+
+    const row = await prisma.calendarDayOff.findFirst({
+      where: {
+        date: targetDate,
+      },
+    })
+
+    if (!row) return null
+    return mapDatabaseDayOff(row)
+  })
 }
 
 /**
  * Recherche un jour férié par son identifiant.
  */
-export async function findDayOffById(
-  id: number
-): Promise<DayOff | null> {
-  const rows = await query<any>(
-    `
-      SELECT
-        id,
-        date,
-        name,
-        description,
-        isRecurring,
-        isActive,
-        createdAt,
-        updatedAt
-      FROM calendarDayOff
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [id]
-  )
+export async function findDayOffById(id: number): Promise<DayOff | null> {
+  return withRetry(async () => {
+    const row = await prisma.calendarDayOff.findUnique({
+      where: { id },
+    })
 
-  if (rows.length === 0) {
-    return null
-  }
-
-  return mapDatabaseDayOff(rows[0])
+    if (!row) return null
+    return mapDatabaseDayOff(row)
+  })
 }
 
 /**
  * Crée un nouveau jour férié.
- *
- * L'id est généré automatiquement par MySQL
- * grâce à AUTO_INCREMENT.
  */
-export async function createDayOff(
-  input: CreateDayOffInput
-): Promise<DayOff> {
-  const now = new Date()
+export async function createDayOff(input: CreateDayOffInput): Promise<DayOff> {
+  return withRetry(async () => {
+    const created = await prisma.calendarDayOff.create({
+      data: {
+        date: new Date(input.date),
+        name: input.name,
+        description: input.description ?? null,
+        isRecurring: input.isRecurring ?? false,
+        isActive: true,
+      },
+    })
 
-  const result = await execute(
-    `
-      INSERT INTO calendarDayOff (
-        date,
-        name,
-        description,
-        isRecurring,
-        isActive,
-        createdAt,
-        updatedAt
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      input.date,
-      input.name,
-      input.description ?? null,
-      input.isRecurring ? 1 : 0,
-      1,
-      now,
-      now,
-    ]
-  )
-
-  const dayOff = await findDayOffById(result.insertId)
-
-  if (!dayOff) {
-    throw new Error(
-      `Jour férié créé mais introuvable ensuite : ${input.date}`
-    )
-  }
-
-  return dayOff
+    return mapDatabaseDayOff(created)
+  })
 }
 
 /**
@@ -151,39 +104,20 @@ export async function reactivateDayOff(
   id: number,
   input: CreateDayOffInput
 ): Promise<DayOff> {
-  const now = new Date()
+  return withRetry(async () => {
+    const updated = await prisma.calendarDayOff.update({
+      where: { id },
+      data: {
+        date: new Date(input.date),
+        name: input.name,
+        description: input.description ?? null,
+        isRecurring: input.isRecurring ?? false,
+        isActive: true,
+      },
+    })
 
-  await execute(
-    `
-      UPDATE calendarDayOff
-      SET
-        date = ?,
-        name = ?,
-        description = ?,
-        isRecurring = ?,
-        isActive = 1,
-        updatedAt = ?
-      WHERE id = ?
-    `,
-    [
-      input.date,
-      input.name,
-      input.description ?? null,
-      input.isRecurring ? 1 : 0,
-      now,
-      id,
-    ]
-  )
-
-  const dayOff = await findDayOffById(id)
-
-  if (!dayOff) {
-    throw new Error(
-      'Jour férié introuvable après réactivation'
-    )
-  }
-
-  return dayOff
+    return mapDatabaseDayOff(updated)
+  })
 }
 
 /**
@@ -193,110 +127,42 @@ export async function updateDayOff(
   id: number,
   input: UpdateDayOffInput
 ): Promise<DayOff> {
-  const fields: string[] = []
-  const values: unknown[] = []
+  return withRetry(async () => {
+    const updated = await prisma.calendarDayOff.update({
+      where: { id },
+      data: {
+        ...(input.date !== undefined && { date: new Date(input.date) }),
+        ...(input.name !== undefined && { name: input.name }),
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.isRecurring !== undefined && { isRecurring: input.isRecurring }),
+      },
+    })
 
-  if (input.date !== undefined) {
-    fields.push('date = ?')
-    values.push(input.date)
-  }
-
-  if (input.name !== undefined) {
-    fields.push('name = ?')
-    values.push(input.name)
-  }
-
-  if (input.description !== undefined) {
-    fields.push('description = ?')
-    values.push(input.description)
-  }
-
-  if (input.isRecurring !== undefined) {
-    fields.push('isRecurring = ?')
-    values.push(input.isRecurring ? 1 : 0)
-  }
-
-  /**
-   * Aucun champ à modifier :
-   * on retourne simplement l'enregistrement existant.
-   */
-  if (fields.length === 0) {
-    const existing = await findDayOffById(id)
-
-    if (!existing) {
-      throw new Error('Jour férié introuvable')
-    }
-
-    return existing
-  }
-
-  fields.push('updatedAt = ?')
-  values.push(new Date())
-
-  values.push(id)
-
-  await execute(
-    `
-      UPDATE calendarDayOff
-      SET ${fields.join(', ')}
-      WHERE id = ?
-    `,
-    values
-  )
-
-  const dayOff = await findDayOffById(id)
-
-  if (!dayOff) {
-    throw new Error(
-      'Jour férié introuvable après modification'
-    )
-  }
-
-  return dayOff
+    return mapDatabaseDayOff(updated)
+  })
 }
 
 /**
- * Désactive un jour férié.
- *
- * On ne supprime pas réellement la ligne de la base.
+ * Désactive un jour férié (Soft Delete).
  */
-export async function deactivateDayOff(
-  id: number
-): Promise<void> {
-  await execute(
-    `
-      UPDATE calendarDayOff
-      SET
-        isActive = 0,
-        updatedAt = ?
-      WHERE id = ?
-    `,
-    [new Date(), id]
-  )
+export async function deactivateDayOff(id: number): Promise<void> {
+  return withRetry(async () => {
+    await prisma.calendarDayOff.update({
+      where: { id },
+      data: {
+        isActive: false,
+      },
+    })
+  })
 }
 
+/**
+ * Supprime définitivement un jour férié.
+ */
 export async function deleteDayOff(id: number): Promise<void> {
-  await execute(
-    `
-      DELETE FROM calendarDayOff
-      WHERE id = ?
-    `,
-    [id]
-  )
-}
-
-/**
- * Transforme une ligne MySQL en objet DayOff.
- */
-function mapDatabaseDayOff(row: any): DayOff {
-  return {
-    id: Number(row.id),
-    date: row.date,
-    name: row.name ?? '',
-    description: row.description ?? null,
-    isRecurring: Boolean(row.isRecurring),
-    isActive: Boolean(row.isActive),
-    createdAt: row.createdAt ?? null,
-    updatedAt: row.updatedAt ?? null,
-  }
+  return withRetry(async () => {
+    await prisma.calendarDayOff.delete({
+      where: { id },
+    })
+  })
 }
