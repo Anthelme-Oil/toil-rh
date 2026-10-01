@@ -209,47 +209,50 @@ export default function GestionnaireMedia() {
   /*
    * Publication.
    */
-  const handlePublish = async () => {
-    if (!publishDocument && publishDocument !== undefined) return;
+const handlePublish = async () => {
+  if (!publishDocument) return;
 
-    if (!canEdit(publishDocument)) return;
+  if (!canEdit(publishDocument)) return;
 
-    setActionLoading(publishDocument.id);
-    setPublishing(true);
+  setActionLoading(publishDocument.id);
+  setPublishing(true);
 
-    try {
-      await publishMedia(publishDocument.id, {
-        id: userEmail ?? undefined,
-        name: userName || userEmail || "Utilisateur",
-        email: userEmail ?? undefined,
-      });
+  try {
+    // 1. Publier le média
+    await publishMedia(publishDocument.id, {
+      id: userEmail ?? undefined,
+      name: userName || userEmail || "Utilisateur",
+      email: userEmail ?? undefined,
+    });
 
-      await loadMedia(true);
-      closePublish();
-      await sendNotification({
-        to: "",
-        title: `Nouveau média publié : ${publishDocument.title}`,
-        recipients: "ALL",
-        subject: "Publication Intranet",
-        message: `Le média « ${publishDocument.title} », de la catégorie « ${publishDocument.category} », vient d’être publié sur l’Intranet.${
-          publishDocument.description
-            ? `\n\n${publishDocument.description}`
-            : ""
-        }`,
-        // actionUrl: '/mediatheque',
-        // actionLabel: 'Consulter le média',
-        type: "MEDIA_CREATED",
-      });
+    // 2. Envoyer la notification
+    await sendNotification({
+      to: "",
+      title: `Nouveau média publié : ${publishDocument.title}`,
+      recipients: "ALL",
+      subject: "Publication Intranet",
+      message: `Le média « ${publishDocument.title} », de la catégorie « ${publishDocument.category} », vient d’être publié sur l’Intranet.${
+        publishDocument.description
+          ? `\n\n${publishDocument.description}`
+          : ""
+      }`,
+      type: "MEDIA_CREATED",
+    });
 
-      await initGreffe(publishDocument.id,"MEDIA");
-    } catch (error) {
-      console.error("Erreur lors de la publication :", error);
-    } finally {
-      setActionLoading(null);
-      setPublishing(false);
-      closePublish();
-    }
-  };
+    // 3. Initialiser le greffe
+    await initGreffe(publishDocument.id, "MEDIA");
+
+    // Toutes les opérations ont réussi
+    await loadMedia(true);
+    closePublish();
+
+  } catch (error) {
+    console.error("Erreur lors de la publication :", error);
+  } finally {
+    setActionLoading(null);
+    setPublishing(false);
+  }
+};
 
   /*
    * Archivage.
