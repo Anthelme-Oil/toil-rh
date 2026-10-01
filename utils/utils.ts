@@ -11,3 +11,5 @@ export const getBaseUrl = () => {
 
 // const BASE_URL = getBaseUrl();
 // const API_URL = `${BASE_URL}/api/requests/mediatheque`;
+
+//NEXT_PUBLIC_APP_URL

@@ -5,6 +5,10 @@ import type { MediaDocument } from '@/types';
 
 const API_PATH = '/api/requests/mediatheque';
 
+import { getMediaDocument } from '@/lib/mediatheque/service';
+
+
+
 async function serverFetch(endpoint: string): Promise<Response> {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
@@ -20,16 +24,32 @@ async function serverFetch(endpoint: string): Promise<Response> {
   });
 }
 
-export async function getMediaById(id: string | number): Promise<MediaDocument | null> {
+// export async function getMediaById(id: string | number): Promise<MediaDocument | null> {
+//   try {
+//     const response = await serverFetch(`/${id}`);
+
+//     if (!response.ok) {
+//       return null;
+//     }
+
+//     const data = await response.json();
+//     return data.document ?? null;
+//   } catch (error) {
+//     console.error('Erreur getMediaById (Server):', error);
+//     return null;
+//   }
+// }
+
+
+
+
+export async function getMediaById(
+  id: string | number
+): Promise<MediaDocument | null> {
   try {
-    const response = await serverFetch(`/${id}`);
+    const document = await getMediaDocument(Number(id));
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.document ?? null;
+    return document ?? null;
   } catch (error) {
     console.error('Erreur getMediaById (Server):', error);
     return null;

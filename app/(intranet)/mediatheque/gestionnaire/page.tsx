@@ -210,131 +210,65 @@ export default function GestionnaireMedia() {
   /*
    * Publication.
    */
+
 const handlePublish = async () => {
-  console.log("🚀 [PUBLISH] Début handlePublish");
+  if (!publishDocument) return;
 
-  if (!publishDocument) {
-    console.warn("⚠️ [PUBLISH] publishDocument est null/undefined");
-    return;
-  }
-
-  console.log("📄 [PUBLISH] Document :", publishDocument);
-
-  if (!canEdit(publishDocument)) {
-    console.warn("⛔ [PUBLISH] canEdit() retourne false");
-    return;
-  }
-
-  console.log("✅ [PUBLISH] canEdit() retourne true");
+  if (!canEdit(publishDocument)) return;
 
   setActionLoading(publishDocument.id);
   setPublishing(true);
 
   try {
-    // =========================================================
-    // 1. PUBLIER LE MÉDIA
-    // =========================================================
-    console.log("1️⃣ [PUBLISH] Début publishMedia");
-    console.log("➡️ [PUBLISH] ID média :", publishDocument.id);
-
+    // 1. Publier le média
     const publishPayload = {
       id: userEmail ?? undefined,
       name: userName || userEmail || "Utilisateur",
       email: userEmail ?? undefined,
     };
 
-    console.log("➡️ [PUBLISH] Payload :", publishPayload);
-
-    const publishResult = await publishMedia(
+    await publishMedia(
       publishDocument.id,
       publishPayload
     );
 
-    console.log("✅ [PUBLISH] publishMedia réussi");
-    console.log("📥 [PUBLISH] Résultat :", publishResult);
+    // 2. Envoyer la notification
+    const notificationPayload = {
+      to: "",
+      title: `Nouveau média publié : ${publishDocument.title}`,
+      recipients: "ALL",
+      subject: "Publication Intranet",
+      message: `Le média « ${publishDocument.title} », de la catégorie « ${publishDocument.category} », vient d’être publié sur l’Intranet.${
+        publishDocument.description
+          ? `\n\n${publishDocument.description}`
+          : ""
+      }`,
+      type: "MEDIA_CREATED",
+    } satisfies NotificationPayload;
 
-    // =========================================================
-    // 2. ENVOYER LA NOTIFICATION
-    // =========================================================
-    console.log("2️⃣ [PUBLISH] Début sendNotification");
+    await sendNotification(notificationPayload);
 
-   const notificationPayload = {
-  to: "",
-  title: `Nouveau média publié : ${publishDocument.title}`,
-  recipients: "ALL",
-  subject: "Publication Intranet",
-  message: `Le média « ${publishDocument.title} », de la catégorie « ${publishDocument.category} », vient d’être publié sur l’Intranet.${
-    publishDocument.description
-      ? `\n\n${publishDocument.description}`
-      : ""
-  }`,
-  type: "MEDIA_CREATED",
-} satisfies NotificationPayload;
-
-    console.log(
-      "➡️ [PUBLISH] Notification payload :",
-      notificationPayload
-    );
-
-    const notificationResult = await sendNotification(
-      notificationPayload
-    );
-
-    console.log("✅ [PUBLISH] sendNotification réussi");
-    console.log("📥 [PUBLISH] Résultat notification :", notificationResult);
-
-    // =========================================================
-    // 3. INITIALISER LE GREFFE
-    // =========================================================
-    console.log("3️⃣ [PUBLISH] Début initGreffe");
-    console.log("➡️ [PUBLISH] Média ID :", publishDocument.id);
-    console.log("➡️ [PUBLISH] Type :", "MEDIA");
-
-    const greffeResult = await initGreffe(
+    // 3. Initialiser le greffe
+    await initGreffe(
       publishDocument.id,
       "MEDIA"
     );
 
-    console.log("✅ [PUBLISH] initGreffe réussi");
-    console.log("📥 [PUBLISH] Résultat greffe :", greffeResult);
+    // 4. Recharger les médias
+    await loadMedia(true);
 
-    // =========================================================
-    // 4. RECHARGER LES MÉDIAS
-    // =========================================================
-    console.log("4️⃣ [PUBLISH] Début loadMedia(true)");
-
-    const loadResult = await loadMedia(true);
-
-    console.log("✅ [PUBLISH] loadMedia(true) réussi");
-    console.log("📥 [PUBLISH] Résultat loadMedia :", loadResult);
-
-    // =========================================================
-    // 5. FERMER LA MODALE
-    // =========================================================
-    console.log("5️⃣ [PUBLISH] Fermeture de la fenêtre de publication");
-
+    // 5. Fermer la modale
     closePublish();
 
-    console.log("🎉 [PUBLISH] PUBLICATION TERMINÉE AVEC SUCCÈS");
-
   } catch (error) {
-    console.error("❌ [PUBLISH] ERREUR :", error);
-    console.error("❌ [PUBLISH] Type erreur :", typeof error);
-
-    if (error instanceof Error) {
-      console.error("❌ [PUBLISH] Message :", error.message);
-      console.error("❌ [PUBLISH] Stack :", error.stack);
-    }
-
+    console.error("Erreur lors de la publication du média :", error);
   } finally {
-    console.log("🏁 [PUBLISH] finally");
-
     setActionLoading(null);
     setPublishing(false);
-
-    console.log("🏁 [PUBLISH] États de chargement réinitialisés");
   }
 };
+
+
 
   /*
    * Archivage.
