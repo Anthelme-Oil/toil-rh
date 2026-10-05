@@ -312,5 +312,87 @@ model Reaction {
 }
 
 
+enum TypeAnnonce {
+  INFO
+  WARNING
+  URGENT
+}
+
+
+model Actualite {
+  id              String   @id @default(cuid()) @map("id")
+  titre           String   @map("titre")
+  description     String   @map("description") @db.Text
+  contenu         String?  @map("contenu") @db.Text
+  datePublication DateTime @default(now()) @map("date_publication")
+  imageUrl        String?  @map("image_url")
+  categorie       String?  @map("categorie")
+  auteur          String?  @map("auteur")
+  tempsLecture    String?  @map("temps_lecture")
+  lienVersPage    String?  @map("lien_vers_page")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("actualites")
+}
+
+/**
+ * Modèle pour les Annonces
+ * Basé sur l'interface TypeScript: Annonce
+ */
+model Annonce {
+  id              String      @id @default(cuid()) @map("id")
+  titre           String      @map("titre")
+  contenu         String      @map("contenu") @db.Text
+  type            TypeAnnonce @default(INFO) @map("type")
+  datePublication DateTime    @default(now()) @map("date_publication")
+  lien            String?     @map("lien")
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@map("annonces")
+}
+
+/**
+ * Modèle pour les Événements
+ * Basé sur l'interface TypeScript: Evenement
+ */
+model Evenement {
+  id          String    @id @default(cuid()) @map("id")
+  titre       String    @map("titre")
+  dateDebut   DateTime  @map("date_debut")
+  dateFin     DateTime? @map("date_fin")
+  lieu        String?   @map("lieu")
+  description String?   @map("description") @db.Text
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("evenements")
+}
+
+/**
+ * Modèle pour les Vidéos
+ * Basé sur la structure 'videos' dans l'interface TypeScript: ActualitesResponse
+ */
+model Video {
+  id           String   @id @default(cuid()) @map("id")
+  titre        String   @map("titre")
+  categorie    String   @map("categorie")
+  duree        String   @map("duree")
+  date         DateTime @default(now()) @map("date")
+  thumbnailUrl String   @map("thumbnail_url")
+  videoUrl     String   @map("video_url")
+  description  String   @map("description") @db.Text
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("videos")
+}
+
+
 
 

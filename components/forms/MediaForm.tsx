@@ -8,7 +8,7 @@ import {
 } from '@/lib/services/media.service';
 
 import { sendNotification } from '@/lib/services/notif.service';
-
+import { DOCUMENT_DEPARTMENTS } from '@/types';
 
 import type {
   DocumentCategory,
@@ -176,21 +176,14 @@ export default function MediaForm({
             }
             className="h-10 w-full bg-gray-100 text-black rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#0f766e]"
           >
-            <option value="IT">IT</option>
-            <option value="COMMERCIAL">
-              COMMERCIAL
-            </option>
-            <option value="FINANCE">FINANCE</option>
-            <option value="OPERATION">
-              OPERATION
-            </option>
-            <option value="RH">RH</option>
-            <option value="DIRECTION">
-              DIRECTION
-            </option>
-            <option value="JURIDIQUE">
-              JURIDIQUE
-            </option>
+            {
+              DOCUMENT_DEPARTMENTS.length > 0 &&(
+                DOCUMENT_DEPARTMENTS.map((ddp,index)=> (
+                   <option key={index} value={ddp}>{ddp}</option>
+                ))
+
+              )
+            }
           </select>
         </div>
 

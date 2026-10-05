@@ -130,11 +130,13 @@ export interface Evenement {
 }
 
 /** Annonce importante */
+export type AnnonceType = 'info' | 'warning' | 'urgent';
+
 export interface Annonce {
   id: string;
   titre: string;
   contenu: string;
-  type: 'info' | 'warning' | 'urgent';
+  type: AnnonceType;
   datePublication: string;
   lien?: string;
 }
@@ -411,6 +413,17 @@ export interface News {
   videos: Evenement;
 }
 
+ export interface Video {
+    id?: string;
+    titre: string;
+    categorie: string;
+    duree: string;
+    date: string;
+    thumbnailUrl: string;
+    videoUrl: string;
+    description: string;
+  }
+
 export interface ActualitesResponse {
   actualites: Actualite[];
   videos: Array<{
@@ -444,6 +457,8 @@ export const DOCUMENT_DEPARTMENTS = [
   'RH',
   'DIRECTION',
   'JURIDIQUE',
+  'QSE',
+  'MARCHE PUBLIC'
 ] as const;
 
 export type DocumentDepartment =
@@ -757,3 +772,7 @@ export interface MediaDocumentsResponse {
   limit: number;
   totalPages: number;
 }
+
+export type PublicationType = 'actualites' | 'annonces' | 'evenements' | 'videos';
+
+// Export de vos interfaces existantes (Actualite, Annonce, Evenement, Video)

@@ -38,6 +38,9 @@ import { apps } from "@/utils/dataUtils";
 import Image from "next/image";
 import { removeFirstWord } from "@/utils/utils";
 
+
+import {ContentHub} from "@/components/pubs/hub";
+
 export function IntranetHome() {
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
@@ -325,112 +328,8 @@ export function IntranetHome() {
         <EventsAndCalendarSection events={events} offDays={offDays} />
 
         {/* Actualités [0_8px_25px_rgba(41,62,110,.05)] */}
-        <section
-          className="relative z-10 mx-auto grid max-w-[1320px] gap-6 px-5 pb-12 sm:px-8 lg:grid-cols-[1.35fr_.65fr] lg:px-12"
-          id="actualites"
-        >
-          <div className="rounded-0 bg-white p-5 shadow-0 ring-1 ring-[#edf0f6] sm:p-7">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.17em] text-[#98a4b9]">
-                  Restez au courant
-                </p>
-                <h2 className="mt-2 text-2xl font-extrabold tracking-[-.04em]">
-                  Actualités & communications
-                </h2>
-              </div>
-              <Link
-                href={"/informations"}
-                className="rounded-xl p-2 text-[#9ca8ba] transition hover:bg-[#f4f6fb] hover:text-[#079bc2]"
-                aria-label="Plus d’actualités"
-              >
-                <ArrowRight className="size-5" />
-              </Link>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {dataLoader ? (
-                <div className="col-span-full flex min-h-40 items-center justify-center">
-                  <Loader />
-                </div>
-              ) : (
-                actus.map((item, index) => (
-                  <article
-                    key={index}
-                    className={`group relative min-h-[220px] overflow-hidden rounded-2xl bg-${getNewsColor(
-                      index,
-                    )}-50 transition duration-300 hover:-translate-y-1`}
-                  >
-                    {/* Image de fond */}
-                    {item.imageUrl && (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-105"
-                        style={{
-                          backgroundImage: `url("${item.imageUrl}")`,
-                        }}
-                      />
-                    )}
-
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#071a2d]/95 via-[#071a2d]/45 to-transparent" />
-
-                    {/* Date */}
-                    <div className="absolute right-4 top-4 z-10">
-                      <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#52627a] shadow-sm backdrop-blur-sm">
-                        {String(DateFormat(item.datePublication, false))}
-                      </span>
-                    </div>
-
-                    {/* Contenu */}
-                    <div className="relative z-10 flex min-h-[220px] flex-col justify-end p-4">
-                      <p className="line-clamp-3 font-bold text-sm leading-5 text-white/90">
-                        {item.titre}
-                      </p>
-                      <p className="line-clamp-3 text-xs leading-5 text-white/90">
-                        {item.description}
-                      </p>
-
-                      <button
-                        onClick={() => announce("Lecture de l’article")}
-                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/25"
-                      >
-                        Lire la suite
-                        <ArrowRight className="size-3" />
-                      </button>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </div>
-          <aside
-            id="formations"
-            className="relative isolate flex min-h-[330px] flex-col justify-between overflow-hidden rounded-[0.75rem] bg-[#102d4f] p-7 text-white shadow-[0_15px_35px_rgba(16,45,79,.18)] before:absolute before:-right-16 before:-top-16 before:-z-10 before:size-56 before:rounded-full before:border-[24px] before:border-[#4fc1c5]/20 after:absolute after:-bottom-24 after:-left-16 after:-z-10 after:size-48 after:rounded-full after:bg-[#079bc2]/15 sm:p-8"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-white/10">
-                  <BookOpen className="size-5 text-[#9ce2df]" />
-                </div>
-                <span className="rounded-full bg-[#1e5572] px-3 py-1.5 text-[10px] font-bold">
-                  À découvrir
-                </span>
-              </div>
-              <h2 className="mt-8 text-2xl font-extrabold leading-tight">
-                Développez vos talents.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-[#b4c9d9]">
-                Formations, ateliers et ressources pour progresser ensemble.
-              </p>
-            </div>
-            <Link
-              href="/formations"
-              className="mt-8 flex items-center gap-2 text-sm font-bold text-[#9ce2df]"
-            >
-              Voir le catalogue <ArrowRight className="size-4" />
-            </Link>
-          </aside>
-        </section>
-
+    
+            <ContentHub />
         {/* Section Collectif */}
         <section
           id="collectif"

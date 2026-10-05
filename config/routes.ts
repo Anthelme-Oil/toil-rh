@@ -8,6 +8,8 @@ export const SINGLE_LAYOUT_ROUTES: string[] = [
   '/contact',
   '/aide',
   '/mediatheque',
+  '/actualites',
+  '/videos',
   '/mediatheque/[id]/consultation', // ou '/mediatheque/{id}/consultation'
 ];
 

@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+
+import { saveFileInFolder } from '@/lib/upload';
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ path: string[] }> }
@@ -42,5 +45,30 @@ export async function GET(
   } catch (error) {
     console.error('[API Uploads] Erreur lecture fichier:', error);
     return new NextResponse('Erreur serveur', { status: 500 });
+  }
+}
+
+
+
+
+export async function POST(request: Request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const folder = (formData.get('folder') as string) || 'actualites';
+
+    if (!file) {
+      return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
+    }
+
+    const fileUrl = await saveFileInFolder(file, folder);
+
+    return NextResponse.json({ url: fileUrl }, { status: 201 });
+  } catch (error: any) {
+    console.error('[API Upload] Erreur sauvegarde:', error);
+    return NextResponse.json(
+      { error: error.message || 'Erreur lors du téléversement' },
+      { status: 500 }
+    );
   }
 }

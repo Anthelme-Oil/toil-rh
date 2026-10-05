@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Evenement, DayOff } from "@/types";
+import  DemandesCard  from "./cards/demandes.card";
 
 interface Props {
   events: Evenement[];
@@ -195,97 +196,9 @@ export function EventsAndCalendarSection({
       {/*                         SECTION ÉVÉNEMENTS                           */}
       {/* -------------------------------------------------------------------- */}
 
-      <div className="rounded-0 bg-white p-5 shadow-0 ring-1 ring-[#edf0f6] sm:p-7">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.17em] text-[#98a4b9]">
-              Agenda & Rencontres
-            </p>
+     
 
-            <h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em] text-[#17223b]">
-              Événements à venir
-            </h2>
-          </div>
-
-          <span className="flex size-9 items-center justify-center rounded-xl bg-[#079bc2]/10 text-[#079bc2]">
-            <CalendarIcon className="size-5" />
-          </span>
-        </div>
-
-        {events.length === 0 ? (
-          <div className="flex min-h-[200px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#e2e8f0] p-6 text-center text-[#8a96ab]">
-            <CalendarIcon className="mb-3 size-8 text-[#c5cedb]" />
-
-            <p className="text-sm font-medium">
-              Aucun événement prévu pour le moment.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {events.map((event) => {
-              const pastEvent = isPastEvent(event.dateDebut);
-
-              return (
-                <div
-                  key={event.id}
-                  className="group relative flex flex-col justify-between rounded-2xl bg-[#f8fafc] p-5 ring-1 ring-[#e9edf5] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_10px_25px_rgba(7,155,194,0.08)] hover:ring-[#079bc2]/30"
-                >
-                  <div>
-                    {/* Titre + date */}
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-base font-bold text-[#17223b] transition-colors group-hover:text-[#079bc2]">
-                        {event.titre}
-                      </h3>
-
-                      <span
-                        className={
-                          pastEvent
-                            ? "rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600 underline decoration-red-500 decoration-2 underline-offset-2"
-                            : "rounded-full bg-[#079bc2]/10 px-3 py-1 text-xs font-bold text-[#079bc2]"
-                        }
-                      >
-                        {formatDate(event.dateDebut)}
-                      </span>
-                    </div>
-
-                    {/* Description */}
-                    {event.description && (
-                      <div
-                        className="prose-sm mt-2 line-clamp-2 text-xs leading-relaxed text-[#6d7890]"
-                        dangerouslySetInnerHTML={{
-                          __html: event.description,
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  {/* Informations */}
-                  <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-[#8a96ab]">
-                    {/* Heure */}
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="size-3.5 text-[#079bc2]" />
-
-                      <span>
-                        {formatTime(event.dateDebut)} -{" "}
-                        {formatTime(event.dateFin ? event.dateDebut : '')}
-                      </span>
-                    </div>
-
-                    {/* Lieu */}
-                    {event.lieu && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="size-3.5 text-[#079bc2]" />
-
-                        <span>{event.lieu}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <DemandesCard/>
 
       {/* -------------------------------------------------------------------- */}
       {/*                            CALENDRIER                                 */}

@@ -1,4 +1,4 @@
-import type {ActualitesResponse} from '@/types';
+import type {ActualitesResponse,Actualite} from '@/types';
 
 
 
@@ -22,3 +22,9 @@ export async function getActualites(
 
   return response.json();
 }
+
+
+
+
+
+

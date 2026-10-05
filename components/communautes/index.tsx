@@ -21,6 +21,7 @@ import ReactionModal from "./ReactionModal";
 
 import { useUser } from "@/context/UserContext";
 import { fetchCommunityFeed } from "@/lib/services/com.service";
+import Loader from "../Loader";
 
 const CHANNEL_TYPE_TO_CHANNEL: Partial<
   Record<ChannelType, Channel>
@@ -38,6 +39,7 @@ function getPostChannel(
 }
 
 export default function CommunityPage() {
+  const [loading, setLoading]=useState<boolean>(true);
   const [activeChannel, setActiveChannel] =
     useState<Channel>("Standard");
 
@@ -67,6 +69,7 @@ export default function CommunityPage() {
     let cancelled = false;
 
     const fetchData = async () => {
+      setLoading(true);
       try {
         const types: ChannelType[] = [
           "ARTICLE",
@@ -90,6 +93,8 @@ export default function CommunityPage() {
           "Erreur lors du chargement du feed communautaire :",
           error
         );
+      }finally{
+        setLoading(false);
       }
     };
 
@@ -236,7 +241,13 @@ export default function CommunityPage() {
           </div>
 
           {/* Publications */}
-          {visiblePosts.length > 0 ? (
+
+          {
+            loading ? (
+              <div className="flex items-center justify-center mt-8">
+                <Loader/>
+              </div>
+            ): !loading && visiblePosts.length > 0 ? (
             visiblePosts.map((post) => (
               <PostCard
                 key={post.id}

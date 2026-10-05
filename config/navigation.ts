@@ -20,10 +20,16 @@ import {
   UserCheck,
   Calendar,
   Radio,
+   Newspaper,
+  Video,
+  CalendarDays,
+  
   
 } from 'lucide-react';
 import { NavItem, NavLink } from '@/types/navigation';
 import { useUser } from '@/context/UserContext';
+
+
 
 // ═══════════════════════════════════════════════════════════════
 // 1. LIENS DE NAVIGATION HORIZONTALE (INTRA TOPBAR)
@@ -157,6 +163,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Megaphone,
     hasAccess: (perms) => perms.isCom || perms.isAdmin,
   },
+  //  {
+  //   title: 'ACTUALITES',
+  //   href: '/actualites',
+  //   icon: Newspaper,
+  //   hasAccess: (perms) => perms.isCom || perms.isAdmin,
+  // },
     ],
   },
 
@@ -172,3 +184,43 @@ export const NAV_ITEMS: NavItem[] = [
 
   
 ];
+
+
+
+
+export const publicationMeta = {
+  actualites: {
+    label: 'Actualités',
+    singular: 'actualité',
+    color: 'violet',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-iW54TwjcJ1XrG1j1GWmpUVmRE6MLi7.png',
+  },
+  annonces: {
+    label: 'Annonces',
+    singular: 'annonce',
+    color: 'orange',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-rYFW65Wn1UYcvTdRAvjTQxKNWOxytp.png',
+  },
+  evenements: {
+    label: 'Événements',
+    singular: 'événement',
+    color: 'pink',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-kMREVa7onpXNhauuXp5M8JSdlFlTta.png',
+  },
+  videos: {
+    label: 'Vidéos',
+    singular: 'vidéo',
+    color: 'green',
+    image: '/images/i-videos.png',
+  },
+} as const;
+
+export const navItems = [
+  { key: 'overview', label: 'Vue d’ensemble', icon: 'LayoutDashboard' },
+  { key: 'actualites', label: 'Actualités', icon: 'Newspaper' },
+  { key: 'annonces', label: 'Annonces', icon: 'Megaphone' },
+  { key: 'evenements', label: 'Événements', icon: 'CalendarDays' },
+  { key: 'videos', label: 'Vidéos', icon: 'PlaySquare' },
+] as const;
+
+export type NavKey = (typeof navItems)[number]['key'];
