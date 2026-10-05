@@ -27,4 +27,4 @@ export const navItems = [
 ] as const
 
 export type NavKey = typeof navItems[number]['key']
-export type { Actualite, Annonce, Evenement, Video } from './types'
+export type { Actualite, Annonce, Evenement, Video } from '@/types'
