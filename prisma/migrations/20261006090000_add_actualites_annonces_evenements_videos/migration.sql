@@ -1,0 +1,60 @@
+CREATE TABLE `actualites` (
+    `id` VARCHAR(191) NOT NULL,
+    `titre` VARCHAR(191) NOT NULL,
+    `description` TEXT NOT NULL,
+    `contenu` TEXT NULL,
+    `date_publication` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `image_url` VARCHAR(191) NULL,
+    `categorie` VARCHAR(191) NULL,
+    `auteur` VARCHAR(191) NULL,
+    `temps_lecture` VARCHAR(191) NULL,
+    `lien_vers_page` VARCHAR(191) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+CREATE TABLE `annonces` (
+    `id` VARCHAR(191) NOT NULL,
+    `titre` VARCHAR(191) NOT NULL,
+    `contenu` TEXT NOT NULL,
+    `type` ENUM('INFO', 'WARNING', 'URGENT') NOT NULL DEFAULT 'INFO',
+    `date_publication` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `lien` VARCHAR(191) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+CREATE TABLE `evenements` (
+    `id` VARCHAR(191) NOT NULL,
+    `titre` VARCHAR(191) NOT NULL,
+    `date_debut` DATETIME(3) NOT NULL,
+    `date_fin` DATETIME(3) NULL,
+    `lieu` VARCHAR(191) NULL,
+    `description` TEXT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+CREATE TABLE `videos` (
+    `id` VARCHAR(191) NOT NULL,
+    `titre` VARCHAR(191) NOT NULL,
+    `categorie` VARCHAR(191) NOT NULL,
+    `duree` VARCHAR(191) NOT NULL,
+    `date` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `thumbnail_url` VARCHAR(191) NOT NULL,
+    `video_url` VARCHAR(191) NOT NULL,
+    `description` TEXT NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
