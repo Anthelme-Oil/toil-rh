@@ -402,6 +402,13 @@
     gap: 20px;
 }
 
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+}
+
 .news-card,
 .video-card {
     overflow: hidden;

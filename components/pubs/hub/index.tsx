@@ -8,6 +8,7 @@ import {
   MapPin,
   Play,
   Loader2,
+  X,
 } from "lucide-react";
 import "./hub.css";
 import Link from "next/link";
@@ -17,6 +18,27 @@ import { actualitesClientService } from "@/lib/services/actualite.service";
 import { evenementsClientService } from "@/lib/services/evenements.service";
 import { videosClientService } from "@/lib/services/videos.service";
 import { annoncesClientService } from "@/lib/services/annonces.service";
+
+// Detection et conversion des URLs YouTube / Vimeo pour iframe
+function getEmbedUrl(url: string): string | null {
+  if (!url) return null;
+
+  // YouTube
+  const ytMatch = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/
+  );
+  if (ytMatch && ytMatch[1]) {
+    return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+  }
+
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+  }
+
+  return null;
+}
 
 const formatEvent = (date: string) => {
   if (!date) return "";
@@ -71,6 +93,9 @@ function SectionHeading({
 
 export function ContentHub() {
   const [activeAnnouncement, setActiveAnnouncement] = useState(0);
+
+  // ID de la vidéo en cours de lecture
+  const [playingVideoId, setPlayingVideoId] = useState<string | number | null>(null);
 
   // États dynamiques
   const [announcements, setAnnouncements] = useState<Annonce[]>([]);
@@ -152,7 +177,7 @@ export function ContentHub() {
         </div>
       ) : (
         <>
-          {/* Section Annonces (Carrousel Dynamique) */}
+          {/* Section Annonces */}
           {announcements.length > 0 && (
             <section
               className="announcement-section"
@@ -323,7 +348,7 @@ export function ContentHub() {
             </section>
           )}
 
-          {/* Section Vidéos */}
+          {/* Section Vidéos : Structure d'origine conservée */}
           {videos.length > 0 && (
             <section className="section-block video-section" id="videos">
               <SectionHeading
@@ -333,38 +358,96 @@ export function ContentHub() {
                 href="/videos"
               />
               <div className="video-grid">
-                {videos.map((video, index) => (
-                  <article
-                    className={`video-card ${index === 0 ? "video-featured" : ""}`}
-                    key={video.id}
-                  >
-                    <div className="video-thumb">
-                      <img
-                        src={
-                          video.thumbnailUrl ||
-                          "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=85"
-                        }
-                        alt={video.titre}
-                      />
-                      <div className="video-overlay">
-                        <span className="play-button">
-                          <Play fill="currentColor" aria-hidden="true" />
-                        </span>
-                        {video.duree && (
-                          <span className="video-duration">{video.duree}</span>
+                {videos.map((video, index) => {
+                  const isPlaying = playingVideoId === video.id;
+                  const embedUrl = getEmbedUrl(video.videoUrl);
+
+                  return (
+                    <article
+                      className={`video-card ${index === 0 ? "video-featured" : ""}`}
+                      key={video.id}
+                    >
+                      <div className="video-thumb" style={{ position: "relative" }}>
+                        {isPlaying ? (
+                          <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                            <button
+                              onClick={() => setPlayingVideoId(null)}
+                              style={{
+                                position: "absolute",
+                                top: "8px",
+                                right: "8px",
+                                zIndex: 10,
+                                background: "rgba(0,0,0,0.75)",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "50%",
+                                width: "28px",
+                                height: "28px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                              }}
+                              title="Fermer la vidéo"
+                            >
+                              <X size={16} />
+                            </button>
+
+                            {embedUrl ? (
+                              <iframe
+                                src={embedUrl}
+                                title={video.titre}
+                                style={{ width: "100%", height: "100%", border: 0 }}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            ) : (
+                              <video
+                                src={video.videoUrl}
+                                controls
+                                autoPlay
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              >
+                                Votre navigateur ne supporte pas la lecture de vidéo.
+                              </video>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={
+                                video.thumbnailUrl ||
+                                "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=85"
+                              }
+                              alt={video.titre}
+                            />
+                            <div className="video-overlay">
+                              <span
+                                className="play-button"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => setPlayingVideoId(`${video.id}`)}
+                              >
+                                <Play fill="currentColor" aria-hidden="true" />
+                              </span>
+                              {video.duree && (
+                                <span className="video-duration">{video.duree}</span>
+                              )}
+                            </div>
+                          </>
                         )}
                       </div>
-                    </div>
-                    <div className="video-content">
-                      <div className="meta-line">
-                        <span>{video.categorie || "Vidéo"}</span>
-                        <span>{formatDate(video.date)}</span>
+
+                      <div className="video-content">
+                        <div className="meta-line">
+                          <span>{video.categorie || "Vidéo"}</span>
+                          <span>{formatDate(video.date)}</span>
+                        </div>
+                        <h3>{video.titre}</h3>
+                        <p>{video.description}</p>
                       </div>
-                      <h3>{video.titre}</h3>
-                      <p>{video.description}</p>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           )}
