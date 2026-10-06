@@ -81,7 +81,7 @@ export function VideoExplorer() {
   return (
     <main className="w-full text-[#20312d]">
       {/* En-tête Sticky */}
-      <header className="sticky top-0 z-20 border-b border-[#dfe6e1]/80 bg-[#f7f8f6]/95 backdrop-blur-md">
+      {/* <header className="sticky top-0 z-20 border-b border-[#dfe6e1]/80 bg-[#f7f8f6]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-5 sm:px-8">
           <a
             href="#top"
@@ -111,7 +111,7 @@ export function VideoExplorer() {
             Explorer <ArrowUpRight className="size-4" aria-hidden="true" />
           </a>
         </div>
-      </header>
+      </header> */}
 
       {/* Hero Header */}
       <section
@@ -360,9 +360,9 @@ export function VideoExplorer() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#dfe6e1] px-5 py-8 text-center text-sm text-[#8b9892]">
+      {/* <footer className="border-t border-[#dfe6e1] px-5 py-8 text-center text-sm text-[#8b9892]">
         Le fil public · Des images pour mieux comprendre.
-      </footer>
+      </footer> */}
     </main>
   );
 }
