@@ -27,7 +27,7 @@ import { useUser } from "@/context/UserContext";
 import { getActualites } from "@/lib/services/actualites.service";
 import { getDayOffs } from "@/lib/services/calendars.service";
 import { EventsAndCalendarSection } from "@/components/EventsAndCalendarSection";
-
+import WarningBanner from "@/components/common/WarningBanner";
 import { ActualitesResponse, Actualite, Evenement, DayOff } from "@/types";
 import { DateFormat } from "@/utils/dateUtils";
 import { getNewsColor } from "@/utils/newsUtils";
@@ -103,6 +103,7 @@ export function IntranetHome() {
   return (
     <SingleLayout>
       <main className="overflow-hidden text-[#17223b] w-full">
+        
         <section
           id="accueil"
           className="relative z-10 mx-auto grid max-w-[1320px] gap-8 px-5 pb-9 pt-8 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:px-12 lg:pb-14 lg:pt-16"

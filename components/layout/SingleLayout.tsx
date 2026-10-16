@@ -2,6 +2,8 @@ import React from 'react';
 import Header from './Header';
 import { Footer } from '../common/Footer';
 import MediaThequeButton from '../MediathequeButton';
+import { Warehouse } from 'lucide-react';
+import WarningBanner from '../common/WarningBanner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -205,6 +207,7 @@ export default function SingleLayout({ children }: MainLayoutProps) {
       ====================================================== */}
       <div className="w-full relative z-10 flex min-h-screen flex-col">
         <Header />
+        <WarningBanner />
 
         <main className="relative flex w-full flex-1 max-w-full mt-[60px]">
           {children}

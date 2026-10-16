@@ -393,6 +393,31 @@ model Video {
   @@map("videos")
 }
 
+// Enumération pour le statut de la suggestion
+enum SuggestionStatus {
+  PENDING
+  REVIEWED
+  IMPLEMENTED
+  REJECTED
+}
+
+// Modèle pour stocker les suggestions
+model Suggestion {
+  id           String           @id @default(uuid())
+  content      String           @db.Text
+  status       SuggestionStatus @default(PENDING)
+  
+  // Informations sur l'auteur
+  authorName   String
+  authorEmail  String?
+  authorAvatar String?
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now()) @updatedAt
+
+  @@map("suggestions")
+}
+
 
 
 

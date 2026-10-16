@@ -776,3 +776,23 @@ export interface MediaDocumentsResponse {
 export type PublicationType = 'actualites' | 'annonces' | 'evenements' | 'videos';
 
 // Export de vos interfaces existantes (Actualite, Annonce, Evenement, Video)
+
+
+// types/index.ts (ou le fichier de types de votre projet)
+
+export type SuggestionStatus = 'PENDING' | 'REVIEWED' | 'IMPLEMENTED' | 'REJECTED';
+
+export interface Author {
+  name: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface Suggestion {
+  id: string;
+  content: string;
+  status: SuggestionStatus;
+  author: Author;
+  createdAt: string;
+  updatedAt: string;
+}

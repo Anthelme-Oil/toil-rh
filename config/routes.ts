@@ -10,6 +10,7 @@ export const SINGLE_LAYOUT_ROUTES: string[] = [
   '/mediatheque',
   '/actualites',
   '/videos',
+  // '/suggestions',
   '/mediatheque/[id]/consultation', // ou '/mediatheque/{id}/consultation'
 ];
 

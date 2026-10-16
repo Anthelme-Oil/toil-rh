@@ -45,3 +45,4 @@ next-env.d.ts
 /lib/generated/prisma
 
 backup_toil_db.sql
+/public/uploads

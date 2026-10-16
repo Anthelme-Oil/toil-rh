@@ -20,6 +20,7 @@ import {
   UserCheck,
   Calendar,
   Radio,
+  Lightbulb,
    Newspaper,
   Video,
   CalendarDays,
@@ -111,6 +112,16 @@ export const NAV_ITEMS: NavItem[] = [
         hasAccess: (perms) => perms.isDRH || perms.isAdmin,
       },
     ],
+  },
+
+
+  //partie pour la suggestion
+
+  {
+  title: 'SUGGESTIONS',
+  href:'/suggestions',
+  icon:Lightbulb,
+  hasAccess:(perms)=>perms.isAdmin
   },
 
    {
