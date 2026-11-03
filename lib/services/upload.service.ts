@@ -1,81 +1,108 @@
-// export const uploadClientService = {
-//   async uploadFile(file: File, folder: string = 'actualites'): Promise<string> {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     formData.append('folder', folder);
 
-//     const response = await fetch('/api/saver', {
-//       method: 'POST',
-//       body: formData,
-//     });
+type UploadProgressCallback = (progress: number) => void;
 
-//     const data = await response.json();
-
-//     if (!response.ok) {
-//       throw new Error(data.error || 'Impossible d’effectuer le téléversement.');
-//     }
-
-//     return data.url;
-//   },
-// };
-
-// services/uploadClientService.ts
-// services/uploadClientService.ts
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5 Mo
-const MAX_RETRIES = 3;
+interface UploadResponse {
+  url?: string;
+  error?: string;
+  message?: string;
+}
 
 export const uploadClientService = {
   async uploadFile(
     file: File,
-    folder: string = 'actualites',
-    onProgress?: (percent: number) => void
+    folder: string = "actualites",
+    onProgress?: UploadProgressCallback
   ): Promise<string> {
-    if (file.size === 0) throw new Error('Fichier vide.');
-
-    const uploadId = crypto.randomUUID();
-    let offset = 0;
-
-    while (offset < file.size) {
-      const end = Math.min(offset + CHUNK_SIZE, file.size);
-      const chunk = file.slice(offset, end);
-
-      let attempt = 0;
-      while (true) {
-        try {
-          const res = await fetch('/api/saver', {
-            method: 'POST',
-            headers: {
-              'x-upload-id': uploadId,
-              'x-file-name': encodeURIComponent(file.name),
-              'x-folder': folder,
-              'x-offset': String(offset),
-              'x-total-size': String(file.size),
-              'Content-Type': 'application/octet-stream',
-            },
-            body: chunk,
-          });
-
-          const data = await res.json();
-
-          // Désynchronisation : on reprend là où le serveur en est
-          if (res.status === 409 && typeof data.received === 'number') {
-            offset = data.received;
-            break;
-          }
-          if (!res.ok) throw new Error(data.error || 'Impossible d’effectuer le téléversement.');
-
-          offset = end;
-          onProgress?.(Math.round((offset / file.size) * 100));
-
-          if (data.done) return data.url as string;
-          break;
-        } catch (err) {
-          if (++attempt >= MAX_RETRIES) throw err;
-          await new Promise((r) => setTimeout(r, 1000 * attempt));
-        }
-      }
+    if (!file || file.size === 0) {
+      throw new Error("Fichier vide.");
     }
 
-    throw new Error("L'upload s'est terminé sans URL.");
-  },
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open("POST", "/api/saver");
+      xhr.responseType = "json";
+      xhr.timeout = 120000;
+
+      onProgress?.(0);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round(
+            (event.loaded / event.total) * 100
+          );
+
+          onProgress?.(progress);
+        }
+      };
+
+      xhr.onload = () => {
+        const data: UploadResponse =
+          xhr.response ||
+          (() => {
+            try {
+              return JSON.parse(xhr.responseText);
+            } catch {
+              return {};
+            }
+          })();
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (!data.url) {
+            reject(
+              new Error(
+                "Le serveur n'a pas retourné l'URL du fichier."
+              )
+            );
+            return;
+          }
+
+          onProgress?.(100);
+          resolve(data.url);
+          return;
+        }
+
+        const errors: Record<number, string> = {
+          404: "Route de téléversement introuvable.",
+          405: "Méthode HTTP non autorisée.",
+          413: "Fichier trop volumineux.",
+          500: "Erreur interne du serveur."
+        };
+
+        reject(
+          new Error(
+            data.error ||
+            data.message ||
+            errors[xhr.status] ||
+            `Erreur HTTP ${xhr.status} pendant le téléversement.`
+          )
+        );
+      };
+
+      xhr.onerror = () => {
+        reject(
+          new Error("Impossible de contacter le serveur.")
+        );
+      };
+
+      xhr.onabort = () => {
+        reject(
+          new Error("Téléversement interrompu.")
+        );
+      };
+
+      xhr.ontimeout = () => {
+        reject(
+          new Error("Délai de téléversement dépassé.")
+        );
+      };
+
+      // Ne pas définir Content-Type manuellement.
+      xhr.send(formData);
+    });
+  }
 };

@@ -46,3 +46,4 @@ next-env.d.ts
 
 backup_toil_db.sql
 /public/uploads
+/public/video

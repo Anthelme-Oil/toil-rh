@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Video } from "@/types";
 import { uploadClientService } from "@/lib/services/upload.service";
+import { compressVideo } from "@/lib/services/videoCompression.service";
 import { 
   Upload, 
   Loader2, 
@@ -21,6 +22,11 @@ interface Props {
 export function VideoFormFields({ formData, onChange }: Props) {
   // Mode de saisie de la vidéo : 'file' (upload) ou 'url' (lien direct)
   const [videoInputMode, setVideoInputMode] = useState<"file" | "url">("file");
+  const [videoProgress, setVideoProgress] = useState(0);
+
+const [videoStage, setVideoStage] = useState<
+  "compression" | "upload" | null
+>(null);
 
   // États locaux de chargement et d'erreurs
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -30,22 +36,61 @@ export function VideoFormFields({ formData, onChange }: Props) {
   const [thumbnailUploadError, setThumbnailUploadError] = useState<string | null>(null);
 
   // Upload de la vidéo locale
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file) return;
 
-    setUploadingVideo(true);
-    setVideoUploadError(null);
+  //   setUploadingVideo(true);
+  //   setVideoUploadError(null);
 
-    try {
-      const url = await uploadClientService.uploadFile(file, "videos");
-      onChange("videoUrl", url);
-    } catch (err: any) {
-      setVideoUploadError(err.message || "Échec du téléversement de la vidéo.");
-    } finally {
-      setUploadingVideo(false);
-    }
-  };
+  //   try {
+  //     const url = await uploadClientService.uploadFile(file, "videos");
+  //     onChange("videoUrl", url);
+  //   } catch (err: any) {
+  //     setVideoUploadError(err.message || "Échec du téléversement de la vidéo.");
+  //   } finally {
+  //     setUploadingVideo(false);
+  //   }
+  // };
+
+const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const input = e.target;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  setUploadingVideo(true);
+  setVideoUploadError(null);
+  setVideoProgress(0);
+
+  let cleanup: (() => Promise<void>) | undefined;
+
+  try {
+    setVideoStage("compression");
+    const result = await compressVideo(file, {
+      onProgress: setVideoProgress,
+    });
+    cleanup = result.cleanup;
+
+    setVideoStage("upload");
+    setVideoProgress(0);
+
+    const url = await uploadClientService.uploadFile(
+      result.file,
+      "videos",
+      setVideoProgress
+    );
+
+    onChange("videoUrl", url);
+  } catch (err: any) {
+    setVideoUploadError(err.message || "Échec du traitement de la vidéo.");
+  } finally {
+    await cleanup?.(); // suppression après l'upload
+    setUploadingVideo(false);
+    setVideoStage(null);
+    setVideoProgress(0);
+    input.value = "";
+  }
+};
 
   // Upload de la miniature
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

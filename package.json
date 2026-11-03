@@ -23,6 +23,7 @@
         "lucide-react": "^1.28.0",
         "mammoth": "^1.13.0",
         "mariadb": "^3.5.3",
+        "mediabunny": "^1.65.0",
         "mysql2": "^3.23.3",
         "next": "16.2.12",
         "next-auth": "^5.0.0-beta.32",

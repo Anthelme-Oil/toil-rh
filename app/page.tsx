@@ -32,6 +32,7 @@ import { ActualitesResponse, Actualite, Evenement, DayOff } from "@/types";
 import { DateFormat } from "@/utils/dateUtils";
 import { getNewsColor } from "@/utils/newsUtils";
 import Loader from "@/components/Loader";
+import PulseVisual from '@/components/common/Hero'
 const heroImage = "/images/banner2.png";
 
 import { apps } from "@/utils/dataUtils";
@@ -271,6 +272,7 @@ export function IntranetHome() {
             </div>
           </div>
         </section>
+      
 
         {/* Accès rapides */}
         <section className="relative z-10 mx-auto max-w-[1320px] px-5 pb-10 sm:px-8 lg:px-12">
@@ -324,6 +326,10 @@ export function IntranetHome() {
             ))}
           </div>
         </section>
+
+          {/* <section>
+          <PulseVisual/>
+        </section> */}
 
         {/* SECTION ÉVÉNEMENTS & CALENDRIER */}
         <EventsAndCalendarSection events={events} offDays={offDays} />
