@@ -120,7 +120,7 @@ export async function getAllUserRoles(): Promise<UserRoleRecord[]> {
  * Obtenir les permissions dynamiques d'un utilisateur par son email
  */
 export async function getUserPermissionsByEmail(email?: string | null): Promise<{
-  role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN';
+  role: 'EMPLOYE' | 'MANAGER' | 'RH' | 'ADMIN' | 'DRH';
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;

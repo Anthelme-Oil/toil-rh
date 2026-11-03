@@ -1,24 +1,14 @@
 'use client';
 
-// ═══════════════════════════════════════════════════════════════
-// UserContext — Source unique d'identité via NextAuth (SSO Microsoft)
-// ═══════════════════════════════════════════════════════════════
-// L'identité utilisateur provient UNIQUEMENT de la session NextAuth.
-// Les permissions (rôle, isRH, isManager, etc.) sont lues depuis MySQL
-// via l'API /api/roles/me (protégée par session serveur).
-// ═══════════════════════════════════════════════════════════════
-
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface UserContextType {
-  /** Email de l'utilisateur connecté (vide si non connecté) */
   userEmail: string;
-  /** Nom affiché de l'utilisateur */
   userName: string;
-  /** Rôle principal (EMPLOYE, MANAGER, RH, ADMIN) */
   userRole: string;
-  /** Flags de permissions */
+  /** Adresse e-mail du N+1 (issue de Graph / DB via /api/roles/me) */
+  managerEmail: string;
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
@@ -26,18 +16,18 @@ interface UserContextType {
   isDRH: boolean;
   isRHPrint: boolean;
   isRoomManager: boolean;
-  /** L'utilisateur est-il authentifié via SSO ? */
   isAuthenticated: boolean;
-  /** Chargement en cours des permissions ? */
   isLoading: boolean;
-  /** Forcer le rechargement des permissions depuis le serveur */
   refreshPermissions: () => void;
+  /** Vérifie si l'e-mail de l'utilisateur est associé à la clé (ou liste de clés) dans la table Parametre */
+  hasAction: (actions: string | string[]) => Record<string, boolean>;
 }
 
 const UserContext = createContext<UserContextType>({
   userEmail: '',
   userName: '',
   userRole: 'EMPLOYE',
+  managerEmail: '',
   isRH: false,
   isManager: false,
   isAdmin: false,
@@ -48,15 +38,15 @@ const UserContext = createContext<UserContextType>({
   isAuthenticated: false,
   isLoading: true,
   refreshPermissions: () => {},
+  hasAction: () => ({}),
 });
 
-// ── Cache sessionStorage (évite les requêtes en doublon lors de la navigation) ──
-
 const CACHE_KEY_PREFIX = 'toil_permissions_';
-const CACHE_TTL = 15 * 1000; // 15 secondes pour réactivité immédiate
+const CACHE_TTL = 15 * 1000;
 
 interface CachedPermissions {
   role: string;
+  managerEmail: string;
   isRH: boolean;
   isManager: boolean;
   isAdmin: boolean;
@@ -86,7 +76,7 @@ function getCachedPermissions(email: string): CachedPermissions | null {
 
 function setCachedPermissions(
   email: string,
-  perms: { role: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean; isDRH: boolean; isRHPrint: boolean; isRoomManager: boolean; name: string }
+  perms: { role: string; managerEmail: string; isRH: boolean; isManager: boolean; isAdmin: boolean; isCom: boolean; isDRH: boolean; isRHPrint: boolean; isRoomManager: boolean; name: string }
 ) {
   if (typeof window === 'undefined') return;
   try {
@@ -94,17 +84,15 @@ function setCachedPermissions(
       CACHE_KEY_PREFIX + email.toLowerCase(),
       JSON.stringify({ ...perms, cachedAt: Date.now() })
     );
-  } catch {
-    // sessionStorage plein ou indisponible
-  }
+  } catch {}
 }
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
 
-  // État par défaut = non connecté, aucun privilège
   const [permissions, setPermissions] = useState({
     role: 'EMPLOYE',
+    managerEmail: '',
     isRH: false,
     isManager: false,
     isAdmin: false,
@@ -116,22 +104,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Guard pour ne pas fetch en doublon
+  // État pour stocker les paramètres de la base de données (pour hasAction)
+  const [parametres, setParametres] = useState<Array<{ cle: string; valeur: string }>>([]);
+
   const fetchInFlightRef = useRef<string | null>(null);
 
-  // Email et nom proviennent uniquement de la session NextAuth
   const userEmail = session?.user?.email || '';
   const sessionName = session?.user?.name || '';
   const isAuthenticated = status === 'authenticated' && !!userEmail;
 
+  // Chargement des paramètres admin pour la vérification hasAction
+  useEffect(() => {
+    async function loadParametres() {
+      try {
+        const res = await fetch('/api/requests/admin/parametres', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          setParametres(json.data || json.parametres || json || []);
+        }
+      } catch (err) {
+        console.error('[UserContext] Erreur chargement paramètres:', err);
+      }
+    }
+    loadParametres();
+  }, []);
+
   const fetchPermissions = useCallback(async (email: string, forceRefresh = false) => {
     if (!email) {
-      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
+      setPermissions({ role: 'EMPLOYE', managerEmail: '', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
       setIsLoading(false);
       return;
     }
 
-    // 1. Cache sessionStorage (instantané, 0 requête)
     if (forceRefresh && typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem(CACHE_KEY_PREFIX + email.toLowerCase());
@@ -141,6 +145,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (cached) {
         setPermissions({
           role: cached.role,
+          managerEmail: cached.managerEmail || '',
           isRH: cached.isRH,
           isManager: cached.isManager,
           isAdmin: cached.isAdmin,
@@ -155,17 +160,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 2. Éviter les requêtes en double
     if (fetchInFlightRef.current === email) return;
     fetchInFlightRef.current = email;
 
     try {
-      // L'API /api/roles/me lit l'email depuis la session serveur (auth())
       const res = await fetch('/api/roles/me', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const perms = {
           role: data.role || 'EMPLOYE',
+          managerEmail: data.managerEmail || data.manager?.email || '',
           isRH: data.isRH || false,
           isManager: data.isManager || false,
           isAdmin: data.isAdmin || false,
@@ -186,18 +190,71 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Charger les permissions dès que la session est disponible
   useEffect(() => {
-    if (status === 'loading') return; // Attendre que NextAuth ait fini
+    if (status === 'loading') return;
     if (userEmail) {
       fetchPermissions(userEmail);
     } else {
-      setPermissions({ role: 'EMPLOYE', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
+      setPermissions({ role: 'EMPLOYE', managerEmail: '', isRH: false, isManager: false, isAdmin: false, isCom: false, isDRH: false, isRHPrint: false, isRoomManager: false, name: '' });
       setIsLoading(false);
     }
   }, [userEmail, status, fetchPermissions]);
 
-  // Le nom affiché = nom de la session SSO, ou nom stocké en BD via permissions
+  /**
+   * Fonction qui vérifie si l'utilisateur courant (userEmail) possède l'action 
+   * en se basant sur les clés configurées dans la table Parametre.
+   */
+const hasAction = useCallback(
+  (actions: string | string[]): Record<string, boolean> => {
+    const actionList = Array.isArray(actions) ? actions : [actions];
+
+    const formattedActions = actionList.map((action) =>
+      action.trim().toUpperCase()
+    );
+
+    // Aucun utilisateur connecté
+    if (!userEmail) {
+      return Object.fromEntries(
+        formattedActions.map((action) => [action, false])
+      );
+    }
+
+    // Un administrateur possède toutes les actions
+    if (permissions.isAdmin) {
+      return Object.fromEntries(
+        formattedActions.map((action) => [action, true])
+      );
+    }
+
+    const normalizedEmail = userEmail.trim().toLowerCase();
+
+    return Object.fromEntries(
+      formattedActions.map((formattedKey) => {
+        const setting = parametres.find(
+          (p) => p.cle.trim().toUpperCase() === formattedKey
+        );
+
+        // console.log("settings",setting,"formatedAction=>",formattedActions)
+
+        if (!setting?.valeur) {
+          return [formattedKey, false];
+        }
+
+        const allowedEmails = setting.valeur
+          .split(",")
+          .map((email) => email.trim().toLowerCase());
+
+        const hasPermission =
+          allowedEmails.includes(normalizedEmail) ||
+          allowedEmails.includes("*");
+
+        return [formattedKey, hasPermission];
+      })
+    );
+  },
+  [userEmail, parametres, permissions.isAdmin]
+);
+
   const displayName = sessionName || permissions.name || userEmail.split('@')[0] || '';
 
   return (
@@ -206,6 +263,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         userEmail,
         userName: displayName,
         userRole: permissions.role,
+        managerEmail: permissions.managerEmail,
         isRH: permissions.isRH,
         isManager: permissions.isManager,
         isAdmin: permissions.isAdmin,
@@ -216,6 +274,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         refreshPermissions: () => fetchPermissions(userEmail, true),
+        hasAction,
       }}
     >
       {children}

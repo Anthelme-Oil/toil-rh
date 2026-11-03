@@ -71,7 +71,7 @@ export default function MesDemandesSection({ compteurs }: MesDemandesProps) {
           <h2 className="text-lg font-bold text-text-primary">Mes demandes</h2>
         </div>
         <Link
-          href="/demandes"
+          href="/demandes/catalogue"
           className="text-sm font-medium text-primary hover:text-primary-dark transition-colors focus-ring"
           id="link-toutes-demandes"
         >

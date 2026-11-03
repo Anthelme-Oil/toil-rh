@@ -19,7 +19,7 @@ export default function OutilsPage() {
   const autresOutils = outilsM365.filter((o) => o.categorie === 'Autres outils M365' || (!o.categorie && !m365Outils.includes(o) && !metiersOutils.includes(o)));
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-full mx-auto px-4 sm:px-6 py-5 sm:py-6">
       {/* ── Fil d'Ariane ── */}
       <div className="flex items-center gap-2 text-sm text-text-muted mb-6">
         <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1">
